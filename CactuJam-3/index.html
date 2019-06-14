@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+  <title>CactuJam 3</title>
+
+  <link rel="stylesheet" href="./main.css">
+
+  <script defer src="./levels.js"></script>
+  <script defer src="./main.js"></script>
+</head>
+<body>
+  <div class="game-init" onclick="window.game = new Game">
+    <span>Kliknij aby zacząć</span>
+  </div>
+  <canvas></canvas>
+  <aside class="game-panel">
+    <section class="game-messages"></section>
+    <section class="game-items" data-count="0">
+      <div class="game-item" data-name="barrel"><img src="./img/static-barrel.png"></div>
+      <div class="game-item" data-name="washmachine"><img src="./img/static-washmachine.png"></div>
+      <div class="game-item" data-name="conveyor"><img src="./img/conveyor.png"></div>
+    </section>
+    <section class="game-eq">
+      <h3>Trzymany przedmiot</h3>
+      <div class="game-inventory game-item"><img src="./img/empty.png"></div>
+    </section>
+      <section class="game-data">
+      <h3>Dane</h3>
+      <div class="game-direction">↑</div>
+    </section>
+  </aside>
+</body>
+</html>

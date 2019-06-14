@@ -1,0 +1,92 @@
+body {
+  margin: 0;
+  background: #333;
+  overflow: hidden;
+  font-family: monospace;
+  color: #f1eed0;
+}
+
+canvas {
+  width: 100vw;
+  height: 100vh;
+}
+
+.game-init {
+  position: absolute;
+  width: 100vw;
+  height: 100vh;
+  background: #333;
+  color: #2a2a2a;
+  font-size: 100px;
+  z-index: 1;
+  cursor: pointer;
+}
+  .game-init span {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate( -50%, -50% );
+    width: max-content;
+  }
+.game-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 250px;
+  height: 100vh;
+  background: #0003;
+}
+  .game-panel section {
+    position: relative;
+    padding: 20px;
+  }
+    .game-panel section:not( :first-child )::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      display: block;
+      width: 80%;
+      margin: 0 auto;
+      border-bottom: 1px solid #aaa;
+    }
+  .game-messages {
+    height: 200px;
+    overflow: overlay;
+  }
+  .game-inventory,
+  .game-item {
+    position: relative;
+    width: 50px;
+    height: 50px;
+    border: 3px solid #a39f7a;
+    background: #f1eed0;
+    border-radius: 10px;
+    box-shadow: inset 0 0 15px #aaa;
+    overflow: hidden;
+  }
+    .game-item.active,
+    .game-item:hover {
+      border: 3px solid #dfca10;
+    }
+    .game-inventory img,
+    .game-item img {
+      width: 100%;
+      display: block;
+      image-rendering: pixelated;
+    }
+    .game-item:not( .game-inventory )::before {
+      content: attr( data-count );
+      position: absolute;
+      top: 28px;
+      left: -4px;
+      display: block;
+      padding: 3px;
+      border-radius: 10px;
+      background: #333;
+      border: 3px solid #a39f7a;
+      font-weight: bold;
+    }
+  .game-inventory {
+    background: #6d6d6d;
+    box-shadow: unset;
+  }
