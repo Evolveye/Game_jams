@@ -21,8 +21,38 @@ data.ctx.imageSmoothingEnabled = false
 
 class Level {
   constructor( { tiles, script } ) {
+    for ( let y = 0;  y < tiles.length;  y++ )
+      for ( let x = 0;  x < tiles[ y ].length;  x++ )
+        if ( !Array.isArray( tiles[ y ][ x ] ) )
+          tiles[ y ][ x ] = [ tiles[ y ][ x ] ]
+
     this.tiles = tiles
     this.script = script
+    this.length = tiles.length
+  }
+
+  * everyElement() {
+    const { tiles } = this
+
+    for ( let y = 0;  y < tiles.length;  y++ )
+      for ( let x = 0;  x < tiles[ y ].length;  x++ )
+        for ( let l = 0;  l < tiles[ y ][ x ].length;  l++ )
+          yield { x, y, l, element:tiles[ y ][ x ][ l ] }
+  }
+
+  row( y ) {
+    const { tiles } = this
+
+    if ( y < 0 || tiles.length <= y ) return null
+    return tiles[ y ]
+  }
+
+  get( x, y ) {
+    const { tiles } = this
+
+    if ( y < 0 || tiles.length <= y ) return null
+    if ( x < 0 || tiles[ 0 ].length <= x ) return null
+    return tiles[ y ][ x ]
   }
 }
 class Sprite {
@@ -30,9 +60,11 @@ class Sprite {
    * @param {Object} param0
    * @param {String} param0.src Path without extension and without direction informations (__./img__ instead __./img-0010.png__)
    */
-  constructor( { src, frames, framesInRow } ) {
+  constructor( { type, src, frames, framesInRow, connectable } ) {
     this.image = new Image()
     this.image.src = src
+    this.type = type
+    this.connectable = connectable
     this.frames = frames
     this.columns = framesInRow
     this.rows = Math.ceil( frames / framesInRow )
@@ -45,10 +77,12 @@ class Sprite {
     }
   }
 }
+Sprite.info = new Map
 Sprite.sprites = new Map
 class GameElement {
   constructor( { sprite, rotateAngle } ) {
     this.sprite = sprite
+    this.type = sprite.type
     this.rotateAngle = rotateAngle
     this.x = 1
     this.y = 1
@@ -92,26 +126,40 @@ function loop() {
 function logic() {
   if ( !data.level && data.levels.length ) {
     data.level = data.levels[ 0 ]
-    const { tiles } = data.level
+    const { level } = data
 
-    for ( let y = 0;  y < tiles.length;  y++ )
-      for ( let x = 0;  x < tiles[ y ].length;  x++ ) {
-        if ( !Array.isArray( tiles[ y ][ x ] ) )
-          tiles[ y ][ x ] = [ tiles[ y ][ x ] ]
+    for ( const { x, y, l, element } of level.everyElement() ) {
+      let { spriteId, rotateAngle } = element.match( /(?<spriteId>[^-]+)(?:-(?<rotateAngle>[^-]+))?/ ).groups
+      const elementInfo = Sprite.info.get( spriteId )
 
-        for ( let i = 0;  i < tiles[ y ][ x ].length;  i++ ) {
-          const tile = tiles[ y ][ x ][ i ]
+      if ( elementInfo.connectable ) {
+        let dir = `-`
 
-          if ( !tile ) continue
+        const left   = ((level.get( x - 1, y + 0 ) || [])[ l ] || {}).type
+        const right  = (level.get( x + 1, y + 0 ) || [])[ l ]
+        const top    = ((level.get( x + 0, y - 1 ) || [])[ l ] || {}).type
+        const bottom = (level.get( x + 0, y + 1 ) || [])[ l ]
 
-          const { spriteId, rotateAngle } = tile.match( /(?<spriteId>[^-]+)(?:-(?<rotateAngle>[^-]+))?/ ).groups
+        if ( top == spriteId ) dir += 1
+        else dir += 0
 
-          tiles[ y ][ x ][ i ] = new GameElement( {
-            sprite: Sprite.sprites.get( spriteId ),
-            rotateAngle
-          } )
-        }
+        if ( right == spriteId ) dir += 1
+        else dir += 0
+
+        if ( bottom == spriteId ) dir += 1
+        else dir += 0
+
+        if ( left == spriteId ) dir += 1
+        else dir += 0
+
+        spriteId += dir
       }
+
+      level.tiles[ y ][ x ][ l ] = new GameElement( {
+        sprite: Sprite.sprites.get( spriteId ),
+        rotateAngle
+      } )
+    }
   }
 }
 function draw() {
@@ -120,12 +168,8 @@ function draw() {
   if ( !level )
     return
 
-  const { tiles } = level
-
-  for ( let y = 0;  y < tiles.length;  y++ )
-    for ( let x = 0;  x < tiles[ y ].length;  x++ )
-      for ( let i = 0;  i < tiles[ y ][ x ].length;  i++ )
-        tiles[ y ][ x ][ i ].draw( ctx, x * tileSize, y * tileSize, tileSize, tileSize )
+  for ( const { x, y, element } of level.everyElement() )
+    element.draw( ctx, x * tileSize, y * tileSize, tileSize, tileSize )
 }
 function setup( { tileSize=data.tileSize } ) {
   data.tileSize = tileSize
@@ -143,11 +187,30 @@ function createAdditionalDraw( drawFunction ) {
   data.userDraw = drawFunction
 }
 /**
- * @param {String|Number} id Id of element, which will be connected with map
- * @param {Sprite} sprite
+ * @param {Object} param0
+ * @param {String} param0.type
+ * @param {String} param0.src
+ * @param {Number} param0.frames
+ * @param {Number} param0.framesInRow
+ * @param {Boolean} param0.connectable
  */
-function createSprite( id, { src, frames, framesInRow } ) {
-  Sprite.sprites.set( id, new Sprite( { src, frames, framesInRow } ) )
+function createSprite( type, src, { frames=1, framesInRow=1, connectable=false }={} ) {
+  if ( !Sprite.info.has( type ) ) Sprite.info.set( type, {
+    frames,
+    framesInRow,
+    connectable
+  } )
+
+  const info = Sprite.info.get( type )
+  const id = type + (info.connectable  ?  `-${src.match( /.*?(\d+).\w+/ )[ 1 ]}`  :  ``)
+
+  Sprite.sprites.set( id, new Sprite( {
+    type,
+    src,
+    frames: info.frames,
+    framesInRow: info.framesInRow,
+    connectable: info.connectable
+  } ) )
 }
 /**
  * @param {Level|Level[]} level_s Instance(s) of Level class

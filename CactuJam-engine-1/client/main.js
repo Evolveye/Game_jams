@@ -12,16 +12,11 @@ import levels from "./levels"
 
 setup( {} )
 
-createSprite( `f0`, {
-  src: `./img/gate.png`,
-  frames: 1,
-  framesInRow: 1
-} )
-createSprite( `b0`, {
-  src: `./img/bgr.png`,
-  frames: 1,
-  framesInRow: 1
-} )
+createSprite( `f0`, `./img/gate.png` )
+createSprite( `b0`, `./img/bgr.png` )
+createSprite( `c`, `./img/circle-0000.png`, { connectable:true } )
+createSprite( `c`, `./img/circle-0001.png` )
+createSprite( `c`, `./img/circle-0100.png` )
 
 createLevel( levels )
 
