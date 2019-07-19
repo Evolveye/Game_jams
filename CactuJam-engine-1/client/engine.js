@@ -4,16 +4,17 @@ document.body.innerHTML = /* html */ `
 
 const data = {
   ctx: document.body.querySelector( `canvas` ).getContext( `2d` ),
+  levelsBuildingSpeed: null,
   intervalId: null,
   tileSize: null,
+  running: null,
   nextFrameTicks: 5,
   nextFrameCache: 0,
-  /** @type {GameElement} */
-  playerId: null,
-  player: null,
   userLogic() {},
   userDraw() {},
-  sprites: {},
+  player: null,
+  /** @type {GameElement} */
+  playerId: null,
   /** @type {Level[]} */
   levels: [],
   /** @type {Level} */
@@ -31,10 +32,14 @@ class Level {
    * @param {GameElement[][][]} param0.tiles
    */
   constructor( { tiles, script } ) {
+    this.height = tiles.length
+    this.width = 0
+    
     for ( let y = 0;  y < tiles.length;  y++ )
-      for ( let x = 0;  x < tiles[ y ].length;  x++ )
-        if ( !Array.isArray( tiles[ y ][ x ] ) )
-          tiles[ y ][ x ] = [ tiles[ y ][ x ] ]
+      for ( let x = 0;  x < tiles[ y ].length;  x++ ) {
+        if ( !Array.isArray( tiles[ y ][ x ] ) ) tiles[ y ][ x ] = [ tiles[ y ][ x ] ]
+        if ( x > this.width ) this.width = x
+      }
 
     this.tiles = tiles
     this.script = script
@@ -163,48 +168,75 @@ function loop() {
   requestAnimationFrame( () => draw() )
   requestAnimationFrame( () => data.userDraw() )
 }
-function logic() {
-  if ( !data.level && data.levels.length ) {
-    data.level = data.levels[ 0 ]
-    const { level } = data
+async function buildLevel( levelNumber=data.level.number ) {
+  const lastState = data.running
+  const level = data.levels[ levelNumber ]
+  const indices = []
 
-    for ( const { x, y, l, element } of level.everyElement() ) {
-      let { spriteId, rotateAngle } = element.match( /(?<spriteId>[^-]+)(?:-(?<rotateAngle>[^-]+))?/ ).groups
-      const elementInfo = Sprite.info.get( spriteId )
+  for ( const { x, y, l, element } of level.everyElement() ) {
+    let { spriteId, rotateAngle } = element.match( /(?<spriteId>[^-]+)(?:-(?<rotateAngle>[^-]+))?/ ).groups
+    const elementInfo = Sprite.info.get( spriteId )
 
-      if ( elementInfo.connectable ) {
-        let dir = `-`
+    if ( elementInfo.connectable ) {
+      let dir = `-`
 
-        const left   = ((level.get( x - 1, y + 0 ) || [])[ l ] || {}).type
-        const right  = (level.get( x + 1, y + 0 ) || [])[ l ]
-        const top    = ((level.get( x + 0, y - 1 ) || [])[ l ] || {}).type
-        const bottom = (level.get( x + 0, y + 1 ) || [])[ l ]
+      const left   = ((level.get( x - 1, y + 0 ) || [])[ l ] || {}).type
+      const right  = (level.get( x + 1, y + 0 ) || [])[ l ]
+      const top    = ((level.get( x + 0, y - 1 ) || [])[ l ] || {}).type
+      const bottom = (level.get( x + 0, y + 1 ) || [])[ l ]
 
-        if ( top == spriteId ) dir += 1
-        else dir += 0
+      if ( top == spriteId ) dir += 1
+      else dir += 0
 
-        if ( right == spriteId ) dir += 1
-        else dir += 0
+      if ( right == spriteId ) dir += 1
+      else dir += 0
 
-        if ( bottom == spriteId ) dir += 1
-        else dir += 0
+      if ( bottom == spriteId ) dir += 1
+      else dir += 0
 
-        if ( left == spriteId ) dir += 1
-        else dir += 0
+      if ( left == spriteId ) dir += 1
+      else dir += 0
 
-        spriteId += dir
-      }
-
-      level.tiles[ y ][ x ][ l ] = new GameElement( {
-        sprite: Sprite.sprites.get( spriteId ),
-        rotateAngle: +rotateAngle
-      } )
-
-      if ( spriteId == `p` ) data.player = level.tiles[ y ][ x ][ l ]
+      spriteId += dir
     }
+
+    indices.push( { x, y } )
+    level.tiles[ y ][ x ][ l ] = new GameElement( {
+      sprite: Sprite.sprites.get( spriteId ),
+      rotateAngle: +rotateAngle
+    } )
+
+    if ( spriteId == `p` ) data.player = level.tiles[ y ][ x ][ l ]
   }
 
-  const { level, nextFrameCache, nextFrameTicks } = data
+  const tiles = level.tiles 
+  const timePerTile = data.levelsBuildingSpeed / indices.length
+
+  level.tiles = Array.from( { length:tiles.length }, (_, i) => Array.from( { length:tiles[ i ].length }, _ => [] ) )
+  console.log( level.tiles, tiles )
+
+  const builderHelper = () => new Promise( resolve => {
+    const index = Math.floor( Math.random() * indices.length )
+    const { x, y } = indices[ index ]
+    indices.splice( index, 1 )
+
+    level.tiles[ y ][ x ] = tiles[ y ][ x ]
+
+    if ( !indices.length ) return
+    
+    setTimeout( () => builderHelper().then( resolve() ), timePerTile * 1000 )
+  } )
+
+  data.level = level
+  data.running = lastState
+
+  await builderHelper()
+}
+function logic() {
+  const { level, levels, running, nextFrameCache, nextFrameTicks } = data
+
+  if ( !level && levels.length ) buildLevel( 0 ).then( () => data.running = true )
+  if ( !running ) return
 
   // Sprites animating
   if ( nextFrameCache == nextFrameTicks ) {
@@ -222,15 +254,21 @@ function draw() {
 
   ctx.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height )
 
+  const translateX = window.innerWidth / 2 - level.width * tileSize / 2
+  const translateY = window.innerHeight / 2 - level.height * tileSize / 2
+
   for ( const { x, y, element } of level.everyElementInLayer( 0 ) )
-    element.draw( ctx, x * tileSize, y * tileSize, tileSize, tileSize )
+    element.draw( ctx, translateX + x * tileSize, translateY + y * tileSize, tileSize, tileSize )
 
   for ( const { x, y, element } of level.everyElementInLayerHigherThan( 0 ) )
-    element.draw( ctx, x * tileSize, y * tileSize, tileSize, tileSize )
+    element.draw( ctx, translateX + x * tileSize, translateY + y * tileSize, tileSize, tileSize )
 }
-function setup( { tileSize=50, playerId=`p` } ) {
+function setup( { tileSize=50, playerId=`p`, levelsBuildingSpeed=5 } ) {
   data.tileSize = tileSize
   data.playerId = playerId
+  data.levelsBuildingSpeed = levelsBuildingSpeed
+
+  data.running = false
 }
 /**
  * @param {Function} logicFunction
@@ -279,6 +317,10 @@ function createLevel( level_s ) {
 
   data.levels = [ ...data.levels, ...level_s ]
 }
+
+// data.ctx.canvas.addEventListener( `click`, ({ clientX, clientY }) => {
+//   console.log( clientX, clientY )
+// } )
 
 export {
   setup,

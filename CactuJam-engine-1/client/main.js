@@ -21,7 +21,7 @@ createSprite( `c`, `./img/circle-0100.png` )
 
 createLevel( levels )
 
-createAdditionalLogic( () => console.log( 1 ) )
+createAdditionalLogic( () => {} )
 createAdditionalDraw( () => {} )
 
 document.addEventListener( `DOMContentLoaded`, () => start() )
