@@ -318,9 +318,13 @@ function createLevel( level_s ) {
   data.levels = [ ...data.levels, ...level_s ]
 }
 
-// data.ctx.canvas.addEventListener( `click`, ({ clientX, clientY }) => {
-//   console.log( clientX, clientY )
-// } )
+data.ctx.canvas.addEventListener( `click`, ({ clientX, clientY }) => {
+  const { level, tileSize } = data
+  const x = (clientX - (window.innerWidth - level.width * tileSize) / 2) / tileSize
+  const y = (clientY - (window.innerHeight - level.height * tileSize) / 2) / tileSize
+
+  console.log( Math.floor( x ), Math.floor( y ), level.get( Math.floor( x ), Math.floor( y ) ) )
+} )
 
 export {
   setup,
