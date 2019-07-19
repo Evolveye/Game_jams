@@ -80,7 +80,7 @@ class Sprite {
 Sprite.info = new Map
 Sprite.sprites = new Map
 class GameElement {
-  constructor( { sprite, rotateAngle } ) {
+  constructor( { sprite, rotateAngle=0 } ) {
     this.sprite = sprite
     this.type = sprite.type
     this.rotateAngle = rotateAngle
@@ -92,10 +92,19 @@ class GameElement {
    * @param {CanvasRenderingContext2D} ctx
    */
   draw( ctx, left, top, width, height ) {
-    const { x, y } = this
+    const { x, y, rotateAngle } = this
     const { image, frameWidth, frameHeight } = this.sprite
+    const halfWidth = width / 2
+    const halfHeight = height / 2
 
-    ctx.drawImage( image, (x - 1) * frameWidth, (y - 1) * frameHeight, frameWidth, frameHeight, left, top, width, height )
+    ctx.save()
+    ctx.translate( left + halfWidth, top + halfHeight )
+    ctx.rotate( Math.PI / 180 * rotateAngle )
+    ctx.drawImage( image,
+      (x - 1) * frameWidth, (y - 1) * frameHeight, frameWidth, frameHeight,
+      -halfWidth, -halfHeight, width, height
+    )
+    ctx.restore()
   }
 
   nextFrame() {
@@ -157,7 +166,7 @@ function logic() {
 
       level.tiles[ y ][ x ][ l ] = new GameElement( {
         sprite: Sprite.sprites.get( spriteId ),
-        rotateAngle
+        rotateAngle: +rotateAngle
       } )
     }
   }
