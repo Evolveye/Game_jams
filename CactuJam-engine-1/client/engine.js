@@ -6,6 +6,8 @@ const data = {
   ctx: document.body.querySelector( `canvas` ).getContext( `2d` ),
   intervalId: null,
   tileSize: 50,
+  nextFrameTicks: 5,
+  nextFrameCache: 0,
   userLogic() {},
   userDraw() {},
   sprites: {},
@@ -20,6 +22,11 @@ data.ctx.canvas.height = window.innerHeight
 data.ctx.imageSmoothingEnabled = false
 
 class Level {
+  /**
+   *
+   * @param {Object} param0
+   * @param {GameElement[][][]} param0.tiles
+   */
   constructor( { tiles, script } ) {
     for ( let y = 0;  y < tiles.length;  y++ )
       for ( let x = 0;  x < tiles[ y ].length;  x++ )
@@ -37,7 +44,7 @@ class Level {
     for ( let y = 0;  y < tiles.length;  y++ )
       for ( let x = 0;  x < tiles[ y ].length;  x++ )
         for ( let l = 0;  l < tiles[ y ][ x ].length;  l++ )
-          yield { x, y, l, element:tiles[ y ][ x ][ l ] }
+          if ( tiles[ y ][ x ][ l ] ) yield { x, y, l, element:tiles[ y ][ x ][ l ] }
   }
 
   row( y ) {
@@ -79,6 +86,7 @@ class Sprite {
 }
 Sprite.info = new Map
 Sprite.sprites = new Map
+
 class GameElement {
   constructor( { sprite, rotateAngle=0 } ) {
     this.sprite = sprite
@@ -108,20 +116,20 @@ class GameElement {
   }
 
   nextFrame() {
+    const { columns, rows } = this.sprite
     this.x++
 
-    if ( this.x == this.width ) {
+    if ( this.x > columns ) {
       this.x = 1
       this.y++
     }
-    if ( this.y == this.height )
+    if ( this.y > rows )
       this.y = 1
   }
 }
 
 function start() {
-  console.log( data )
-  data.intervalId = setInterval( () => loop(), 10000 / 60 )
+  data.intervalId = setInterval( () => loop(), 1000 / 60 )
 }
 function stop() {
   clearInterval( data.intervalId )
@@ -170,6 +178,16 @@ function logic() {
       } )
     }
   }
+
+  const { level, nextFrameCache, nextFrameTicks } = data
+
+  if ( nextFrameCache == nextFrameTicks ) {
+    data.nextFrameCache = 0
+
+    for ( const { element } of level.everyElement() )
+      element.nextFrame()
+  }
+  else data.nextFrameCache++
 }
 function draw() {
   const { ctx, level, tileSize } = data
