@@ -6,9 +6,6 @@ const data = {
   ctx: document.body.querySelector( `canvas` ).getContext( `2d` ),
   intervalId: null,
   tileSize: 50,
-  layer1: [],
-  layer2: [],
-  layer3: [],
   userLogic() {},
   userDraw() {},
   sprites: {},
@@ -41,20 +38,28 @@ class Sprite {
     this.rows = Math.ceil( frames / framesInRow )
     this.frameWidth = 0
     this.frameHeight = 0
-    this.x = 1
-    this.y = 1
 
     this.image.onload = () => {
       this.frameWidth = this.image.width / framesInRow
       this.frameHeight = this.image.height / this.rows
     }
   }
+}
+Sprite.sprites = new Map
+class GameElement {
+  constructor( { sprite, rotateAngle } ) {
+    this.sprite = sprite
+    this.rotateAngle = rotateAngle
+    this.x = 1
+    this.y = 1
+  }
 
   /**
    * @param {CanvasRenderingContext2D} ctx
    */
-  drawframe( ctx, left, top, width, height ) {
-    const { image, x, y, frameWidth, frameHeight } = this
+  draw( ctx, left, top, width, height ) {
+    const { x, y } = this
+    const { image, frameWidth, frameHeight } = this.sprite
 
     ctx.drawImage( image, (x - 1) * frameWidth, (y - 1) * frameHeight, frameWidth, frameHeight, left, top, width, height )
   }
@@ -70,7 +75,6 @@ class Sprite {
       this.y = 1
   }
 }
-Sprite.sprites = new Map
 
 function start() {
   console.log( data )
@@ -95,8 +99,18 @@ function logic() {
         if ( !Array.isArray( tiles[ y ][ x ] ) )
           tiles[ y ][ x ] = [ tiles[ y ][ x ] ]
 
-        for ( let i = 0;  i < tiles[ y ][ x ].length;  i++ )
-          tiles[ y ][ x ][ i ] = Sprite.sprites.get( tiles[ y ][ x ][ i ] )
+        for ( let i = 0;  i < tiles[ y ][ x ].length;  i++ ) {
+          const tile = tiles[ y ][ x ][ i ]
+
+          if ( !tile ) continue
+
+          const { spriteId, rotateAngle } = tile.match( /(?<spriteId>[^-]+)(?:-(?<rotateAngle>[^-]+))?/ ).groups
+
+          tiles[ y ][ x ][ i ] = new GameElement( {
+            sprite: Sprite.sprites.get( spriteId ),
+            rotateAngle
+          } )
+        }
       }
   }
 }
@@ -111,7 +125,7 @@ function draw() {
   for ( let y = 0;  y < tiles.length;  y++ )
     for ( let x = 0;  x < tiles[ y ].length;  x++ )
       for ( let i = 0;  i < tiles[ y ][ x ].length;  i++ )
-        tiles[ y ][ x ][ i ].drawframe( ctx, x * tileSize, y * tileSize, tileSize, tileSize )
+        tiles[ y ][ x ][ i ].draw( ctx, x * tileSize, y * tileSize, tileSize, tileSize )
 }
 function setup( { tileSize=data.tileSize } ) {
   data.tileSize = tileSize
