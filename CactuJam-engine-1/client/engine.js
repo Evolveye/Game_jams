@@ -5,10 +5,11 @@ document.body.innerHTML = /* html */ `
 const data = {
   ctx: document.body.querySelector( `canvas` ).getContext( `2d` ),
   intervalId: null,
-  tileSize: 50,
+  tileSize: null,
   nextFrameTicks: 5,
   nextFrameCache: 0,
   /** @type {GameElement} */
+  playerId: null,
   player: null,
   userLogic() {},
   userDraw() {},
@@ -205,8 +206,6 @@ function logic() {
 
   const { level, nextFrameCache, nextFrameTicks } = data
 
-  data.player.translateX += .1
-
   // Sprites animating
   if ( nextFrameCache == nextFrameTicks ) {
     data.nextFrameCache = 0
@@ -221,14 +220,17 @@ function draw() {
 
   if ( !level ) return
 
+  ctx.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height )
+
   for ( const { x, y, element } of level.everyElementInLayer( 0 ) )
     element.draw( ctx, x * tileSize, y * tileSize, tileSize, tileSize )
 
   for ( const { x, y, element } of level.everyElementInLayerHigherThan( 0 ) )
     element.draw( ctx, x * tileSize, y * tileSize, tileSize, tileSize )
 }
-function setup( { tileSize=data.tileSize } ) {
+function setup( { tileSize=50, playerId=`p` } ) {
   data.tileSize = tileSize
+  data.playerId = playerId
 }
 /**
  * @param {Function} logicFunction
