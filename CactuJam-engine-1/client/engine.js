@@ -8,6 +8,8 @@ const data = {
   tileSize: 50,
   nextFrameTicks: 5,
   nextFrameCache: 0,
+  /** @type {GameElement} */
+  player: null,
   userLogic() {},
   userDraw() {},
   sprites: {},
@@ -38,13 +40,31 @@ class Level {
     this.length = tiles.length
   }
 
+  * everyElementInLayerHigherThan( layer ) {
+    for ( const data of this.every( layer + 1, Infinity ) )
+      yield data
+  }
+
+  * everyElementInLayer( layer ) {
+    for ( const data of this.every( layer, layer + 1 ) )
+      yield data
+  }
+
   * everyElement() {
+    for ( const data of this.every( 0, Infinity ) )
+      yield data
+  }
+
+  * every( layerMin, layerMax ) {
     const { tiles } = this
 
     for ( let y = 0;  y < tiles.length;  y++ )
-      for ( let x = 0;  x < tiles[ y ].length;  x++ )
-        for ( let l = 0;  l < tiles[ y ][ x ].length;  l++ )
+      for ( let x = 0;  x < tiles[ y ].length;  x++ ) {
+        const stop = layerMax == Infinity  ?  tiles[ y ][ x ].length  :  layerMax
+
+        for ( let l = layerMin;  l < stop;  l++ )
           if ( tiles[ y ][ x ][ l ] ) yield { x, y, l, element:tiles[ y ][ x ][ l ] }
+      }
   }
 
   row( y ) {
@@ -92,6 +112,8 @@ class GameElement {
     this.sprite = sprite
     this.type = sprite.type
     this.rotateAngle = rotateAngle
+    this.translateX = 0
+    this.translateY = 0
     this.x = 1
     this.y = 1
   }
@@ -100,13 +122,13 @@ class GameElement {
    * @param {CanvasRenderingContext2D} ctx
    */
   draw( ctx, left, top, width, height ) {
-    const { x, y, rotateAngle } = this
+    const { x, y, rotateAngle, translateX, translateY } = this
     const { image, frameWidth, frameHeight } = this.sprite
     const halfWidth = width / 2
     const halfHeight = height / 2
 
     ctx.save()
-    ctx.translate( left + halfWidth, top + halfHeight )
+    ctx.translate( left + halfWidth + translateX, top + halfHeight + translateY )
     ctx.rotate( Math.PI / 180 * rotateAngle )
     ctx.drawImage( image,
       (x - 1) * frameWidth, (y - 1) * frameHeight, frameWidth, frameHeight,
@@ -176,11 +198,16 @@ function logic() {
         sprite: Sprite.sprites.get( spriteId ),
         rotateAngle: +rotateAngle
       } )
+
+      if ( spriteId == `p` ) data.player = level.tiles[ y ][ x ][ l ]
     }
   }
 
   const { level, nextFrameCache, nextFrameTicks } = data
 
+  data.player.translateX += .1
+
+  // Sprites animating
   if ( nextFrameCache == nextFrameTicks ) {
     data.nextFrameCache = 0
 
@@ -192,10 +219,12 @@ function logic() {
 function draw() {
   const { ctx, level, tileSize } = data
 
-  if ( !level )
-    return
+  if ( !level ) return
 
-  for ( const { x, y, element } of level.everyElement() )
+  for ( const { x, y, element } of level.everyElementInLayer( 0 ) )
+    element.draw( ctx, x * tileSize, y * tileSize, tileSize, tileSize )
+
+  for ( const { x, y, element } of level.everyElementInLayerHigherThan( 0 ) )
     element.draw( ctx, x * tileSize, y * tileSize, tileSize, tileSize )
 }
 function setup( { tileSize=data.tileSize } ) {
