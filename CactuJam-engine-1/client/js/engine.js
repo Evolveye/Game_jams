@@ -3,6 +3,10 @@ import * as GameClassesStorage from "./engine-classes.js"
 const { Entity, Player, Icon, SpriteInfo, Sprite } = GameClassesStorage
 
 export class KeyInfo {
+  /**
+   * @param {number} code Key code
+   * @param {number} interval Pause between next triggering in seconds
+   */
   constructor( code, interval=0 ) {
     this.code = code
     this.active = true
@@ -10,6 +14,8 @@ export class KeyInfo {
     this.interval = interval
   }
 
+  /** Get pressed state, and set interval when its true
+   */
   get triggered() {
     if ( !this.pressed || !this.active ) return false
 
@@ -22,13 +28,14 @@ export class KeyInfo {
 
 export class Level {
   /**
-   * @param {_Game} game
-   * @param {Object} param1
+   * @param {Game} game
+   * @param {object} param1
    * @param {Entity[][][]} param1.tiles
-   * @param {Function} param1.script
-   * @param {Function} param1.events
+   * @param {function():Promise} param1.script
+   * @param {function():void} param1.events
+   * @param {number} param1.buildingSpeed Seconds to build level
    */
-  constructor( game, { tiles, script, events } ) {
+  constructor( game, { tiles, script, events, buildingSpeed } ) {
     this.game = game
     this.height = tiles.length
     this.width = 0
@@ -38,6 +45,7 @@ export class Level {
     this.events = events
     this.length = tiles.length
     this.runCounter = 0
+    this.buildingSpeed = buildingSpeed
 
     for ( let y = 0;  y < tiles.length;  y++ )
       for ( let x = 0;  x < tiles[ y ].length;  x++ ) {
@@ -59,8 +67,10 @@ export class Level {
       }
   }
 
+  /** Build level tile after the tile
+   */
   async build() {
-    const { tiles } = this
+    const { tiles, buildingSpeed } = this
     const indices = []
 
     for ( const { x, y, l, entity } of this.everyEntity() )
@@ -68,7 +78,7 @@ export class Level {
 
     this.tiles = Array.from( { length:tiles.length }, (_, i) => Array.from( { length:tiles[ i ].length }, () => [] ) )
 
-    const timePerTile = Level.buildingSpeed / indices.length
+    const timePerTile = buildingSpeed / indices.length
     const builderHelper = () => new Promise( resolve => {
       if ( !indices.length ) resolve()
 
@@ -85,26 +95,44 @@ export class Level {
     await builderHelper()
   }
 
+  /** Iterate by every entity in the layer
+   * @param {number} layer
+   */
   * everyEntityInLayerHigherThan( layer ) {
     for ( const data of this.every( layer + 1, Infinity ) )
       yield data
   }
+  /** Iterate by every entity that isn't in the layer
+   * @param {number} layer
+   */
   * everyEntityInLayer( layer ) {
     for ( const data of this.every( layer, layer + 1 ) )
       yield data
   }
+  /** Iterate by every entity which don't have ID from given IDs
+   * @param {string[]} ids
+   */
   * everyButNotIds( ...ids ) {
     for ( const data of this.every( 0, Infinity ) )
       if ( !ids.includes( data.entity.id ) ) yield data
   }
+  /** Iterate by every entity with one of given IDs
+   * @param {string[]} ids
+   */
   * everyId( ...ids ) {
     for ( const data of this.every( 0, Infinity ) )
       if ( ids.includes( data.entity.id ) ) yield data
   }
+  /** Iterate by every entity
+   */
   * everyEntity() {
     for ( const data of this.every( 0, Infinity ) )
       yield data
   }
+  /** Iterate by every entity from layers range
+   * @param {number} layerMin
+   * @param {number} layerMax
+   */
   * every( layerMin, layerMax ) {
     const { tiles } = this
 
@@ -117,12 +145,19 @@ export class Level {
       }
   }
 
+  /** Get level row
+   * @param {number} y
+   */
   row( y ) {
     const { tiles } = this
 
     if ( y < 0 || tiles.length <= y ) return null
     return tiles[ y ]
   }
+  /** Get level tile
+   * @param {number} x
+   * @param {number} y
+   */
   get( x, y ) {
     const { tiles } = this
 
@@ -130,11 +165,22 @@ export class Level {
     if ( x < 0 || tiles[ 0 ].length <= x ) return null
     return tiles[ y ][ x ]
   }
+  /** Get entity on top of tile
+   * @param {number} x
+   * @param {number} y
+   */
   getTop( x, y ) {
     const tile = this.get( x, y )
 
     return !tile ? null : tile[ tile.length - 1 ]
   }
+  /** Move entity/entities from equal and higher layer of one tile to top another
+   * @param {number} x
+   * @param {number} y
+   * @param {number} l
+   * @param {number} newX
+   * @param {number} newY
+   */
   move( x, y, l, newX, newY ) {
     const newTile = this.get( newX, newY )
     const entities = this.get( x, y ).splice( l )
@@ -147,9 +193,21 @@ export class Level {
 
     this.tiles[ newY ][ newX ].push( ...entities )
   }
+  /** Remove entity/entities from equal and higher layer
+   * @param {number} x
+   * @param {number} y
+   * @param {number} l
+   */
   remove( x, y, l ) {
     this.get( x, y ).splice( l )
   }
+  /** Create tile
+   * @param {string} id
+   * @param {number} x
+   * @param {number} y
+   * @param {number} l
+   * @param {number} rotateAngle
+   */
   createTile( id, x, y, l, rotateAngle ) {
     const { type } = id.match( /(?<type>[^-]+)(?:-\d+)?/ ).groups
     const { sprites, spritesInfos } = this.game.storage
@@ -205,14 +263,25 @@ export class Level {
 }
 
 export class InventoryItem {
+  /**
+   *
+   * @param {string} id
+   * @param {number} count
+   */
   constructor( id, count=0 ) {
     this.id = id
     this.count = count
   }
 }
 
-export default class _Game {
-  constructor( tag, { tileSize=50, playerSpeed=1, levelsBuildingSpeed=5 } ) {
+export default class Game {
+  /**
+   * @param {HTMLDivElement} tag
+   * @param {object} param1
+   * @param {Number} param1.tileSize
+   * @param {Number} param1.tileSize
+   */
+  constructor( tag, { tileSize=50, levelsBuildingSpeed=5 } ) {
     this.tag = tag
 
     this._buildUi()
@@ -237,6 +306,7 @@ export default class _Game {
       keys: []
     }
 
+    this.levelsBuildingSpeed = levelsBuildingSpeed
     /** @type {Level} */
     this.level = null
     /** @type {Number} */
@@ -245,6 +315,9 @@ export default class _Game {
     this._setEvents()
   }
 
+  /** Build user interface
+   * @private
+   */
   _buildUi() {
     this.tag.innerHTML = /* html */ `
       <canvas class="game-canvas"></canvas>
@@ -263,6 +336,9 @@ export default class _Game {
     this.ui.canvas.height = window.innerHeight,
     this.ui.canDoAction.addEventListener( `click`, () => doAction() )
   }
+  /** Set game events
+   * @private
+   */
   _setEvents() {
     this.tag.addEventListener( `keydown`, ({ keyCode }) => this.key( keyCode ).pressed = true )
     this.tag.addEventListener( `keyup`, ({ keyCode }) => this.key( keyCode ).pressed = false )
@@ -282,6 +358,9 @@ export default class _Game {
       this._placeItem( x, y )
     } )
   }
+  /** Player logic
+   * @private
+   */
   _playerLogic() {
     const { player, level, canDoAction, running, tileSize } = this
 
@@ -335,6 +414,9 @@ export default class _Game {
       player.translateX = -(signX * tileSize - player.translateX)
     }
   }
+  /** Place item on level
+   * @private
+   */
   _placeItem( x, y ) {
     const { chosedItem, level, player } = this
 
@@ -352,6 +434,9 @@ export default class _Game {
     if ( spriteInfo.canBePlacedOn.includes( lastItemOnTile ) )
       tile.push( level.createTile( id, x, y, tile.length, 0 ) )
   }
+  /** Game logic
+   * @private
+   */
   _logic() {
     const { level, running, ticksToNextFrame, nextFrameTicks, player } = this
 
@@ -377,6 +462,9 @@ export default class _Game {
     }
     else this.nextFrameTicks++
   }
+  /** Game drawing
+   * @private
+   */
   _draw() {
     const { ctx, level, tileSize } = this
 
@@ -393,17 +481,27 @@ export default class _Game {
     for ( const { x, y, entity } of level.everyId( `p` ) )
       entity.draw( ctx, translateX + x * tileSize, translateY + y * tileSize, tileSize, tileSize )
   }
+  /** Game loop
+   * @private
+   */
   _loop() {
     this._logic()
     this._playerLogic()
     requestAnimationFrame( () => this._draw() )
   }
 
-  /** @param {Map<String,{ tiles:Any script:Function events:Function }>} levels */
+  /** Create levels
+   * @param {Map<String,{ tiles:string[][]|string[][][] script:function():Promise events:function():void }>} levels
+   * */
   createLevels( levels ) {
     for ( const [ levelname, levelInitializator ] of levels )
-      this.storage.levels.set( levelname, new Level( this, levelInitializator ) )
+      this.storage.levels.set( levelname, new Level( this, { ...levelInitializator, buildingSpeed:this.levelsBuildingSpeed } ) )
   }
+  /** Create entity
+   * @param {string} id
+   * @param {string} src
+   * @param {{ canBePlacedOn:string[] connectable:boolean connectedDirs:boolean[] classname:string frames:number framesInRow:number }} sprite
+   */
   createEntity( id, src, sprite={} ) {
     const { type } = id.match( /(?<type>[^-]+)(?:-\d+)?/ ).groups
     const { spritesInfos, sprites, icons } = this.storage
@@ -414,12 +512,19 @@ export default class _Game {
     icons.set( id, new Icon( id, src ) )
     sprites.set( id, new Sprite( id, sprite ) )
   }
+  /** Check do entity can be placed on top of tile
+   * @param {Entity} entity
+   * @param {Entity[]} tile
+   */
   canStandOn( entity, tile ) {
     const { canBePlacedOn } = this.storage.spritesInfos.get( entity.type )
 
     if ( !tile.length ) return canBePlacedOn.includes( null )
     else return canBePlacedOn.includes( tile[ tile.length - 1 ].id )
   }
+  /** Update the inventory
+   * @param {HTMLDivElement} activeDivItem
+   */
   updateInventory( activeDivItem ) {
     const id = activeDivItem.querySelector( `.game-inventoryItemIcon` ).alt
     this.ui.inventory
@@ -430,6 +535,12 @@ export default class _Game {
     if ( !this.ui.inventory.querySelector( `.is-active` ) ) this.chosedItem = null
     else this.chosedItem = this.storage.icons.get( id )
   }
+  /** Manipulate inventory items
+   * @param {"add"|"set"|"remove"} action
+   * @param {string} id
+   * @param {number} count
+   * @param {boolean} hide
+   */
   inventory( action, id, count, hide=false ) {
     const { player, ui } = this
     const { icons } = this.storage
@@ -480,6 +591,10 @@ export default class _Game {
       } break
     }
   }
+  /** Create dialog box
+   * @param {string} textContent
+   * @param {string} iconId
+   */
   createDialog( textContent, iconId ) {
     const { dialogues } = this.ui
     const { icons } = this.storage
@@ -505,6 +620,8 @@ export default class _Game {
 
     setTimeout( () => div.remove(), 1000 * ( 2 + words.length ) )
   }
+  /** Do action, when player is staying on event tile
+   */
   doAction() {
     const { canDoAction, player, level } = this
     const { tileX, tileY } = player
@@ -520,14 +637,22 @@ export default class _Game {
 
     level.events( eventInOrder, this )
   }
+  /** Run the game and optionaly build the level
+   */
   start( levelName=`` ) {
     if ( levelName ) this.buildLevel( levelName )
 
     this.loopIntervalId = setInterval( () => this._loop(), 1000 / 60 )
   }
+  /** Stop the game
+   */
   stop() {
     clearInterval( this.loopIntervalId )
   }
+  /** Build level on the screen
+   * @param {string} levelName
+   * @param {function():void} callback
+   */
   buildLevel( levelName, callback=()=>{} ) {
     this.running = false
 
@@ -548,11 +673,14 @@ export default class _Game {
       callback()
     } )
   }
-  key( key ) {
+  /** Get key information
+   * @param {number} keycode
+   */
+  key( keycode ) {
     const { keys } = this.storage
 
-    if ( !keys[ key ] ) keys[ key ] = new KeyInfo( key )
+    if ( !keys[ keycode ] ) keys[ keycode ] = new KeyInfo( keycode )
 
-    return keys[ key ]
+    return keys[ keycode ]
   }
 }

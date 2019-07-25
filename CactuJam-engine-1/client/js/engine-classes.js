@@ -1,5 +1,14 @@
 
 export class Entity {
+  /**
+   * @param {string} id
+   * @param {object} param1
+   * @param {number} param1.tileX
+   * @param {number} param1.tileY
+   * @param {number} param1.tileL
+   * @param {Sprite} param1.sprite
+   * @param {number} param1.rotateAngle
+   */
   constructor( id, { tileX, tileY, tileL, sprite, rotateAngle=0 } ) {
     this.id = id
     this.sprite = sprite
@@ -15,8 +24,12 @@ export class Entity {
     this.speed = 1.5
   }
 
-  /**
+  /** Draw entity on canvas
    * @param {CanvasRenderingContext2D} ctx
+   * @param {number} left
+   * @param {number} top
+   * @param {number} width
+   * @param {number} height
    */
   draw( ctx, left, top, width, height ) {
     const { x, y, rotateAngle, translateX, translateY } = this
@@ -36,6 +49,8 @@ export class Entity {
     ctx.restore()
   }
 
+  /** Set next frame
+   */
   nextFrame() {
     const { columns, rows, frames } = this.sprite
     this.x++
@@ -48,12 +63,18 @@ export class Entity {
       this.y = 1
   }
 
+  /** Change sprite
+   * @param {Sprite} newSprite
+   */
   changeSprite( newSprite ) {
     this.id = newSprite.id
     this.sprite = newSprite
     this.type = newSprite.type
   }
 
+  /** Get ID of connected tile on one of directon
+   * @param {"left"|"right"|"top"|"bottom"} direction
+   */
   getIdConnectedWith( direction ) {
     /** @type {String} */
     let { myDirs } = this.id.match( /(?<myDirs>\d+)$/ ).groups
@@ -69,9 +90,20 @@ export class Entity {
     return `${this.type}-${myDirs}`
   }
 
+  /** Code to execute when tile will be clicked
+   */
   onclick() {}
 }
 export class Player extends Entity {
+  /**
+   * @param {string} spriteId
+   * @param {object} data
+   * @param {number} data.tileX
+   * @param {number} data.tileY
+   * @param {number} data.tileL
+   * @param {Sprite} data.sprite
+   * @param {number} data.rotateAngle
+   */
   constructor( spriteId, data ) {
     super( spriteId, data )
 
@@ -81,8 +113,8 @@ export class Player extends Entity {
 }
 export class Icon {
   /**
-   * @param {String} src
-   * @param {String[]} canBePlacedOn Array of images IDs
+   * @param {string} id
+   * @param {string} src
    */
   constructor( id, src ) {
     this.node = new Image
@@ -92,7 +124,16 @@ export class Icon {
   }
 }
 export class SpriteInfo {
-  constructor( type, { connectable=false, canBePlacedOn=[], classname=`Entity`, connectedDirs } ) {
+  /**
+   *
+   * @param {string} type
+   * @param {object} param1
+   * @param {boolean} param1.connectable
+   * @param {string[]} param1.canBePlacedOn
+   * @param {string} param1.classname
+   * @param {object} param1.connectedDirs
+   */
+  constructor( type, { connectable=false, canBePlacedOn=[], classname=`Entity`, connectedDirs={} } ) {
     this.type = type
     this.connectable = connectable
     this.canBePlacedOn = canBePlacedOn
@@ -102,10 +143,13 @@ export class SpriteInfo {
 }
 export class Sprite {
   /**
-   * @param {Object} param0
-   * @param {String} param0.src Path without extension and without direction informations (__./img__ instead __./img-0010.png__)
+   * @param {string} id
+   * @param {object} param1
+   * @param {string} param1.src Path without extension and without direction informations (__./img__ instead __./img-0010.png__)
+   * @param {number} param1.frames
+   * @param {number} param1.framesInRow
    */
-  constructor( id, { src, frames=1, framesInRow=1, connectable=false } ) {
+  constructor( id, { src, frames=1, framesInRow=1 } ) {
     this.id = id
     this.type = id.match( /(?<type>[^-]+)(?:-\d+)?/ ).groups.type
     this.image = new Image()
