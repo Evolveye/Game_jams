@@ -8,12 +8,11 @@ const game = new Game( document.body, {
   playerSpeed: 5
 } )
 
-// createSprite( `e`, `./img/empty.png` )
 game.createEntity( `./img/empty.png` )
 game.createEntity( `./img/arrow.png` )
 game.createEntity( `./img/arrow-circle.png` )
 
-// Lab
+// lobby
 game.createEntity( `./img/player-icon.gif`, {
   src: `./img/player.png`,
   classname: `Player`,
@@ -27,7 +26,7 @@ game.createEntity( `./img/wall-window.png` )
 game.createEntity( `./img/wall-door.png` )
 game.createEntity( `./img/wall-corner.png` )
 
-// Stage I - Island
+// island
 game.createEntity( `./img/land-1000.png`, {
   canBePlacedOn: [ `water`,`cactus-part-left`,`cactus-part-right`,`cactus-part-top`,`cactus-part-bottom`,`cactus-baby`,`cactus` ],
   connectable: true,
@@ -65,24 +64,6 @@ game.createEntity( `./img/cactus-baby.png` )
 game.createEntity( `./img/flower.png`, { classname:`MagicFlower` } )
 game.createEntity( `./img/animal.png`, { classname:`Animal`, canBePlacedOn:[ `land`, `land-cactus-0`, `land-cactus-1`, `land-cactus-2` ] } )
 game.createEntity( `./img/plague.png`, { classname:`Plague`, canBePlacedOn:[ `land`, `land-cactus-0`, `land-cactus-1`, `land-cactus-2` ] } )
-// createEntity( `c`, `./img/island-cactus.png`, { canBePlacedOn: [ `ib0` ] } )
-// createEntity( `c`, `./img/island-cactus.png`, { canBePlacedOn: [ `ib0` ] } )
-
-// // Lab
-// createImage( `player`, `./img/player.gif`, `p`, [ `ib0` ] )
-// createSprite( `p`, `./img/player.png`, { frames:6, framesInRow:2 } )
-// createSprite( `lb0`, `./img/lab-bgr.png` )
-// createSprite( `lw0`, `./img/wall.png` )
-// createSprite( `lw1`, `./img/window.png` )
-// createSprite( `lc`, `./img/cornerA.png` )
-// createSprite( `e`, `./img/empty.png` )
-
-// // Stage 1
-// createSprite( `ib0`, `./img/island-b0.png`, { frames:11, framesInRow:3 } )
-// createSprite( `iw`, `./img/island-w0.png`, { frames:11, framesInRow:3 } )
-// createSprite( `ic`, `./img/island-c0.png`, { frames:11, framesInRow:3 } )
-// createSprite( `ia`, `./img/island-a0.png`, { frames:11, framesInRow:3 } )
-
 
 game.createLevels( levels )
 

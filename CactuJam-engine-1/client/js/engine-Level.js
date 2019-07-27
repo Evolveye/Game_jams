@@ -1,7 +1,7 @@
 import * as GameEntitiesStorage from "./engine-entities.js"
 import { storage as assetsStorage } from "./engine-assets.js"
 
-const { Entity, Player } = GameEntitiesStorage
+const { Entity } = GameEntitiesStorage
 
 export default class Level {
   /**
