@@ -4,12 +4,12 @@ import Game from "./engine.js"
 export default new Map( [
   [ `lobby`, {
     tiles: [
-      [ `lc-90`,  `lw0-180`,  `lw0-180`, `lw0-180`, `lw0-180`, `lw0-180`, `lw0-180`, `lw0-180`, `lw0-180`, `lw0-180`, `lw0-180`, `lw0-180`, `lw0-180`, `lw0-180`, `lw1-180`, `lw0-180`, `lw0-180`, `lc-180` ],
-      [ `lw0-90`,[`lb0`,`p`], `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lw0-270` ],
-      [ `lw0-90`, `lb0`,      `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lw0-270` ],
-      [ `lw0-90`, `lb0`,      `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lw0-270` ],
-      [ `lw0-90`,[`e`,`lb0`], `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lb0`,     `lw0-270` ],
-      [ `lc`,     `lw2`,      `lw0`,     `lw0`,     `lw1`,     `lw0`,     `lw1`,     `lw0`,     `lw0`,     `lw0`,     `lw0`,     `lw0`,     `lw0`,     `lw0`,     `lw0`,     `lw0`,     `lw0`,     `lc-270` ],
+      [ `wall-corner-90`, `wall-180`,        `wall-180`, `wall-180`, `wall-180`,    `wall-180`, `wall-180`,    `wall-180`, `wall-180`, `wall-180`, `wall-180`, `wall-180`, `wall-180`, `wall-180`, `wall-window-180`, `wall-180`, `wall-180`, `wall-corner-180` ],
+      [ `wall-90`,       [`floor`,`player`], `floor`,    `floor`,    `floor`,       `floor`,    `floor`,       `floor`,    `floor`,    `floor`,    `floor`,    `floor`,    `floor`,    `floor`,    `floor`,           `floor`,    `floor`,    `wall-270` ],
+      [ `wall-90`,        `floor`,           `floor`,    `floor`,    `floor`,       `floor`,    `floor`,       `floor`,    `floor`,    `floor`,    `floor`,    `floor`,    `floor`,    `floor`,    `floor`,           `floor`,    `floor`,    `wall-270` ],
+      [ `wall-90`,        `floor`,           `floor`,    `floor`,    `floor`,       `floor`,    `floor`,       `floor`,    `floor`,    `floor`,    `floor`,    `floor`,    `floor`,    `floor`,    `floor`,           `floor`,    `floor`,    `wall-270` ],
+      [ `wall-90`,       [`empty`,`floor`],  `floor`,    `floor`,    `floor`,       `floor`,    `floor`,       `floor`,    `floor`,    `floor`,    `floor`,    `floor`,    `floor`,    `floor`,    `floor`,           `floor`,    `floor`,    `wall-270` ],
+      [ `wall-corner`,    `wall-door`,       `wall`,     `wall`,     `wall-window`, `wall`,     `wall-window`, `wall`,     `wall`,     `wall`,     `wall`,     `wall`,     `wall`,     `wall`,     `wall`,            `wall`,     `wall`,     `wall-corner-270` ],
     ],
     /** @param {Game} game */
     async script( game ) {
@@ -42,27 +42,27 @@ export default new Map( [
   } ],
   [ `island`, {
     tiles: [
-      [ `ic`,     `iw-90`,  `iw-90`,  `iw-90`,  `iw-90`,  `iw-90`,  `iw-90`,  `iw-90`,  `iw-90`,  `iw-90`,  `iw-90`,  `iw-90`,  `ic-90`  ],
-      [ `iw`,     `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `iw-180` ],
-      [ `iw`,     `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `iw-180` ],
-      [ `iw`,     `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `iw-180` ],
-      [ `iw`,     `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `iw-180` ],
-      [ `iw`,     `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `iw-180` ],
-      [ `iw`,     `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `iw-180` ],
-      [ `iw`,     `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `ib0`,    `iw-180` ],
-      [ `ic-270`, `iw-270`, `iw-270`, `iw-270`, `iw-270`, `iw-270`, `iw-270`, `iw-270`, `iw-270`, `iw-270`, `iw-270`, `iw-270`, `ic-180` ],
+      [ `water-corner`,     `water-end-90`,  `water-end-90`,  `water-end-90`,  `water-end-90`,  `water-end-90`,  `water-end-90`,  `water-end-90`,  `water-end-90`,  `water-end-90`,  `water-end-90`,  `water-end-90`,  `water-corner-90`  ],
+      [ `water-end`,        `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water-end-180` ],
+      [ `water-end`,        `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water-end-180` ],
+      [ `water-end`,        `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water-end-180` ],
+      [ `water-end`,        `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water-end-180` ],
+      [ `water-end`,        `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water-end-180` ],
+      [ `water-end`,        `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water-end-180` ],
+      [ `water-end`,        `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water`,         `water-end-180` ],
+      [ `water-corner-270`, `water-end-270`, `water-end-270`, `water-end-270`, `water-end-270`, `water-end-270`, `water-end-270`, `water-end-270`, `water-end-270`, `water-end-270`, `water-end-270`, `water-end-270`, `water-corner-180` ],
       [],
-      [,,,,,,,,`ia`],
-      [ `ia` ],
-      [,,,,`lc-90`,  `lw0-180`,  `lw0-180`,  `lw0-180`,      `lw0-180`,      `lc-180` ],
-      [,,,,`lw0-90`,[`e`,`lb0`],[`lb0`,`p`],[`e`,`lb0`,`>`],[`e`,`lb0`,`R`], `lw0-270` ],
-      [,,,,`lc`, `lw2`,  `lw0`,  `lw0`,      `lw0`,      `lc-270` ]
+      [,,,,,,,,`water-aside`],
+      [ `water-aside` ],
+      [,,,,`wall-corner-90`, `wall-180`,       `wall-180`,        `wall-180`,               `wall-180`,                      `wall-corner-180` ],
+      [,,,,`wall-90`,       [`empty`,`floor`],[`floor`,`player`],[`empty`,`floor`,`arrow`],[`empty`,`floor`,`arrow-circle`], `wall-270` ],
+      [,,,,`wall-corner`,    `wall-door`,      `wall`,            `wall`,                   `wall`,                          `wall-corner-270` ]
     ],
     /** @param {Game} game */
     async script( game ) {
       if ( game.level.runCounter == 1 ) {
-        game.inventory( `set`, `c`, 1 )
-        game.inventory( `set`, `ib1-1000`, 1 )
+        game.inventory( `set`, `cactus`, 1 )
+        game.inventory( `set`, `land`, 3 )
       }
     },
     /** @param {Number} eventInOrder @param {Game} game */

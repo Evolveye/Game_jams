@@ -1,8 +1,8 @@
-import * as GameClassesStorage from "./engine-classes.js"
+import Level from "./engine-level.js"
+import { storage as assetsStorage, createEntity } from "./engine-assets.js"
+import { Entity, Player, InventoryItem } from "./engine-entities.js"
 
-const { Entity, Player, Icon, SpriteInfo, Sprite } = GameClassesStorage
-
-export class KeyInfo {
+class KeyInfo {
   /**
    * @param {number} code Key code
    * @param {number} interval Pause between next triggering in seconds
@@ -26,254 +26,6 @@ export class KeyInfo {
   }
 }
 
-export class Level {
-  /**
-   * @param {Game} game
-   * @param {object} param1
-   * @param {Entity[][][]} param1.tiles
-   * @param {function():Promise} param1.script
-   * @param {function():void} param1.events
-   * @param {number} param1.buildingSpeed Seconds to build level
-   */
-  constructor( game, { tiles, script, events, buildingSpeed } ) {
-    this.game = game
-    this.height = tiles.length
-    this.width = 0
-    /** @type {Entity[][][]} */
-    this.tiles = tiles
-    this.script = script
-    this.events = events
-    this.length = tiles.length
-    this.runCounter = 0
-    this.buildingSpeed = buildingSpeed
-
-    for ( let y = 0;  y < tiles.length;  y++ )
-      for ( let x = 0;  x < tiles[ y ].length;  x++ ) {
-        if ( !Array.isArray( tiles[ y ][ x ] ) ) tiles[ y ][ x ] = [ tiles[ y ][ x ] ]
-        if ( x > this.width ) this.width = x
-
-        for ( let l = 0;  l < tiles[ y ][ x ].length;  l++ ) {
-          const entityData = tiles[ y ][ x ][ l ]
-
-          if ( !entityData ) continue
-
-          const { spriteId, rotateAngle } = entityData.match( /(?<spriteId>[^-]+)(?:-(?<rotateAngle>[^-]+))?/ ).groups
-          const tile = this.createTile( spriteId, x, y, l, rotateAngle )
-
-          if ( !tile ) continue
-
-          this.tiles[ y ][ x ][ l ] = tile
-        }
-      }
-  }
-
-  /** Build level tile after the tile
-   */
-  async build() {
-    const { tiles, buildingSpeed } = this
-    const indices = []
-
-    for ( const { x, y, l, entity } of this.everyEntity() )
-      if ( typeof entity != `string` ) indices.push( { x, y } )
-
-    this.tiles = Array.from( { length:tiles.length }, (_, i) => Array.from( { length:tiles[ i ].length }, () => [] ) )
-
-    const timePerTile = buildingSpeed / indices.length
-    const builderHelper = () => new Promise( resolve => {
-      if ( !indices.length ) resolve()
-
-      const index = Math.floor( Math.random() * indices.length )
-      const { x, y } = indices[ index ]
-
-      this.tiles[ y ][ x ] = tiles[ y ][ x ].filter( entity => typeof entity != "string" )
-
-      indices.splice( index, 1 )
-
-      setTimeout( () => builderHelper().then( () => resolve() ), timePerTile * 1000 )
-    } )
-
-    await builderHelper()
-  }
-
-  /** Iterate by every entity in the layer
-   * @param {number} layer
-   */
-  * everyEntityInLayerHigherThan( layer ) {
-    for ( const data of this.every( layer + 1, Infinity ) )
-      yield data
-  }
-  /** Iterate by every entity that isn't in the layer
-   * @param {number} layer
-   */
-  * everyEntityInLayer( layer ) {
-    for ( const data of this.every( layer, layer + 1 ) )
-      yield data
-  }
-  /** Iterate by every entity which don't have ID from given IDs
-   * @param {string[]} ids
-   */
-  * everyButNotIds( ...ids ) {
-    for ( const data of this.every( 0, Infinity ) )
-      if ( !ids.includes( data.entity.id ) ) yield data
-  }
-  /** Iterate by every entity with one of given IDs
-   * @param {string[]} ids
-   */
-  * everyId( ...ids ) {
-    for ( const data of this.every( 0, Infinity ) )
-      if ( ids.includes( data.entity.id ) ) yield data
-  }
-  /** Iterate by every entity
-   */
-  * everyEntity() {
-    for ( const data of this.every( 0, Infinity ) )
-      yield data
-  }
-  /** Iterate by every entity from layers range
-   * @param {number} layerMin
-   * @param {number} layerMax
-   */
-  * every( layerMin, layerMax ) {
-    const { tiles } = this
-
-    for ( let y = 0;  y < tiles.length;  y++ )
-      for ( let x = 0;  x < tiles[ y ].length;  x++ ) {
-        const stop = layerMax == Infinity  ?  tiles[ y ][ x ].length  :  layerMax
-
-        for ( let l = layerMin;  l < stop;  l++ )
-          if ( tiles[ y ][ x ][ l ] ) yield { x, y, l, entity:tiles[ y ][ x ][ l ] }
-      }
-  }
-
-  /** Get level row
-   * @param {number} y
-   */
-  row( y ) {
-    const { tiles } = this
-
-    if ( y < 0 || tiles.length <= y ) return null
-    return tiles[ y ]
-  }
-  /** Get level tile
-   * @param {number} x
-   * @param {number} y
-   */
-  get( x, y ) {
-    const { tiles } = this
-
-    if ( y < 0 || tiles.length <= y ) return null
-    if ( x < 0 || tiles[ 0 ].length <= x ) return null
-    return tiles[ y ][ x ]
-  }
-  /** Get entity on top of tile
-   * @param {number} x
-   * @param {number} y
-   */
-  getTop( x, y ) {
-    const tile = this.get( x, y )
-
-    return !tile ? null : tile[ tile.length - 1 ]
-  }
-  /** Move entity/entities from equal and higher layer of one tile to top another
-   * @param {number} x
-   * @param {number} y
-   * @param {number} l
-   * @param {number} newX
-   * @param {number} newY
-   */
-  move( x, y, l, newX, newY ) {
-    const newTile = this.get( newX, newY )
-    const entities = this.get( x, y ).splice( l )
-
-    entities.forEach( (entity, i) => {
-      entity.tileX = newX
-      entity.tileY = newY
-      entity.tileL = newTile.length + i
-    } )
-
-    this.tiles[ newY ][ newX ].push( ...entities )
-  }
-  /** Remove entity/entities from equal and higher layer
-   * @param {number} x
-   * @param {number} y
-   * @param {number} l
-   */
-  remove( x, y, l ) {
-    this.get( x, y ).splice( l )
-  }
-  /** Create tile
-   * @param {string} id
-   * @param {number} x
-   * @param {number} y
-   * @param {number} l
-   * @param {number} rotateAngle
-   */
-  createTile( id, x, y, l, rotateAngle ) {
-    const { type } = id.match( /(?<type>[^-]+)(?:-\d+)?/ ).groups
-    const { sprites, spritesInfos } = this.game.storage
-    const spriteInfo = spritesInfos.get( type )
-
-    if ( !spriteInfo ) return null
-
-    const dirs = spriteInfo.connectedDirs
-
-    if ( spriteInfo.connectable ) {
-      let dir = `-`
-
-      const left   = this.get( x - 1, y + 0 ).find( tile => tile.type == type )
-      const right  = this.get( x + 1, y + 0 ).find( tile => tile.type == type )
-      const top    = this.get( x + 0, y - 1 ).find( tile => tile.type == type )
-      const bottom = this.get( x + 0, y + 1 ).find( tile => tile.type == type )
-
-      if ( dirs.top || top ) {
-        top && top.changeSprite( sprites.get( top.getIdConnectedWith( `bottom` ) ) )
-        dir += 1
-      }
-      else dir += 0
-
-      if ( dirs.right || right ) {
-        right && right.changeSprite( sprites.get( right.getIdConnectedWith( `left` ) ) )
-        dir += 1
-      }
-      else dir += 0
-
-      if ( dirs.bottom || bottom ) {
-        bottom && bottom.changeSprite( sprites.get( bottom.getIdConnectedWith( `top` ) ) )
-        dir += 1
-      }
-      else dir += 0
-
-      if ( dirs.left || left ) {
-        left && left.changeSprite( sprites.get( left.getIdConnectedWith( `right` ) ) )
-        dir += 1
-      }
-      else dir += 0
-
-      id = type + dir
-    }
-
-    return new GameClassesStorage[ spriteInfo.classname ]( id, {
-      tileX: x,
-      tileY: y,
-      tileL: l,
-      sprite: sprites.get( id ),
-      rotateAngle: +rotateAngle
-    } )
-  }
-}
-
-export class InventoryItem {
-  /**
-   *
-   * @param {string} id
-   * @param {number} count
-   */
-  constructor( id, count=0 ) {
-    this.id = id
-    this.count = count
-  }
-}
-
 export default class Game {
   /**
    * @param {HTMLDivElement} tag
@@ -286,6 +38,7 @@ export default class Game {
 
     this._buildUi()
 
+    /** @type {Player} */
     this.player = null
     this.running = false
     this.tileSize = tileSize
@@ -293,17 +46,11 @@ export default class Game {
     this.ticksToNextFrame = 5
     this.ctx = this.ui.canvas.getContext( `2d` )
     this.ctx.imageSmoothingEnabled = false
-    this.storage = {
-      /** @type {Map<String,Level>} */
-      levels: new Map,
-      /** @type {Map<String,Icon>} */
-      icons: new Map,
-      /** @type {Map<String,Sprite>} */
-      sprites: new Map,
-      /** @type {Map<String,SpriteInfo>} */
-      spritesInfos: new Map,
+    this.storage = { ...assetsStorage,
       /** @type {KeyInfo[]} */
-      keys: []
+      keys: [],
+      /** @type {Map<String,Level>} */
+      levels: new Map
     }
 
     this.levelsBuildingSpeed = levelsBuildingSpeed
@@ -351,9 +98,7 @@ export default class Game {
 
       if ( tileTop == null ) return
 
-      // tileTop.onclick( level, this.storage.sprites, createTile, inventory )
-
-      console.log( level.get( x, y ) )
+      tileTop.onclick( this )
 
       this._placeItem( x, y )
     } )
@@ -423,16 +168,14 @@ export default class Game {
     if ( !chosedItem ) return
 
     const tile = level.get( x, y )
-    const { id } = chosedItem
-    const spriteInfo = this.storage.spritesInfos.get( id.match( /(?<type>[^-]+)(?:-\d+)?/ ).groups.type )
-    const lastItemOnTile = tile[ tile.length - 1 ].type
+    const { linkedSpriteGroup } = chosedItem
+    const spriteInfo = assetsStorage.spritesInfo.get( linkedSpriteGroup )
+    const lastItemOnTile = tile[ tile.length - 1 ].group
 
-    if ( !player.inventory.find( item => item.id == id ).count ) return
-
-    this.inventory( `remove`, id, 1 )
-
-    if ( spriteInfo.canBePlacedOn.includes( lastItemOnTile ) )
-      tile.push( level.createTile( id, x, y, tile.length, 0 ) )
+    if ( player.inventory.find( item => item.group == linkedSpriteGroup ).count && spriteInfo.canBePlacedOn.includes( lastItemOnTile ) ) {
+      this.inventory( `remove`, linkedSpriteGroup, 1 )
+      tile.push( level.createTile( linkedSpriteGroup, x, y, tile.length, 0 ) )
+    }
   }
   /** Game logic
    * @private
@@ -445,7 +188,7 @@ export default class Game {
       const playerTile = level.get( player.tileX, player.tileY )
       const { canDoAction } = this.ui
 
-      if ( playerTile.some( tile => tile.id == `e` ) ) {
+      if ( playerTile.some( tile => tile.id == `empty` ) ) {
         canDoAction.classList.add( `is-active` )
         this.canDoAction = true
       }
@@ -475,10 +218,10 @@ export default class Game {
     const translateX = window.innerWidth / 2 - level.width * tileSize / 2
     const translateY = window.innerHeight / 2 - level.height * tileSize / 2
 
-    for ( const { x, y, entity } of level.everyButNotIds( `p` ) )
+    for ( const { x, y, entity } of level.everyButNotIds( `player` ) )
       entity.draw( ctx, translateX + x * tileSize, translateY + y * tileSize, tileSize, tileSize )
 
-    for ( const { x, y, entity } of level.everyId( `p` ) )
+    for ( const { x, y, entity } of level.everyId( `player` ) )
       entity.draw( ctx, translateX + x * tileSize, translateY + y * tileSize, tileSize, tileSize )
   }
   /** Game loop
@@ -495,29 +238,33 @@ export default class Game {
    * */
   createLevels( levels ) {
     for ( const [ levelname, levelInitializator ] of levels )
-      this.storage.levels.set( levelname, new Level( this, { ...levelInitializator, buildingSpeed:this.levelsBuildingSpeed } ) )
+      this.storage.levels.set( levelname, new Level( { ...levelInitializator, buildingSpeed:this.levelsBuildingSpeed } ) )
   }
-  /** Create entity
-   * @param {string} id
+  /** Object needed to initialize sprite asset
    * @param {string} src
-   * @param {{ canBePlacedOn:string[] connectable:boolean connectedDirs:boolean[] classname:string frames:number framesInRow:number }} sprite
+   * @param {object} sprite
+   * @param {string[]} sprite.canBePlacedOn
+   * @param {boolean} sprite.connectable
+   * @param {object} sprite.connectedDirs
+   * @param {boolean} sprite.connectedDirs.left
+   * @param {boolean} sprite.connectedDirs.right
+   * @param {boolean} sprite.connectedDirs.top
+   * @param {boolean} sprite.connectedDirs.bottom
+   * @param {string} sprite.classname
+   * @param {number} sprite.framesInRow
+   * @param {number} sprite.frames
    */
-  createEntity( id, src, sprite={} ) {
-    const { type } = id.match( /(?<type>[^-]+)(?:-\d+)?/ ).groups
-    const { spritesInfos, sprites, icons } = this.storage
-
-    if ( !spritesInfos.has( type ) )  spritesInfos.set( type, new SpriteInfo( type, sprite ) )
-    if ( !sprite.src ) sprite.src = src
-
-    icons.set( id, new Icon( id, src ) )
-    sprites.set( id, new Sprite( id, sprite ) )
+  createEntity( src, sprite={} ) {
+    createEntity( src, sprite )
   }
   /** Check do entity can be placed on top of tile
    * @param {Entity} entity
    * @param {Entity[]} tile
    */
   canStandOn( entity, tile ) {
-    const { canBePlacedOn } = this.storage.spritesInfos.get( entity.type )
+    const { canBePlacedOn } = entity.sprite.info
+
+    // console.log( canBePlacedOn, tile[ tile.length - 1 ] )
 
     if ( !tile.length ) return canBePlacedOn.includes( null )
     else return canBePlacedOn.includes( tile[ tile.length - 1 ].id )
@@ -526,14 +273,14 @@ export default class Game {
    * @param {HTMLDivElement} activeDivItem
    */
   updateInventory( activeDivItem ) {
-    const id = activeDivItem.querySelector( `.game-inventoryItemIcon` ).alt
+    const group = activeDivItem.querySelector( `.game-inventoryItemIcon` ).alt
     this.ui.inventory
       .querySelectorAll( `.game-inventoryItem` )
       .forEach( div => div != activeDivItem && div.classList.remove( `is-active` ) )
 
     if ( activeDivItem ) activeDivItem.classList.toggle( `is-active` )
     if ( !this.ui.inventory.querySelector( `.is-active` ) ) this.chosedItem = null
-    else this.chosedItem = this.storage.icons.get( id )
+    else this.chosedItem = assetsStorage.icons.get( group )
   }
   /** Manipulate inventory items
    * @param {"add"|"set"|"remove"} action
@@ -541,35 +288,35 @@ export default class Game {
    * @param {number} count
    * @param {boolean} hide
    */
-  inventory( action, id, count, hide=false ) {
+  inventory( action, itemGroup, count, hide=false ) {
     const { player, ui } = this
-    const { icons } = this.storage
+    const { icons } = assetsStorage
 
     switch ( action ) {
       case `add`: {
-        const item = player.inventory.find( item => item.id == id )
+        const item = player.inventory.find( item => item.group == itemGroup )
 
         if ( item ) {
           item.count += count
-          ui.inventory.querySelector( `[data-item-id=${id}] .game-inventoryItemCount` ).textContent = item.count
+          ui.inventory.querySelector( `[data-item-group=${itemGroup}] .game-inventoryItemCount` ).textContent = item.count
           break
         }
       }
       case `set`: {
-        player.inventory.push( new InventoryItem( id, count ) )
+        player.inventory.push( new InventoryItem( itemGroup, count ) )
 
         const div = document.createElement( `div` )
         const p = document.createElement( `p` )
-        const image = id && icons.has( id ) ? icons.get( id ).node.cloneNode() : null
+        const image = itemGroup && icons.has( itemGroup ) ? icons.get( itemGroup ).node.cloneNode() : null
 
         p.textContent = count
-        image.alt = id
+        image.alt = itemGroup
 
         image.classList.add( `game-inventoryItemIcon` )
         p.classList.add( `game-inventoryItemCount` )
         div.classList.add( `game-inventoryItem` )
         div.classList.add( `game-box` )
-        div.dataset.itemId = id
+        div.dataset.itemGroup = itemGroup
 
         div.appendChild( p )
         div.appendChild( image )
@@ -579,14 +326,14 @@ export default class Game {
         ui.inventory.appendChild( div )
       } break
       case `remove`: {
-        const item = player.inventory.find( item => item.id == id )
+        const item = player.inventory.find( item => item.group == itemGroup )
 
         if ( item ) {
           item.count -= count
 
           if ( item.count < 0 ) item.count = 0
 
-          ui.inventory.querySelector( `[data-item-id=${id}] .game-inventoryItemCount` ).textContent = item.count
+          ui.inventory.querySelector( `[data-item-group=${itemGroup}] .game-inventoryItemCount` ).textContent = item.count
         }
       } break
     }
@@ -627,11 +374,11 @@ export default class Game {
     const { tileX, tileY } = player
     const playerTile = level.get( tileX, tileY )
 
-    if ( !canDoAction || !playerTile || !playerTile.some( tile => tile.id == `e` ) ) return
+    if ( !canDoAction || !playerTile || !playerTile.some( tile => tile.id == `empty` ) ) return
 
     let eventInOrder = 0
 
-    for ( const { x, y, entity } of level.everyId( `e` ) )
+    for ( const { x, y, entity } of level.everyId( `empty` ) )
       if ( x != tileX || y != tileY ) eventInOrder++
       else break
 
@@ -665,8 +412,8 @@ export default class Game {
     this.level.build().then( () => {
       this.running = true
 
-      for ( const { x, y, l,  entity } of level.everyId( `p` ) ) {
-        this.player = level.tiles[ y ][ x ][ l ] =  new Player( `p`, entity )
+      for ( const { x, y, l,  entity } of level.everyId( `player` ) ) {
+        this.player = level.tiles[ y ][ x ][ l ]
         break
       }
       this.level.script( game )
@@ -679,7 +426,14 @@ export default class Game {
   key( keycode ) {
     const { keys } = this.storage
 
-    if ( !keys[ keycode ] ) keys[ keycode ] = new KeyInfo( keycode )
+    if ( !keys[ keycode ] ) {
+      let interval
+
+      if ( keycode == 32 ) interval = .5
+      else interval = 0
+
+      keys[ keycode ] = new KeyInfo( keycode, interval )
+    }
 
     return keys[ keycode ]
   }

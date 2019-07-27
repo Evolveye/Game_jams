@@ -1,3 +1,16 @@
+import { Sprite } from "./engine-assets.js"
+import Game from "./engine.js"
+
+export class InventoryItem {
+  /**
+   * @param {string} itemGroup
+   * @param {number} count
+   */
+  constructor( itemGroup, count=0 ) {
+    this.group = itemGroup
+    this.count = count
+  }
+}
 
 export class Entity {
   /**
@@ -12,7 +25,7 @@ export class Entity {
   constructor( id, { tileX, tileY, tileL, sprite, rotateAngle=0 } ) {
     this.id = id
     this.sprite = sprite
-    this.type = sprite.type
+    this.group = sprite.info.group
     this.rotateAngle = rotateAngle
     this.translateX = 0
     this.translateY = 0
@@ -36,8 +49,6 @@ export class Entity {
     const { image, frameWidth, frameHeight } = this.sprite
     const halfWidth = width / 2
     const halfHeight = height / 2
-
-    // if ( this.type = `ib1` ) console.log( this )
 
     ctx.save()
     ctx.translate( left + halfWidth + translateX, top + halfHeight + translateY )
@@ -69,7 +80,7 @@ export class Entity {
   changeSprite( newSprite ) {
     this.id = newSprite.id
     this.sprite = newSprite
-    this.type = newSprite.type
+    this.group = newSprite.info.group
   }
 
   /** Get ID of connected tile on one of directon
@@ -86,8 +97,7 @@ export class Entity {
       case `left`:   myDirs = `${myDirs.slice( 0, 3 )}1`; break
     }
 
-    console.log( this.id, `${this.type}-${myDirs}` )
-    return `${this.type}-${myDirs}`
+    return `${this.group}-${myDirs}`
   }
 
   /** Code to execute when tile will be clicked
@@ -111,105 +121,53 @@ export class Player extends Entity {
     this.inventory = []
   }
 }
-export class Icon {
-  /**
-   * @param {string} id
-   * @param {string} src
-   */
-  constructor( id, src ) {
-    this.node = new Image
-    this.node.src = src
-    this.node.alt = `game-image`
-    this.id = id
-  }
-}
-export class SpriteInfo {
-  /**
-   *
-   * @param {string} type
-   * @param {object} param1
-   * @param {boolean} param1.connectable
-   * @param {string[]} param1.canBePlacedOn
-   * @param {string} param1.classname
-   * @param {object} param1.connectedDirs
-   */
-  constructor( type, { connectable=false, canBePlacedOn=[], classname=`Entity`, connectedDirs={} } ) {
-    this.type = type
-    this.connectable = connectable
-    this.canBePlacedOn = canBePlacedOn
-    this.classname = classname
-    this.connectedDirs = connectedDirs
-  }
-}
-export class Sprite {
-  /**
-   * @param {string} id
-   * @param {object} param1
-   * @param {string} param1.src Path without extension and without direction informations (__./img__ instead __./img-0010.png__)
-   * @param {number} param1.frames
-   * @param {number} param1.framesInRow
-   */
-  constructor( id, { src, frames=1, framesInRow=1 } ) {
-    this.id = id
-    this.type = id.match( /(?<type>[^-]+)(?:-\d+)?/ ).groups.type
-    this.image = new Image()
-    this.image.src = src
-    this.frames = frames
-    this.columns = framesInRow
-    this.rows = Math.ceil( frames / framesInRow )
-    this.frameWidth = 0
-    this.frameHeight = 0
-
-    this.image.onload = () => {
-      this.frameWidth = this.image.width / framesInRow
-      this.frameHeight = this.image.height / this.rows
-    }
-  }
-}
-/** @type {Map<String,SpriteInfo>} */
-Sprite.info = new Map
 
 
-class IslandEntity extends Entity {
-  constructor( spriteId, data ) {
-    super( spriteId, data )
-  }
-}
 
-export class Land extends IslandEntity {
+/* *
+ * Additional classes below
+ */
+
+
+export class Land extends Entity {
   constructor( spriteId, data ) {
     super( spriteId, data )
   }
 
-  evolve( level, sprites, createTile ) {
+  /**
+   * @param {Game} game
+   */
+  evolve( game ) {
+    const { level } = game
+    const { sprites } = game.storage
     const { tileX:x, tileY:y } = this
 
-    if ( level.get( x, y )[ this.tileL - 1 ].id != `c` ) return
+    if ( level.get( x, y )[ this.tileL - 1 ].id != `cactus` ) return
 
     switch ( this.id ) {
-      case `ib1-1000`: {
-        this.changeSprite( sprites.get( `ib2.0` ) )
+      case `land-1000`: {
+        this.changeSprite( sprites.get( `land-cactus-0` ) )
       } break
-      case `ib2.0`: {
-        this.changeSprite( sprites.get( `ib2.1` ) )
+      case `land-cactus-0`: {
+        this.changeSprite( sprites.get( `land-cactus-1` ) )
       } break
-      case `ib2.1`: {
-        this.changeSprite( sprites.get( `ib2.2` ) )
+      case `land-cactus-1`: {
+        this.changeSprite( sprites.get( `land-cactus-2` ) )
       } break
-      case `ib2.2`: {
-        if ( level.getTop( x, y ).type != `iAnimal` ) this.changeSprite( sprites.get( `ib2.3` ) )
+      case `land-cactus-2`: {
+        if ( level.getTop( x, y ).group != `animal` ) this.changeSprite( sprites.get( `land-cactus-3` ) )
         else {
           level.remove( x, y, this.tileL + 1 )
-          this.changeSprite( sprites.get( `ib3.0` ) )
+          this.changeSprite( sprites.get( `land-plague` ) )
           const tile = level.get( x, y )
-          tile.push( createTile( `iPlague`, x, y, tile.length, 0 ) )
+          tile.push( createTile( `plague`, x, y, tile.length, 0 ) )
         }
       } break
     }
   }
 }
 
-export class Cactus extends IslandEntity {
+export class Cactus extends Entity {
   constructor( spriteId, data ) {
     super( spriteId, data )
 
@@ -220,14 +178,19 @@ export class Cactus extends IslandEntity {
   }
 
   /**
-   * @param {Level} level
+   * @param {Game} game
    */
-  evolve( level, sprites, createTile ) {
+  evolve( game ) {
+    const { level } = game
+    const { sprites } = game.storage
+
     if ( level.getTop( this.tileX, this.tileY ).id != this.id ) return
 
     switch ( this.id ) {
-      case `c`: {
+      case `cactus`: {
         const { tileX, tileY } = this
+        const { level } = game
+        const validForFlower = tile => tile.group == `land` && !/cactus/.test( tile.id )
         const lands = {
           left:   level.getTop( tileX - 1, tileY ),
           right:  level.getTop( tileX + 1, tileY ),
@@ -235,93 +198,118 @@ export class Cactus extends IslandEntity {
           bottom: level.getTop( tileX, tileY + 1 )
         }
 
-        if ( lands.left.type == `ib1` ) {
+        if ( validForFlower( lands.left ) ) {
           this.linkedLands = [ { x:(tileX - 1), y:tileY } ]
-          this.changeSprite( sprites.get( `cbl.0001` ) )
+          this.changeSprite( sprites.get( `cactus-bloomed-0001` ) )
         }
-        else if ( lands.right.type == `ib1` ) {
+        else if ( validForFlower( lands.right ) ) {
           this.linkedLands = [ { x:(tileX + 1), y:tileY } ]
-          this.changeSprite( sprites.get( `cbl.0100` ) )
+          this.changeSprite( sprites.get( `cactus-bloomed-0100` ) )
         }
-        else if ( lands.top.type == `ib1` ) {
+        else if ( validForFlower( lands.top ) ) {
           this.linkedLands = [ { x:tileX, y:(tileY - 1) } ]
-          this.changeSprite( sprites.get( `cbl.1000` ) )
+          this.changeSprite( sprites.get( `cactus-bloomed-1000` ) )
         }
-        else if ( lands.bottom.type == `ib1` ) {
+        else if ( validForFlower( lands.bottom.group ) ) {
           this.linkedLands = [ { x:tileX, y:(tileY + 1) } ]
-          this.changeSprite( sprites.get( `cbl.0010` ) )
+          this.changeSprite( sprites.get( `cactus-bloomed-0010` ) )
         }
         else {
-          this.changeSprite( sprites.get( `cbl.0000` ) )
+          this.changeSprite( sprites.get( `cactus-bloomed-0000` ) )
         }
       } break
-      case `cBaby`: {
-        this.changeSprite( sprites.get( `c` ) )
+      case `cactus-part-left`:
+      case `cactus-part-right`:
+      case `cactus-part-top`:
+      case `cactus-part-bottom`: {
+        this.changeSprite( sprites.get( `cactus-baby` ) )
       } break
-      case `cp.l`:
-      case `cp.r`:
-      case `cp.t`:
-      case `cp.b`: {
-        this.changeSprite( sprites.get( `cBaby` ) )
+      case `cactus-baby`: {
+        this.changeSprite( sprites.get( `cactus` ) )
       } break
-      case `cbl.0000`:
-      case `cbl.1000`:
-      case `cbl.0100`:
-      case `cbl.0010`:
-      case `cbl.0001`: {
-        this.changeSprite( sprites.get( `cBig` ) )
-        this.linkedLands.forEach( ({ x, y, land }) => {
+      case `cactus-bloomed-0000`:
+      case `cactus-bloomed-1000`:
+      case `cactus-bloomed-0100`:
+      case `cactus-bloomed-0010`:
+      case `cactus-bloomed-0001`: {
+        this.changeSprite( sprites.get( `cactus-big` ) )
+        this.linkedLands.forEach( ({ x, y }) => {
           const tile = level.get( x, y )
-          tile.push( createTile( `if`, x, y, tile.length, 0 ) )
+          tile.push( level.createTile( `flower`, x, y, tile.length, 0 ) )
         } )
       }
     }
   }
-  onclick( level, sprites, createTile ) {
+  /**
+   * @param {Game} game
+   */
+  onclick( game ) {
     if ( this.clicks != 10 ) this.clicks++
     else {
       const { tileX:x, tileY:y } = this
+      const { level } = game
+
       const left   = level.get( x - 1, y )
       const right  = level.get( x + 1, y )
       const top    = level.get( x, y - 1 )
       const bottom = level.get( x, y + 1 )
 
-      left.push(   createTile( `cp.l`, x - 1, y, left.length,   0 ) )
-      right.push(  createTile( `cp.r`, x + 1, y, right.length,  0 ) )
-      top.push(    createTile( `cp.t`, x, y - 1, top.length,    0 ) )
-      bottom.push( createTile( `cp.b`, x, y + 1, bottom.length, 0 ) )
+      level.getTop( x - 1, y ).id == `water` && left.push(   level.createTile( `cactus-part-left`,   x - 1, y, left.length,   0 ) )
+      level.getTop( x + 1, y ).id == `water` && right.push(  level.createTile( `cactus-part-right`,  x + 1, y, right.length,  0 ) )
+      level.getTop( x, y - 1 ).id == `water` && top.push(    level.createTile( `cactus-part-top`,    x, y - 1, top.length,    0 ) )
+      level.getTop( x, y + 1 ).id == `water` && bottom.push( level.createTile( `cactus-part-bottom`, x, y + 1, bottom.length, 0 ) )
 
       level.remove( x, y, this.tileL )
     }
   }
 }
 
-export class MagicFlower extends IslandEntity {
+export class MagicFlower extends Entity {
   constructor( spriteId, data ) {
     super( spriteId, data )
   }
+
+  /**
+   * @param {Game} game
+   */
+  onclick( game ) {
+    const { level } = game
+
+    level.remove( this.tileX, this.tileY, this.tileL )
+    game.inventory( `add`, `flower`, 1 )
+  }
 }
 
-export class Animal extends IslandEntity {
+export class Animal extends Entity {
   constructor( spriteId, data ) {
     super( spriteId, data )
 
     this.translateY += -20
   }
 
-  onclick( level, sprites, createTile, inventory ) {
+  /**
+   * @param {Game} game
+   */
+  onclick( game ) {
+    const { level } = game
+
     level.remove( this.tileX, this.tileY, this.tileL )
-    inventory( `add`, `iAnimal`, 1 )
+    game.inventory( `add`, `animal`, 1 )
   }
 }
 
-export class Plague extends IslandEntity {
+export class Plague extends Entity {
   constructor( spriteId, data ) {
     super( spriteId, data )
   }
 
-  onclick( level, sprites, createTile, inventory ) {
+  /**
+   * @param {Game} game
+   */
+  onclick( game ) {
+    const { level } = game
+
     level.remove( this.tileX, this.tileY, this.tileL )
-    inventory( `add`, `iPlague`, 1 )
+    game.inventory( `add`, `plague`, 1 )
   }
 }
