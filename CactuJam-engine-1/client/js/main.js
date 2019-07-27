@@ -1,7 +1,12 @@
 import Game from "./engine.js"
 import levels from "./levels.js"
 
-const game = new Game( document.body, { levelsBuildingSpeed:.5, playerSpeed:5 } )
+const game = new Game( document.body, {
+  playerId: `player`,
+  actionId: `empty`,
+  levelsBuildingSpeed: .5,
+  playerSpeed: 5
+} )
 
 // createSprite( `e`, `./img/empty.png` )
 game.createEntity( `./img/empty.png` )

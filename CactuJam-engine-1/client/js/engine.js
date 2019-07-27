@@ -30,10 +30,12 @@ export default class Game {
   /**
    * @param {HTMLDivElement} tag
    * @param {object} param1
-   * @param {Number} param1.tileSize
-   * @param {Number} param1.tileSize
+   * @param {number} param1.tileSize
+   * @param {number} param1.tileSize
+   * @param {string} param1.tileSize
+   * @param {string} param1.tileSize
    */
-  constructor( tag, { tileSize=50, levelsBuildingSpeed=5 } ) {
+  constructor( tag, { playerId, actionId, tileSize=50, levelsBuildingSpeed=5 } ) {
     this.tag = tag
 
     this._buildUi()
@@ -42,6 +44,8 @@ export default class Game {
     this.player = null
     this.running = false
     this.tileSize = tileSize
+    this.playerId = playerId
+    this.actionId = actionId
     this.nextFrameTicks = 0
     this.ticksToNextFrame = 5
     this.ctx = this.ui.canvas.getContext( `2d` )
@@ -56,7 +60,7 @@ export default class Game {
     this.levelsBuildingSpeed = levelsBuildingSpeed
     /** @type {Level} */
     this.level = null
-    /** @type {Number} */
+    /** @type {number} */
     this.loopIntervalId = null
 
     this._setEvents()
@@ -130,8 +134,8 @@ export default class Game {
     if ( this.key( 32 ).triggered && canDoAction ) this.doAction()
 
     if ( this.key( 84 ).triggered ) { // t
-      createDialog( `test `.repeat( Math.floor( Math.random() * 15 ) + 1 ), `p` )
-      inventory( `add`, `p`, 2 )
+      createDialog( `test `.repeat( Math.floor( Math.random() * 15 ) + 1 ), this.playerId )
+      inventory( `add`, this.playerId, 2 )
     }
 
     let signX = Math.sign( player.translateX )
@@ -160,6 +164,8 @@ export default class Game {
     }
   }
   /** Place item on level
+   * @param {number} x
+   * @param {number} y
    * @private
    */
   _placeItem( x, y ) {
@@ -374,11 +380,11 @@ export default class Game {
     const { tileX, tileY } = player
     const playerTile = level.get( tileX, tileY )
 
-    if ( !canDoAction || !playerTile || !playerTile.some( tile => tile.id == `empty` ) ) return
+    if ( !canDoAction || !playerTile || !playerTile.some( tile => tile.id == this.actionId ) ) return
 
     let eventInOrder = 0
 
-    for ( const { x, y, entity } of level.everyId( `empty` ) )
+    for ( const { x, y, entity } of level.everyId( this.actionId ) )
       if ( x != tileX || y != tileY ) eventInOrder++
       else break
 
@@ -412,7 +418,7 @@ export default class Game {
     this.level.build().then( () => {
       this.running = true
 
-      for ( const { x, y, l,  entity } of level.everyId( `player` ) ) {
+      for ( const { x, y, l,  entity } of level.everyId( this.playerId ) ) {
         this.player = level.tiles[ y ][ x ][ l ]
         break
       }
