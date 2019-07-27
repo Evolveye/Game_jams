@@ -418,11 +418,11 @@ export default class Game {
     this.level.build().then( () => {
       this.running = true
 
-      for ( const { x, y, l,  entity } of level.everyId( this.playerId ) ) {
-        this.player = level.tiles[ y ][ x ][ l ]
-        break
-      }
+      const { x, y, l } = level.everyId( this.playerId ).next().value
+
+      this.player = level.tiles[ y ][ x ][ l ]
       this.level.script( game )
+
       callback()
     } )
   }
