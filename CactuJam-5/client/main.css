@@ -1,0 +1,98 @@
+body {
+  margin: 0;
+  background: #111;
+  overflow: hidden;
+  font-family: sans-serif;
+}
+
+img {
+  image-rendering: pixelated;
+}
+
+div, p {
+  margin: 0;
+}
+
+canvas {
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+}
+
+.game-dialogues {
+  display: flex;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+}
+
+.game-box {
+  display: flex;
+  background-color: beige;
+  border: 4px solid #222;
+  border-radius: 10px;
+  padding: 15px;
+}
+
+.game-dialog {
+  margin: 0 0 15px 15px;
+  max-width: 300px;
+  max-height: 225px;
+}
+.game-dialogText {
+  margin-left: 15px;
+}
+.game-dialogAvatar {
+  min-width: 50px;
+  max-width: 50px;
+  min-height: 50px;
+  max-height: 50px;
+}
+
+.game-canDoAction {
+  position: absolute;
+  right: 45px;
+  bottom: 45px;
+  background-color: #ffd22d;
+  font-weight: bold;
+  font-size: 15px;
+  opacity: .5;
+}
+.game-canDoAction.is-active {
+  opacity: 1;
+}
+.game-canDoAction:focus {
+  outline: none;
+}
+
+.game-inventory {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  padding: 5px;
+}
+.game-inventoryItem {
+  position: relative;
+}
+.game-inventoryItemIcon {
+  min-width: 35px;
+  max-width: 35px;
+  min-height: 35px;
+  max-height: 35px;
+}
+.game-inventoryItemCount {
+  display: block;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  transform: translate( 50%, 50% );
+  border-radius: 10px;
+  padding: 5px;
+  background-color: #222;
+  color: wheat;
+  z-index: 1;
+}
+.game-inventoryItem.is-active {
+  border-left-color: #ffd22d;
+}
