@@ -28,10 +28,10 @@ export const storage = {
 export function createEntity( src, spriteData={} ) {
   if ( !spriteData.src ) spriteData.src = src
 
-  const { id, group } = spriteData.src.match( /(?<id>(?<group>[^\n /]*?)(?:-\d+)?)\.\w+/ ).groups
+  const { id, group, dirs } = spriteData.src.match( /(?<id>(?<group>[^\n /]*?)(?:-(?<dirs>(?:\.?\d+)+))?)\.\w+$/ ).groups
   const { spritesInfo, sprites, icons } = storage
 
-  if ( !spritesInfo.has( group ) ) spritesInfo.set( group, new SpriteInfo( group, spriteData ) )
+  if ( !spritesInfo.has( group ) ) spritesInfo.set( group, new SpriteInfo( group, dirs, spriteData ) )
 
   icons.set( group, new Icon( group, src ) )
   sprites.set( id, new Sprite( id, spriteData ) )
@@ -54,12 +54,14 @@ export class SpriteInfo {
    * @param {string} type
    * @param {SpriteInitializingData} param1
    */
-  constructor( spriteGroup, { connectable=false, canBePlacedOn=[], classname=`Entity`, connectedDirs={} } ) {
+  constructor( spriteGroup, directions, { sterable=false, connectable=false, canBePlacedOn=[], classname=`Entity`, connectedDirs={} } ) {
     this.group = spriteGroup
+    this.sterable = sterable
     this.connectable = connectable
     this.canBePlacedOn = canBePlacedOn
     this.classname = classname
     this.connectedDirs = connectedDirs
+    this.directionsWithDots = /\./.test( directions )
   }
 }
 export class Sprite {
@@ -69,7 +71,7 @@ export class Sprite {
    */
   constructor( id, { src, frames=1, framesInRow=1 } ) {
     this.id = id
-    this.info = storage.spritesInfo.get( id.match( /(?<group>[^-]+)(?:-\d+)?/ ).groups.group )
+    this.info = storage.spritesInfo.get( id.match( /(?<group>.+?)(?:-(?:\.?\d+)+)?$/ ).groups.group )
     this.image = new Image
     this.image.src = src
     this.frames = frames

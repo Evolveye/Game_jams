@@ -57,6 +57,7 @@ export default class Game {
       /** @type {Map<String,Level>} */
       levels: new Map
     }
+    this.drawingoffsets = { x:0, y:0 }
 
     this.levelsBuildingSpeed = levelsBuildingSpeed
     /** @type {Level} */
@@ -92,8 +93,8 @@ export default class Game {
    * @private
    */
   _setEvents() {
-    this.tag.addEventListener( `keydown`, ({ keyCode }) => this.key( keyCode ).pressed = true )
-    this.tag.addEventListener( `keyup`, ({ keyCode }) => this.key( keyCode ).pressed = false )
+    document.addEventListener( `keydown`, ({ keyCode }) => this.key( keyCode ).pressed = true )
+    document.addEventListener( `keyup`, ({ keyCode }) => this.key( keyCode ).pressed = false )
     this.ctx.canvas.addEventListener( `click`, ({ clientX, clientY }) => {
       const { level, tileSize } = this
 
@@ -114,26 +115,55 @@ export default class Game {
    * @private
    */
   _playerLogic() {
-    const { player, level, canDoAction, running, tileSize } = this
+    const { player, level, canDoAction, running, tileSize, drawingoffsets } = this
+    // const ease = t => t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+    const ease = t => {
+      const abs = Math.abs( t )
+      return Math.sign( t ) * (abs < .5 ? 2 * abs * abs : -1 + (4 - 2 * abs) * abs)
+
+      // t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+      // return Math.sign( t ) * (abs < .5 ? 2 * abs * abs : -1 + (4 - 2 * tabs * abs)
+    }
 
     if ( !running || !player ) return
 
+    // Y axis
     if ( this.key( 40 ).triggered ) {
-      player.rotateAngle = 90
-      player.translateY += player.speed
+      // player.rotateAngle = 90
+
+      if ( level.flying ) {
+        if ( player.accelerationY < 1 ) player.accelerationY += .02
+      } else player.translateY += player.speed
     }
+    else if ( this.key( 38 ).triggered ) {
+      // player.rotateAngle = 270
+
+      if ( level.flying ) {
+        if ( player.accelerationY > -1 ) player.accelerationY -= .02
+      } else player.translateY -= player.speed
+    }
+    else player.accelerationY -= Math.sign( player.accelerationY ) * .01
+
+
+    // X axis
     if ( this.key( 39 ).triggered ) {
-      player.rotateAngle = 0
-      player.translateX += player.speed
+      // player.rotateAngle = 0
+      player.mirrored = true
+
+      if ( level.flying ) {
+        if ( player.accelerationX < 1 ) player.accelerationX += .02
+      } else player.translateX += player.speed
     }
-    if ( this.key( 38 ).triggered ) {
-      player.rotateAngle = 270
-      player.translateY -= player.speed
+    else if ( this.key( 37 ).triggered ) {
+      // player.rotateAngle = 180
+      player.mirrored = false
+
+      if ( level.flying ) {
+        if( player.accelerationX > -1 ) player.accelerationX -= .02
+      } else player.translateX -= player.speed
     }
-    if ( this.key( 37 ).triggered ) {
-      player.rotateAngle = 180
-      player.translateX -= player.speed
-    }
+    else player.accelerationX -= Math.sign( player.accelerationX ) * .01
+
     if ( this.key( 32 ).triggered && canDoAction ) this.doAction()
 
     if ( this.key( 84 ).triggered ) { // t
@@ -141,8 +171,21 @@ export default class Game {
       inventory( `add`, this.playerId, 2 )
     }
 
-    let signX = Math.sign( player.translateX )
-    let signY = Math.sign( player.translateY )
+    const easeX = ease( player.accelerationX ) * player.speed
+    const easeY = ease( player.accelerationY ) * player.speed
+
+
+    player.translateX += easeX
+    player.translateY += easeY
+
+    setTimeout( () => {
+      drawingoffsets.x += easeX
+      drawingoffsets.y += easeY
+    }, 500 )
+
+
+    const signX = Math.sign( player.translateX )
+    const signY = Math.sign( player.translateY )
     const neighboursX = [
       level.get( player.tileX + signX, player.tileY ) || [],
       level.get( player.tileX + signX, player.tileY + signY ) || []
@@ -152,18 +195,26 @@ export default class Game {
       level.get( player.tileX + signX, player.tileY + signY ) || []
     ]
 
-    if ( !this.canStandOn( player, neighboursY[ 0 ] ) || !this.canStandOn( player, neighboursY[ 1 ] ) && Math.abs( player.translateX ) > (tileSize - player.size) / 2 + player.speed )
+    if ( !this.canStandOn( player, neighboursY[ 0 ] ) && Math.abs( player.translateY ) > player.speed || !this.canStandOn( player, neighboursY[ 1 ] ) && Math.abs( player.translateX ) > tileSize / 2 ) {//(tileSize - player.size)
+      if ( player.accelerationY < 0 ) this.grounded = true
+
       player.translateY += -signY * player.speed
+      player.accelerationY = 0
+    }
     else if ( Math.abs( player.translateY ) > tileSize / 2 && this.canStandOn( player, neighboursY[ 0 ] ) ) {
-      level.move( player.tileX, player.tileY, player.tileL, player.tileX, player.tileY + signY )
-      player.translateY = -(signY * tileSize - player.translateY)
+      const moved = level.move( player.tileX, player.tileY, player.tileL, player.tileX, player.tileY + signY )
+      if ( moved ) player.translateY = -(signY * tileSize - player.translateY)
+      else player.translateY += -signY * player.speed
     }
 
-    if ( !this.canStandOn( player, neighboursX[ 0 ] ) || !this.canStandOn( player, neighboursX[ 1 ] ) && Math.abs( player.translateY ) > (tileSize - player.size) / 2 )
+    if ( !this.canStandOn( player, neighboursX[ 0 ] ) && Math.abs( player.translateX ) > player.speed || !this.canStandOn( player, neighboursX[ 1 ] ) && Math.abs( player.translateY ) > tileSize / 2 ) {//(tileSize - player.size)
       player.translateX += -signX * player.speed
+      player.accelerationX = 0
+    }
     else if ( Math.abs( player.translateX ) > tileSize / 2 && this.canStandOn( player, neighboursX[ 0 ] ) ) {
-      level.move( player.tileX, player.tileY, player.tileL, player.tileX + signX, player.tileY )
-      player.translateX = -(signX * tileSize - player.translateX)
+      const moved = level.move( player.tileX, player.tileY, player.tileL, player.tileX + signX, player.tileY )
+      if ( moved ) player.translateX = -(signX * tileSize - player.translateX)
+      else player.translateX += -signX * player.speed
     }
   }
   /** Place item on level
@@ -190,14 +241,14 @@ export default class Game {
    * @private
    */
   _logic() {
-    const { level, running, ticksToNextFrame, nextFrameTicks, player } = this
+    const { level, running, ticksToNextFrame, nextFrameTicks, player, actionId } = this
 
     if ( !running || !level ) return
     if ( player ) {
       const playerTile = level.get( player.tileX, player.tileY )
       const { canDoAction } = this.ui
 
-      if ( playerTile.some( tile => tile.id == `empty` ) ) {
+      if ( playerTile.some( tile => tile.id == actionId ) ) {
         canDoAction.classList.add( `is-active` )
         this.canDoAction = true
       }
@@ -222,20 +273,25 @@ export default class Game {
    * @private
    */
   _draw() {
-    const { ctx, level, tileSize } = this
+    const { ctx, level, tileSize, drawingoffsets, player } = this
 
     if ( !level ) return
 
     ctx.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height )
 
-    const translateX = window.innerWidth / 2 - level.width * tileSize / 2
+    const translateX = window.innerWidth  / 2 - level.width * tileSize  / 2
     const translateY = window.innerHeight / 2 - level.height * tileSize / 2
+
+    ctx.save()
+    ctx.translate( -drawingoffsets.x, -drawingoffsets.y )
 
     for ( const { x, y, entity } of level.everyButNotIds( `player` ) )
       entity.draw( ctx, translateX + x * tileSize, translateY + y * tileSize, tileSize, tileSize )
 
     for ( const { x, y, entity } of level.everyId( `player` ) )
       entity.draw( ctx, translateX + x * tileSize, translateY + y * tileSize, tileSize, tileSize )
+
+    ctx.restore()
   }
   /** Game loop
    * @private
@@ -277,10 +333,9 @@ export default class Game {
   canStandOn( entity, tile ) {
     const { canBePlacedOn } = entity.sprite.info
 
-    // console.log( canBePlacedOn, tile[ tile.length - 1 ] )
-
+    if ( this.level.flying && (!tile.length || tile[ 0 ] == this.player) ) return true
     if ( !tile.length ) return canBePlacedOn.includes( null )
-    else return canBePlacedOn.includes( tile[ tile.length - 1 ].id )
+    return canBePlacedOn.includes( tile[ tile.length - 1 ].group )
   }
   /** Update the inventory
    * @param {HTMLDivElement} activeDivItem
@@ -425,12 +480,16 @@ export default class Game {
     this.level.build().then( () => {
       this.running = true
 
-      const playerTile = level.everyId( this.playerId ).next().value
+      const sterables = Array.from( level.everySterable() )
 
-      if ( playerTile ) {
-        const { x, y, l } = playerTile
+      // if ( playerTile ) {
+      if ( sterables.length > 0 ) {
+        const { x, y, l } = sterables[ 0 ]
 
         this.player = level.tiles[ y ][ x ][ l ]
+
+        this.drawingoffsets.x = (level.tiles[ 0 ].length / 2 -x) * this.tileSize
+        this.drawingoffsets.y = (level.tiles.length - y) * this.tileSize
       }
 
       this.level.script( game )

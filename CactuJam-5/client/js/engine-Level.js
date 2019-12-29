@@ -10,10 +10,13 @@ export default class Level {
    * @param {function():Promise} param0.script
    * @param {function():void} param0.events
    * @param {number} param0.buildingSpeed Seconds to build level
+   * @param {boolean} param0.flying Flying level type
    */
-  constructor( { tiles, script, events, buildingSpeed } ) {
+  constructor( { tiles, script, events, buildingSpeed, flying=false, gravity=false } ) {
     this.height = tiles.length
     this.width = 0
+    this.flying = flying
+    this.gravity = gravity
     /** @type {Entity[][][]} */
     this.tiles = tiles
     this.script = script
@@ -22,7 +25,20 @@ export default class Level {
     this.runCounter = 0
     this.buildingSpeed = buildingSpeed
 
-    for ( let y = 0;  y < tiles.length;  y++ )
+    const flyingLength = 9
+
+    if ( flying && tiles.length <= flyingLength ) {
+      for ( let i = tiles.length; i < flyingLength; i++) tiles.unshift( [] )
+    }
+
+    for ( let y = 0;  y < tiles.length;  y++ ) {
+      if ( flying && tiles[ y ].length <= flyingLength ) {
+        for ( let i = tiles[ y ].length; i < flyingLength; i++)
+          if (i % 2 == 0) tiles[ y ].push( [] )
+          else tiles[ y ].unshift( [] )
+      }
+      else if ( tiles[ y ].length == 0 ) tiles[ y ].push( [] )
+
       for ( let x = 0;  x < tiles[ y ].length;  x++ ) {
         if ( !Array.isArray( tiles[ y ][ x ] ) ) tiles[ y ][ x ] = [ tiles[ y ][ x ] ]
         if ( x > this.width ) this.width = x
@@ -36,13 +52,14 @@ export default class Level {
           const tile = this.createTile( spriteId, x, y, l, rotateAngle )
 
           if ( !tile ) {
-            console.warn( `${entityData} > ${spriteId}` )
+            console.warn( `Missing entity!   tileName: ${entityData} -> id: ${spriteId}` )
             continue
           }
 
           this.tiles[ y ][ x ][ l ] = tile
         }
       }
+    }
   }
 
   /** Build level tile after the tile
@@ -101,6 +118,12 @@ export default class Level {
     for ( const data of this.every( 0, Infinity ) )
       if ( ids.includes( data.entity.id ) ) yield data
   }
+  /** Iterate by every sterable entity
+   */
+  * everySterable() {
+    for ( const data of this.every( 0, Infinity ) )
+      if ( data.entity.sprite.info.sterable ) yield data
+  }
   /** Iterate by every entity
    */
   * everyEntity() {
@@ -145,8 +168,10 @@ export default class Level {
   get( x, y ) {
     const { tiles } = this
 
+
     if ( y < 0 || tiles.length <= y ) return null
-    if ( x < 0 || tiles[ 0 ].length <= x ) return null
+    if ( x < 0 || tiles[ y ].length <= x ) return null
+
     return tiles[ y ][ x ]
   }
   /** Get entity on top of tile
@@ -167,6 +192,9 @@ export default class Level {
    */
   move( x, y, l, newX, newY ) {
     const newTile = this.get( newX, newY )
+
+    if (!newTile) return false
+
     const entities = this.get( x, y ).splice( l )
 
     entities.forEach( (entity, i) => {
@@ -176,6 +204,8 @@ export default class Level {
     } )
 
     this.tiles[ newY ][ newX ].push( ...entities )
+
+    return true
   }
   /** Remove entity/entities from equal and higher layer
    * @param {number} x
@@ -201,37 +231,45 @@ export default class Level {
     const dirs = spriteInfo.connectedDirs
 
     if ( spriteInfo.connectable ) {
-      const { group } = spriteInfo
       let dir = `-`
 
-      const left   = this.get( x - 1, y + 0 ).find( tile => tile.group == group )
-      const right  = this.get( x + 1, y + 0 ).find( tile => tile.group == group )
-      const top    = this.get( x + 0, y - 1 ).find( tile => tile.group == group )
-      const bottom = this.get( x + 0, y + 1 ).find( tile => tile.group == group )
+      const { group } = spriteInfo
+      const dirstWithDot = spriteInfo.directionsWithDots
+      const updateDir = num => (dir.length == 1) ? (dir += num) : (dir += (dirstWithDot ? `.${num}` : num))
+
+      let left   = (this.get( x - 1, y + 0 ) || [])
+      let right  = (this.get( x + 1, y + 0 ) || [])
+      let top    = (this.get( x + 0, y - 1 ) || [])
+      let bottom = (this.get( x + 0, y + 1 ) || [])
+
+      left = typeof left == `string` ? null : (left.filter( tile => !!tile ).find( tile => tile.group == group ))
+      right = typeof right == `string` ? null : (right.filter( tile => !!tile ).find( tile => tile.group == group ))
+      top = typeof top == `string` ? null : (top.filter( tile => !!tile ).find( tile => tile.group == group ))
+      bottom = typeof bottom == `string` ? null : (bottom.filter( tile => !!tile ).find( tile => tile.group == group ))
 
       if ( dirs.top || top ) {
         top && top.changeSprite( sprites.get( top.getIdConnectedWith( `bottom` ) ) )
-        dir += 1
+        updateDir( 1 )
       }
-      else dir += 0
+      else updateDir( 0 )
 
       if ( dirs.right || right ) {
         right && right.changeSprite( sprites.get( right.getIdConnectedWith( `left` ) ) )
-        dir += 1
+        updateDir( 1 )
       }
-      else dir += 0
+      else updateDir( 0 )
 
       if ( dirs.bottom || bottom ) {
         bottom && bottom.changeSprite( sprites.get( bottom.getIdConnectedWith( `top` ) ) )
-        dir += 1
+        updateDir( 1 )
       }
-      else dir += 0
+      else updateDir( 0 )
 
       if ( dirs.left || left ) {
         left && left.changeSprite( sprites.get( left.getIdConnectedWith( `right` ) ) )
-        dir += 1
+        updateDir( 1 )
       }
-      else dir += 0
+      else updateDir( 0 )
 
       id = id + dir
     }

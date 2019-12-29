@@ -13,6 +13,13 @@ export class InventoryItem {
 }
 
 export class Entity {
+  translateX = 0
+  translateY = 0
+  x = 1
+  y = 1
+  speed = 1.5
+  mirrored = false
+
   /**
    * @param {string} id
    * @param {object} param1
@@ -27,14 +34,16 @@ export class Entity {
     this.sprite = sprite
     this.group = sprite.info.group
     this.rotateAngle = rotateAngle
-    this.translateX = 0
-    this.translateY = 0
-    this.x = 1
-    this.y = 1
     this.tileX = tileX
     this.tileY = tileY
     this.tileL = tileL
-    this.speed = 1.5
+
+
+    /** @type {InventoryItem[]} */
+    this.inventory = []
+    this.accelerationX = 0
+    this.accelerationY = 0
+    this.grounded = false
   }
 
   /** Draw entity on canvas
@@ -45,13 +54,14 @@ export class Entity {
    * @param {number} height
    */
   draw( ctx, left, top, width, height ) {
-    const { x, y, rotateAngle, translateX, translateY } = this
+    const { x, y, rotateAngle, translateX, translateY, mirrored } = this
     const { image, frameWidth, frameHeight } = this.sprite
     const halfWidth = width / 2
     const halfHeight = height / 2
 
     ctx.save()
     ctx.translate( left + halfWidth + translateX, top + halfHeight + translateY )
+    if ( mirrored ) ctx.scale( -1, 1 )
     ctx.rotate( Math.PI / 180 * rotateAngle )
     ctx.drawImage( image,
       (x - 1) * frameWidth, (y - 1) * frameHeight, frameWidth, frameHeight,
@@ -88,16 +98,21 @@ export class Entity {
    */
   getIdConnectedWith( direction ) {
     /** @type {String} */
-    let { myDirs } = this.id.match( /(?<myDirs>\d+)$/ ).groups
+    let { dirs } = this.id.match( /(?<dirs>(?:\.?\d+)+)$/ ).groups
 
-    switch ( direction ) {
-      case `top`:    myDirs = `1${myDirs.slice( 1 )}`; break
-      case `right`:  myDirs = `${myDirs.slice( 0, 1 )}1${myDirs.slice( 2 )}`; break
-      case `bottom`: myDirs = `${myDirs.slice( 0, 2 )}1${myDirs.slice( 3 )}`; break
-      case `left`:   myDirs = `${myDirs.slice( 0, 3 )}1`; break
+    if ( /\./.test( dirs ) ) switch ( direction ) {
+      case `top`:    dirs = `1.${dirs.slice( 2 )}`; break
+      case `right`:  dirs = `${dirs.slice( 0, 1 )}.1.${dirs.slice( 4 )}`; break
+      case `bottom`: dirs = `${dirs.slice( 0, 3 )}.1.${dirs.slice( 6 )}`; break
+      case `left`:   dirs = `${dirs.slice( 0, 5 )}.1`; break
+    } else switch ( direction ) {
+      case `top`:    dirs = `1${dirs.slice( 1 )}`; break
+      case `right`:  dirs = `${dirs.slice( 0, 1 )}1${dirs.slice( 2 )}`; break
+      case `bottom`: dirs = `${dirs.slice( 0, 2 )}1${dirs.slice( 3 )}`; break
+      case `left`:   dirs = `${dirs.slice( 0, 3 )}1`; break
     }
 
-    return `${this.group}-${myDirs}`
+    return `${this.group}-${dirs}`
   }
 
   /** Code to execute when tile will be clicked
@@ -122,8 +137,6 @@ export class Player extends Entity {
   constructor( spriteId, data ) {
     super( spriteId, data )
 
-    /** @type {InventoryItem[]} */
-    this.inventory = []
   }
 }
 
