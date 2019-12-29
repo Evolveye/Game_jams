@@ -105,3 +105,5 @@ game.createLevels( levels )
 document.addEventListener( `DOMContentLoaded`, () => game.start( `flying1` ) )
 
 window.game = game
+
+setTimeout( () => window.p = game.player, 1000 )

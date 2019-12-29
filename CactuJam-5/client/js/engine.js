@@ -116,33 +116,53 @@ export default class Game {
    */
   _playerLogic() {
     const { player, level, canDoAction, running, tileSize, drawingoffsets } = this
-    // const ease = t => t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-    const ease = t => {
-      const abs = Math.abs( t )
-      return Math.sign( t ) * (abs < .5 ? 2 * abs * abs : -1 + (4 - 2 * abs) * abs)
-
-      // t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-      // return Math.sign( t ) * (abs < .5 ? 2 * abs * abs : -1 + (4 - 2 * tabs * abs)
-    }
 
     if ( !running || !player ) return
 
+    const speed = level.gravity ? player.fallingSpeed : player.speed
+    const gravityFallingSpeed = .08
+    const ease = t => {
+      let abs = Math.abs( t )
+
+      if ( level.flying ) return Math.sign( t ) * (abs < .5 ?  2 * abs ** 2 : -1 + (4 - 2 * abs) * abs)
+      return Math.sign( t ) * (1 + (--abs) * abs * abs * abs * abs)
+    }
+
     // Y axis
-    if ( this.key( 40 ).triggered ) {
+    if ( this.key( 40 ).triggered && !level.gravity ) {
       // player.rotateAngle = 90
 
       if ( level.flying ) {
         if ( player.accelerationY < 1 ) player.accelerationY += .02
-      } else player.translateY += player.speed
+      }
+      else player.translateY += player.speed
     }
     else if ( this.key( 38 ).triggered ) {
       // player.rotateAngle = 270
 
-      if ( level.flying ) {
+      if ( level.gravity ) {
+        if ( player.grounded ) player.accelerationY = -1
+
+        if ( player.grounded || player.jumping ) {
+          player.grounded = false
+          player.jumping = true
+        }
+        if ( (!player.grounded && player.jumping) )
+          player.accelerationY += gravityFallingSpeed / 3
+        else player.accelerationY += gravityFallingSpeed
+      }
+      else if ( level.flying ) {
         if ( player.accelerationY > -1 ) player.accelerationY -= .02
       } else player.translateY -= player.speed
     }
-    else player.accelerationY -= Math.sign( player.accelerationY ) * .01
+    else {
+      if ( level.gravity ) {
+        player.jumping = false
+
+        if ( !player.grounded && player.accelerationY < 1 ) player.accelerationY += gravityFallingSpeed
+      }
+      else player.accelerationY -= Math.sign( player.accelerationY ) * .01
+    }
 
 
     // X axis
@@ -164,6 +184,7 @@ export default class Game {
     }
     else player.accelerationX -= Math.sign( player.accelerationX ) * .01
 
+
     if ( this.key( 32 ).triggered && canDoAction ) this.doAction()
 
     if ( this.key( 84 ).triggered ) { // t
@@ -171,18 +192,11 @@ export default class Game {
       inventory( `add`, this.playerId, 2 )
     }
 
-    const easeX = ease( player.accelerationX ) * player.speed
-    const easeY = ease( player.accelerationY ) * player.speed
-
+    const easeX = ease( player.accelerationX ) * speed
+    const easeY = ease( player.accelerationY ) * speed
 
     player.translateX += easeX
     player.translateY += easeY
-
-    setTimeout( () => {
-      drawingoffsets.x += easeX
-      drawingoffsets.y += easeY
-    }, 500 )
-
 
     const signX = Math.sign( player.translateX )
     const signY = Math.sign( player.translateY )
@@ -195,17 +209,24 @@ export default class Game {
       level.get( player.tileX + signX, player.tileY + signY ) || []
     ]
 
-    if ( !this.canStandOn( player, neighboursY[ 0 ] ) && Math.abs( player.translateY ) > player.speed || !this.canStandOn( player, neighboursY[ 1 ] ) && Math.abs( player.translateX ) > tileSize / 2 ) {//(tileSize - player.size)
-      if ( player.accelerationY < 0 ) this.grounded = true
+    if ( !this.canStandOn( player, neighboursY[ 0 ] ) && Math.abs( player.translateY ) > speed || !this.canStandOn( player, neighboursY[ 1 ] ) && Math.abs( player.translateX ) > tileSize / 2 ) {//(tileSize - player.size)
+      if ( player.accelerationY > 0 ) player.grounded = true
 
-      player.translateY += -signY * player.speed
+      player.translateY += -signY * speed
       player.accelerationY = 0
     }
     else if ( Math.abs( player.translateY ) > tileSize / 2 && this.canStandOn( player, neighboursY[ 0 ] ) ) {
       const moved = level.move( player.tileX, player.tileY, player.tileL, player.tileX, player.tileY + signY )
+
       if ( moved ) player.translateY = -(signY * tileSize - player.translateY)
-      else player.translateY += -signY * player.speed
+      else {
+        player.translateY += -signY * player.speed
+        player.accelerationY = 0
+      }
     }
+    else setTimeout( () => {
+      drawingoffsets.y += easeY
+    }, level.flying ? 500 : 100 )
 
     if ( !this.canStandOn( player, neighboursX[ 0 ] ) && Math.abs( player.translateX ) > player.speed || !this.canStandOn( player, neighboursX[ 1 ] ) && Math.abs( player.translateY ) > tileSize / 2 ) {//(tileSize - player.size)
       player.translateX += -signX * player.speed
@@ -213,9 +234,16 @@ export default class Game {
     }
     else if ( Math.abs( player.translateX ) > tileSize / 2 && this.canStandOn( player, neighboursX[ 0 ] ) ) {
       const moved = level.move( player.tileX, player.tileY, player.tileL, player.tileX + signX, player.tileY )
+
       if ( moved ) player.translateX = -(signX * tileSize - player.translateX)
-      else player.translateX += -signX * player.speed
+      else {
+        player.translateX += -signX * player.speed
+        player.accelerationX = 0
+      }
     }
+    else setTimeout( () => {
+      drawingoffsets.x += easeX
+    }, level.flying ? 500 : 100 )
   }
   /** Place item on level
    * @param {number} x
@@ -333,7 +361,7 @@ export default class Game {
   canStandOn( entity, tile ) {
     const { canBePlacedOn } = entity.sprite.info
 
-    if ( this.level.flying && (!tile.length || tile[ 0 ] == this.player) ) return true
+    if ( (this.level.flying || this.level.gravity) && (!tile.length || tile[ 0 ] == this.player) ) return true
     if ( !tile.length ) return canBePlacedOn.includes( null )
     return canBePlacedOn.includes( tile[ tile.length - 1 ].group )
   }

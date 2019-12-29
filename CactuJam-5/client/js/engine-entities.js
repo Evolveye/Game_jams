@@ -18,6 +18,7 @@ export class Entity {
   x = 1
   y = 1
   speed = 1.5
+  fallingSpeed = 8
   mirrored = false
 
   /**
@@ -44,6 +45,7 @@ export class Entity {
     this.accelerationX = 0
     this.accelerationY = 0
     this.grounded = false
+    this.jumping = false
   }
 
   /** Draw entity on canvas

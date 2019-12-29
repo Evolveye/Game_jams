@@ -158,10 +158,15 @@ export default new Map( [
     events( eventInOrder, game ) {}
   } ],
   [ `flying1`, {
-    // flying: true,
-    gravity: true,
+    flying: true,
+    // gravity: true,
     tiles: [
       [ `cactus` ],
+      [],
+      [],
+      [],
+      [],
+      [],
       [],
       [ `player` ],
       [],
