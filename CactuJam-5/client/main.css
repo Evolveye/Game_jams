@@ -13,6 +13,9 @@ div, p {
   margin: 0;
 }
 
+.game-over,
+.game-clickToPlay,
+.game-endScreen,
 canvas {
   position: fixed;
   width: 100vw;
@@ -95,4 +98,19 @@ canvas {
 }
 .game-inventoryItem.is-active {
   border-left-color: #ffd22d;
+}
+.game-endScreen {
+  background-color: #000b;
+  color: #eee;
+  padding: 100px 50px;
+}
+.game-endScreen-restart {
+  margin-top: 200px;
+}
+.game-over,
+.game-clickToPlay {
+  background-color: #333;
+  padding: 100px;
+  font-size: 40px;
+  color: #555;
 }

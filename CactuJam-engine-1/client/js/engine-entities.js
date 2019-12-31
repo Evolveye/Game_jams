@@ -104,6 +104,11 @@ export class Entity {
    */
   onclick() {}
 }
+export class ActiveEntity extends Entity {
+  executeAction() {
+    throw `It have to be overrided`
+  }
+}
 export class Player extends Entity {
   /**
    * @param {string} spriteId

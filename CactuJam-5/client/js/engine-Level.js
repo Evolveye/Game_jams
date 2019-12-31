@@ -12,7 +12,8 @@ export default class Level {
    * @param {number} param0.buildingSpeed Seconds to build level
    * @param {boolean} param0.flying Flying level type
    */
-  constructor( { tiles, script, events, buildingSpeed, flying=false, gravity=false } ) {
+  constructor( name, { tiles, script, events, buildingSpeed, flying=false, gravity=false } ) {
+    this.name = name
     this.height = tiles.length
     this.width = 0
     this.flying = flying
@@ -27,12 +28,12 @@ export default class Level {
 
     const flyingLength = 9
 
-    if ( flying && tiles.length <= flyingLength ) {
+    if ( (gravity || flying) && tiles.length <= flyingLength ) {
       for ( let i = tiles.length; i < flyingLength; i++) tiles.unshift( [] )
     }
 
     for ( let y = 0;  y < tiles.length;  y++ ) {
-      if ( flying && tiles[ y ].length <= flyingLength ) {
+      if ( (gravity || flying) && tiles[ y ].length <= flyingLength ) {
         for ( let i = tiles[ y ].length; i < flyingLength; i++)
           if (i % 2 == 0) tiles[ y ].push( [] )
           else tiles[ y ].unshift( [] )
@@ -212,8 +213,32 @@ export default class Level {
    * @param {number} y
    * @param {number} l
    */
-  remove( x, y, l ) {
-    this.get( x, y ).splice( l )
+  remove( x, y, l=-1 ) {
+    const tile = this.get( x, y )
+
+    if ( !tile ) return
+    if ( l == -1 ) l = tile.length - 1
+
+    tile.splice( l )
+  }
+  setEntity( id, x, y, l=-1 ) {
+    const tile = this.get( x, y )
+
+    if ( !tile ) return
+
+    const { sprites, spritesInfo } = assetsStorage
+    const spriteInfo = spritesInfo.get( id )
+    const entity =  new GameEntitiesStorage[ spriteInfo.classname ]( id, {
+      tileX: x,
+      tileY: y,
+      tileL: l,
+      sprite: sprites.get( id ),
+      rotateAngle: 0
+    } )
+
+
+    if ( l == -1 ) tile.push( entity )
+    else tile[ l ] = entity
   }
   /** Create tile
    * @param {string} id

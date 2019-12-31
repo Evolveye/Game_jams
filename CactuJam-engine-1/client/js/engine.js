@@ -203,6 +203,10 @@ export default class Game {
         this.canDoAction = false
       }
     }
+
+    for ( const { entity } of level.everyActionEntity() )
+      entity.executeAction()
+
     if ( ticksToNextFrame == nextFrameTicks ) {
       this.nextFrameTicks = 0
 

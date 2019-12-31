@@ -1,7 +1,7 @@
 import * as GameEntitiesStorage from "./engine-entities.js"
 import { storage as assetsStorage } from "./engine-assets.js"
 
-const { Entity } = GameEntitiesStorage
+const { Entity, ActiveEntity } = GameEntitiesStorage
 
 export default class Level {
   /**
@@ -106,6 +106,12 @@ export default class Level {
   * everyEntity() {
     for ( const data of this.every( 0, Infinity ) )
       yield data
+  }
+  /** Iterate by every action entity
+   */
+  * everyActionEntity() {
+    for ( const data of this.every( 0, Infinity ) )
+      if ( data.entity instanceof ActiveEntity ) yield data
   }
   /** Iterate by every entity from layers range
    * @param {number} layerMin
