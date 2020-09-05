@@ -2,6 +2,7 @@ import React from "react"
 
 import WebCell from "./WebCell"
 import Spider from "./Spider"
+import Wall from "./Wall"
 
 export default class Web extends React.Component {
   width = window.innerWidth
@@ -19,6 +20,7 @@ export default class Web extends React.Component {
   offsetLeft = 0
   offsetTop = 0
 
+  gravitySpeed = 0.1
   webColor = `white`
 
   componentDidMount() {
@@ -56,14 +58,13 @@ export default class Web extends React.Component {
     const procents = [ 10, 20, 30, 40, 50, 60, 80, 100, 100 ].reverse()
     const center = Math.floor( procents.length / 2 )
 
+    this.player = new Spider( center, center )
+
     this.level = Array.from( { length:procents.length }, (_, y) =>
       Array.from( { length:procents.length }, (_, x) =>
         [ Math.random() > procents[ Math.abs( center - y ) + Math.abs( center - x ) ] / 100 ? null : new WebCell() ]
       )
     )
-    this.player = new Spider( center, center )
-    this.level[ center ][ center ].push( this.player )
-
     this.level.forEach( (row, y) => row.forEach( ([ webCell ], x) => {
       if (!webCell) return
       if (this.level[ y + 0 ]?.[ x - 1 ]?.some( cell => cell instanceof WebCell )) webCell.neighbours.left = true
@@ -87,9 +88,11 @@ export default class Web extends React.Component {
     if (this.keys[ 39 ]) moveX += 0.1
     if (this.keys[ 40 ]) moveY += 0.1
 
-    if (this.level?.[ Math.round( this.player.y + moveY ) ]?.[ Math.round( this.player.x + moveX ) ]?.some( cell => cell instanceof WebCell) ) {
+    const nextPlayerCell = this.level?.[ Math.round( this.player.y + moveY ) ]?.[ Math.round( this.player.x + moveX ) ]
+
+    if (!nextPlayerCell?.some( cell => cell instanceof Wall )) {
       this.player.x += moveX
-      this.player.y += moveY
+      this.player.y += nextPlayerCell?.some( cell => cell instanceof WebCell ) ? moveY : this.gravitySpeed
     }
 
     this.level.forEach( row => row.length > longestRow && (longestRow = row.length) )
