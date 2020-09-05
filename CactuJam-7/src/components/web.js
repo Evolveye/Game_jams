@@ -1,6 +1,7 @@
 import React from "react"
 
 import WebCell from "./WebCell"
+import Spider from "./Spider"
 
 export default class Web extends React.Component {
   width = window.innerWidth
@@ -11,7 +12,7 @@ export default class Web extends React.Component {
   ctx = null
   loopId = 0
 
-  /** @type {WebCell[][]} */
+  /** @type {WebCell|Spider[][][]} */
   level = [[]]
   webCellSize = 19
   offsetLeft = 0
@@ -55,16 +56,18 @@ export default class Web extends React.Component {
 
     this.level = Array.from( { length:procents.length }, (_, y) =>
       Array.from( { length:procents.length }, (_, x) =>
-        Math.random() > procents[ Math.abs( center - y ) + Math.abs( center - x ) ] / 100 ? null : new WebCell()
+        [ Math.random() > procents[ Math.abs( center - y ) + Math.abs( center - x ) ] / 100 ? null : new WebCell() ]
       )
     )
+    this.player = new Spider( center, center )
+    this.level[ center ][ center ].push( this.player )
 
-    this.level.forEach( (row, y) => row.forEach( (webCell, x) => {
+    this.level.forEach( (row, y) => row.forEach( ([ webCell ], x) => {
       if (!webCell) return
-      if (this.level[ y + 0 ]?.[ x - 1 ]) webCell.neighbours.left = true
-      if (this.level[ y - 1 ]?.[ x + 0 ]) webCell.neighbours.top = true
-      if (this.level[ y + 0 ]?.[ x + 1 ]) webCell.neighbours.right = true
-      if (this.level[ y + 1 ]?.[ x + 0 ]) webCell.neighbours.bottom = true
+      if (this.level[ y + 0 ]?.[ x - 1 ]?.some( cell => cell instanceof WebCell )) webCell.neighbours.left = true
+      if (this.level[ y - 1 ]?.[ x + 0 ]?.some( cell => cell instanceof WebCell )) webCell.neighbours.top = true
+      if (this.level[ y + 0 ]?.[ x + 1 ]?.some( cell => cell instanceof WebCell )) webCell.neighbours.right = true
+      if (this.level[ y + 1 ]?.[ x + 0 ]?.some( cell => cell instanceof WebCell )) webCell.neighbours.bottom = true
     } ) )
   }
 
@@ -80,7 +83,7 @@ export default class Web extends React.Component {
     const { ctx, offsetLeft, offsetTop, webCellSize, webColor } = this
 
     // Draw cells
-    this.level.forEach( (row, y) => row.forEach( (webCell, x) => {
+    this.level.forEach( (row, y) => row.forEach( ([ webCell ], x) => {
       if (!webCell) return
 
       const { left, top, right, bottom } = webCell.neighbours
@@ -120,6 +123,9 @@ export default class Web extends React.Component {
       ctx.strokeStyle = `#fff`
       ctx.stroke()
     } ) )
+
+    ctx.fillStyle = `red`
+    ctx.fillRect( offsetLeft + this.player.x * webCellSize, offsetTop + this.player.y * webCellSize, webCellSize, webCellSize )
   }
   render = () => <canvas ref={this.handleRef} className="game-web" />
 }
