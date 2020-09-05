@@ -11,6 +11,7 @@ export default class Web extends React.Component {
   /** @type {CanvasRenderingContext2D} */
   ctx = null
   loopId = 0
+  keys = []
 
   /** @type {WebCell|Spider[][][]} */
   level = [[]]
@@ -23,6 +24,7 @@ export default class Web extends React.Component {
   componentDidMount() {
     this.handleResize()
     this.setDefaults()
+    this.setEvents()
     this.startLoop()
     window.game = this
   }
@@ -70,9 +72,25 @@ export default class Web extends React.Component {
       if (this.level[ y + 1 ]?.[ x + 0 ]?.some( cell => cell instanceof WebCell )) webCell.neighbours.bottom = true
     } ) )
   }
+  setEvents() {
+    document.addEventListener( `keydown`, ({ keyCode }) => this.keys[ keyCode ] = true )
+    document.addEventListener( `keyup`, ({ keyCode }) => this.keys[ keyCode ] = false )
+  }
 
   logic = () => {
     let longestRow = 0
+    let moveX = 0
+    let moveY = 0
+
+    if (this.keys[ 37 ]) moveX -= 0.1
+    if (this.keys[ 38 ]) moveY -= 0.1
+    if (this.keys[ 39 ]) moveX += 0.1
+    if (this.keys[ 40 ]) moveY += 0.1
+
+    if (this.level?.[ Math.round( this.player.y + moveY ) ]?.[ Math.round( this.player.x + moveX ) ]?.some( cell => cell instanceof WebCell) ) {
+      this.player.x += moveX
+      this.player.y += moveY
+    }
 
     this.level.forEach( row => row.length > longestRow && (longestRow = row.length) )
 
@@ -80,7 +98,9 @@ export default class Web extends React.Component {
     this.offsetTop = this.height / 2 - this.level.length * this.webCellSize / 2
   }
   draw = () => {
-    const { ctx, offsetLeft, offsetTop, webCellSize, webColor } = this
+    const { ctx, offsetLeft, offsetTop, webCellSize, width, height } = this
+
+    ctx.clearRect( 0, 0, width, height )
 
     // Draw cells
     this.level.forEach( (row, y) => row.forEach( ([ webCell ], x) => {
