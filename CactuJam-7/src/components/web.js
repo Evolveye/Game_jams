@@ -3,9 +3,10 @@ import React from "react"
 import { Cobweb, Wood, Grass } from "./movable"
 import { Stone, Barrier } from "./walls"
 import { Air } from "./air"
-import Spider from "./Spider"
+import Spider, { Housefly } from "./entities"
 
 const pythagoras = (x1, y1, x2, y2) => Math.sqrt( (x2 - x1) ** 2 + (y2 - y1) ** 2 )
+const randomBetween = (min, max) => min + Math.floor( (max - min) * Math.random() )
 
 export default class Web extends React.Component {
   width = window.innerWidth
@@ -39,6 +40,8 @@ export default class Web extends React.Component {
   gravitySpeed = 0.1
   webColor = `white`
   maxCobwebWidth = 200
+  entities = []
+  viewfinderSize = 30
 
   componentDidMount() {
     window.game = this
@@ -109,10 +112,6 @@ export default class Web extends React.Component {
       if (this.level[ y + 0 ]?.[ x + 1 ]?.some( cell => cell instanceof Cobweb )) cobweb.neighbours.right = true
       if (this.level[ y + 1 ]?.[ x + 0 ]?.some( cell => cell instanceof Cobweb )) cobweb.neighbours.bottom = true
     } ) )
-
-    const size = 50
-
-
   }
   setEvents() {
     document.addEventListener( `keydown`, ({ keyCode }) => this.keys[ keyCode ] = true )
@@ -128,26 +127,56 @@ export default class Web extends React.Component {
     } )
   }
 
+  levelCell( x, y ) {
+    return this.level[ Math.round( y ) ]?.[ Math.round( x ) ]
+  }
+
   logic = () => {
+    const {
+      level,
+      gravitySpeed,
+      offsetLeft,
+      offsetTop,
+      webCellSize,
+      width,
+      height,
+      mouse,
+      keys,
+      player,
+      entities,
+      viewfinderSize,
+      maxCobwebWidth,
+    } = this
+
     let longestRow = 0
     let moveX = 0
     let moveY = 0
 
-    if (this.keys[ 37 ] || this.keys[ 65 ]) moveX -= 0.1
-    if (this.keys[ 38 ] || this.keys[ 87 ]) moveY -= 0.1
-    if (this.keys[ 39 ] || this.keys[ 68 ]) moveX += 0.1
-    if (this.keys[ 40 ] || this.keys[ 83 ]) moveY += 0.1
-    if (this.mouse.isFirstPressUse) {
-      this.player.shooting = true
-      this.player.canShoot = false
+    if (!level) return
+    if (keys[ 37 ] || keys[ 65 ]) moveX -= 0.1
+    if (keys[ 38 ] || keys[ 87 ]) moveY -= 0.1
+    if (keys[ 39 ] || keys[ 68 ]) moveX += 0.1
+    if (keys[ 40 ] || keys[ 83 ]) moveY += 0.1
+    if (mouse.isFirstPressUse) {
+      player.shooting = true
+      player.canShoot = false
+
+      const cobWebRange = pythagoras( offsetLeft + player.x * webCellSize + webCellSize / 2, offsetTop + player.y * webCellSize + webCellSize / 2, mouse.x, mouse.y ) < maxCobwebWidth
+
+      entities.filter( ({ x, y, size }) =>
+        pythagoras( offsetLeft + x * webCellSize, offsetTop + y * webCellSize, mouse.x, mouse.y ) < size + viewfinderSize / 2 && cobWebRange
+      ).forEach( entity => entity.hp -= 1 )
 
       setTimeout( () => {
-        this.player.shooting = false
-        this.player.canShoot = true
+        player.shooting = false
+        player.canShoot = true
       }, 10 )
     }
+    if (Math.random() <= 0.02) {
+      entities.push( new Housefly( randomBetween( 3, level[ 0 ].length - 2 ), randomBetween( 2, level.length - 5 ), 5 ) )
+    }
 
-    const nextPlayerCell = this.level?.[ Math.round( this.player.y + moveY ) ]?.[ Math.round( this.player.x + moveX ) ]
+    const nextPlayerCell = this.levelCell( player.x + moveX, player.y + moveY )
 
     if (!nextPlayerCell?.some( cell => cell instanceof Barrier )) {
       this.player.x += moveX
@@ -157,14 +186,52 @@ export default class Web extends React.Component {
         cell instanceof Wood
       ) ? moveY : this.gravitySpeed
     }
+    this.entities = entities.filter( (entity) => {
+      if (entity.hp > 0) {
+        let moveX = (Math.random() - 0.5) / 4
+        let moveY = (Math.random() - 0.5) / 4
 
-    this.level.forEach( row => row.length > longestRow && (longestRow = row.length) )
+        if (!this.levelCell( entity.x + moveX, entity.y + moveY )?.some( cell => cell instanceof Barrier )) {
+          entity.x += moveX
+          entity.y += moveY
+        }
+      } else {
+        if (pythagoras( player.x + 0.5, player.y + 0.5, entity.x, entity.y ) < 1) {
+          player.score += 10
+          return false
+        } else {
+          const predicate = cell =>
+            cell instanceof Cobweb ||
+            cell instanceof Grass ||
+            cell instanceof Wood
 
-    this.offsetLeft = this.width / 2 - longestRow * this.webCellSize / 2
-    this.offsetTop = this.height / 2 - this.level.length * this.webCellSize / 2
+          if (!this.levelCell( entity.x, entity.y + gravitySpeed - Math.random() )?.some( predicate )) {
+            entity.y += gravitySpeed
+          }
+        }
+      }
+
+      return true
+    } )
+    level.forEach( row => row.length > longestRow && (longestRow = row.length) )
+
+    this.offsetLeft = width / 2 - longestRow * webCellSize / 2
+    this.offsetTop = height / 2 - level.length * webCellSize / 2
   }
   draw = () => {
-    const { ctx, offsetLeft, offsetTop, webCellSize, width, height, mouse, maxCobwebWidth, player } = this
+    const {
+      ctx,
+      offsetLeft,
+      offsetTop,
+      webCellSize,
+      width,
+      height,
+      mouse,
+      maxCobwebWidth,
+      player,
+      entities,
+      viewfinderSize,
+    } = this
 
     ctx.clearRect( 0, 0, width, height )
 
@@ -227,6 +294,15 @@ export default class Web extends React.Component {
 
     } ) ) )
 
+    // Draw entities
+    entities.forEach( ({ x, y, size }) => {
+      ctx.fillStyle = `black`
+      ctx.beginPath()
+      ctx.arc( offsetLeft + x * webCellSize, offsetTop + y * webCellSize, size / 2, 0, Math.PI * 2 )
+      ctx.fill()
+    } )
+
+    // Draw player elements
     const playerOffsetX = offsetLeft + player.x * webCellSize
     const playerOffsetY = offsetTop + player.y * webCellSize
     const webCellSizeBy3 = webCellSize / 3
@@ -242,7 +318,7 @@ export default class Web extends React.Component {
       ctx.stroke()
 
       ctx.beginPath()
-      ctx.arc( mouse.x, mouse.y, 15, 0, Math.PI * 2 )
+      ctx.arc( mouse.x, mouse.y, viewfinderSize / 2, 0, Math.PI * 2 )
 
       if (player.shooting) {
         ctx.strokeStyle = `#fffb`
