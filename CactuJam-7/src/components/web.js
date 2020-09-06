@@ -138,7 +138,13 @@ export default class Web extends React.Component {
     if (this.keys[ 39 ] || this.keys[ 68 ]) moveX += 0.1
     if (this.keys[ 40 ] || this.keys[ 83 ]) moveY += 0.1
     if (this.mouse.isFirstPressUse) {
+      this.player.shooting = true
+      this.player.canShoot = false
 
+      setTimeout( () => {
+        this.player.shooting = false
+        this.player.canShoot = true
+      }, 10 )
     }
 
     const nextPlayerCell = this.level?.[ Math.round( this.player.y + moveY ) ]?.[ Math.round( this.player.x + moveX ) ]
@@ -158,7 +164,7 @@ export default class Web extends React.Component {
     this.offsetTop = this.height / 2 - this.level.length * this.webCellSize / 2
   }
   draw = () => {
-    const { ctx, offsetLeft, offsetTop, webCellSize, width, height, mouse, maxCobwebWidth } = this
+    const { ctx, offsetLeft, offsetTop, webCellSize, width, height, mouse, maxCobwebWidth, player } = this
 
     ctx.clearRect( 0, 0, width, height )
 
@@ -221,10 +227,8 @@ export default class Web extends React.Component {
 
     } ) ) )
 
-    ctx.fillStyle = `red`
-
-    const playerOffsetX = offsetLeft + this.player.x * webCellSize
-    const playerOffsetY = offsetTop + this.player.y * webCellSize
+    const playerOffsetX = offsetLeft + player.x * webCellSize
+    const playerOffsetY = offsetTop + player.y * webCellSize
     const webCellSizeBy3 = webCellSize / 3
 
     if ( mouse.x ) {
@@ -237,12 +241,19 @@ export default class Web extends React.Component {
       ctx.lineTo( mouse.x, mouse.y )
       ctx.stroke()
 
-      ctx.strokeStyle = `#fffa`
       ctx.beginPath()
       ctx.arc( mouse.x, mouse.y, 15, 0, Math.PI * 2 )
-      ctx.stroke()
+
+      if (player.shooting) {
+        ctx.strokeStyle = `#fffb`
+        ctx.stroke()
+      } else {
+        ctx.fillStyle = `#fff8`
+        ctx.fill()
+      }
     }
 
+    ctx.fillStyle = `red`
     ctx.fillRect( playerOffsetX, playerOffsetY, webCellSizeBy3, webCellSizeBy3 )
     ctx.fillRect( playerOffsetX + webCellSizeBy3, playerOffsetY + webCellSizeBy3, webCellSizeBy3, webCellSizeBy3 )
     ctx.fillRect( playerOffsetX + webCellSizeBy3 * 2, playerOffsetY + webCellSizeBy3 * 2, webCellSizeBy3, webCellSizeBy3 )
