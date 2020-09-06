@@ -5,6 +5,8 @@ import { Stone, Barrier } from "./walls"
 import { Air } from "./air"
 import Spider from "./Spider"
 
+const pythagoras = (x1, y1, x2, y2) => Math.sqrt( (x2 - x1) ** 2 + (y2 - y1) ** 2 )
+
 export default class Web extends React.Component {
   width = window.innerWidth
   height = window.innerHeight
@@ -14,6 +16,19 @@ export default class Web extends React.Component {
   ctx = null
   loopId = 0
   keys = []
+  mouse = {
+    _pressUsed: 0,
+    x: null,
+    y: null,
+    pressed: false,
+    get isFirstPressUse() {
+      if (!this.pressed) return false
+
+      this._pressUsed += 1
+
+      return this._pressUsed - 1 === 0
+    }
+  }
 
   /** @type {(Cobweb|Spider)[][][]} */
   level = [[]]
@@ -23,6 +38,7 @@ export default class Web extends React.Component {
 
   gravitySpeed = 0.1
   webColor = `white`
+  maxCobwebWidth = 200
 
   componentDidMount() {
     window.game = this
@@ -101,6 +117,15 @@ export default class Web extends React.Component {
   setEvents() {
     document.addEventListener( `keydown`, ({ keyCode }) => this.keys[ keyCode ] = true )
     document.addEventListener( `keyup`, ({ keyCode }) => this.keys[ keyCode ] = false )
+    document.addEventListener( `pointerdown`, () => {
+      this.mouse._pressUsed = 0
+      this.mouse.pressed = true
+    } )
+    document.addEventListener( `pointerup`, () => this.mouse.pressed = false )
+    document.addEventListener( `mousemove`, ({ clientX, clientY }) => {
+      this.mouse.x = clientX
+      this.mouse.y = clientY
+    } )
   }
 
   logic = () => {
@@ -108,10 +133,13 @@ export default class Web extends React.Component {
     let moveX = 0
     let moveY = 0
 
-    if (this.keys[ 37 ]) moveX -= 0.1
-    if (this.keys[ 38 ]) moveY -= 0.1
-    if (this.keys[ 39 ]) moveX += 0.1
-    if (this.keys[ 40 ]) moveY += 0.1
+    if (this.keys[ 37 ] || this.keys[ 65 ]) moveX -= 0.1
+    if (this.keys[ 38 ] || this.keys[ 87 ]) moveY -= 0.1
+    if (this.keys[ 39 ] || this.keys[ 68 ]) moveX += 0.1
+    if (this.keys[ 40 ] || this.keys[ 83 ]) moveY += 0.1
+    if (this.mouse.isFirstPressUse) {
+
+    }
 
     const nextPlayerCell = this.level?.[ Math.round( this.player.y + moveY ) ]?.[ Math.round( this.player.x + moveX ) ]
 
@@ -130,7 +158,7 @@ export default class Web extends React.Component {
     this.offsetTop = this.height / 2 - this.level.length * this.webCellSize / 2
   }
   draw = () => {
-    const { ctx, offsetLeft, offsetTop, webCellSize, width, height } = this
+    const { ctx, offsetLeft, offsetTop, webCellSize, width, height, mouse, maxCobwebWidth } = this
 
     ctx.clearRect( 0, 0, width, height )
 
@@ -198,6 +226,22 @@ export default class Web extends React.Component {
     const playerOffsetX = offsetLeft + this.player.x * webCellSize
     const playerOffsetY = offsetTop + this.player.y * webCellSize
     const webCellSizeBy3 = webCellSize / 3
+
+    if ( mouse.x ) {
+      ctx.strokeStyle = pythagoras( playerOffsetX + webCellSize / 2, playerOffsetY + webCellSize / 2, mouse.x, mouse.y ) < maxCobwebWidth
+        ? `#0f0a`
+        : `#f00a`
+
+      ctx.beginPath()
+      ctx.moveTo( playerOffsetX + webCellSize / 2, playerOffsetY + webCellSize / 2 )
+      ctx.lineTo( mouse.x, mouse.y )
+      ctx.stroke()
+
+      ctx.strokeStyle = `#fffa`
+      ctx.beginPath()
+      ctx.arc( mouse.x, mouse.y, 15, 0, Math.PI * 2 )
+      ctx.stroke()
+    }
 
     ctx.fillRect( playerOffsetX, playerOffsetY, webCellSizeBy3, webCellSizeBy3 )
     ctx.fillRect( playerOffsetX + webCellSizeBy3, playerOffsetY + webCellSizeBy3, webCellSizeBy3, webCellSizeBy3 )
