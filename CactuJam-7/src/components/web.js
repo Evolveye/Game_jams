@@ -1,8 +1,9 @@
 import React from "react"
 
-import WebCell from "./WebCell"
+import { Cobweb, Wood, Grass } from "./movable"
+import { Stone, Barrier } from "./walls"
+import { Air } from "./air"
 import Spider from "./Spider"
-import Wall from "./Wall"
 
 export default class Web extends React.Component {
   width = window.innerWidth
@@ -14,7 +15,7 @@ export default class Web extends React.Component {
   loopId = 0
   keys = []
 
-  /** @type {WebCell|Spider[][][]} */
+  /** @type {(Cobweb|Spider)[][][]} */
   level = [[]]
   webCellSize = 19
   offsetLeft = 0
@@ -24,11 +25,11 @@ export default class Web extends React.Component {
   webColor = `white`
 
   componentDidMount() {
+    window.game = this
     this.handleResize()
     this.setDefaults()
     this.setEvents()
     this.startLoop()
-    window.game = this
   }
 
   startLoop() {
@@ -48,30 +49,54 @@ export default class Web extends React.Component {
     this.canvas.width = this.width
     this.canvas.height = this.height
   }
-  /**  @param {HTMLCanvasElement} ref */
+  /** @param {HTMLCanvasElement} ref */
   handleRef = ref => {
     this.canvas = ref
     this.ctx = ref.getContext( `2d` )
   }
   setDefaults() {
-    // % of tile creation
-    const procents = [ 10, 20, 30, 40, 50, 60, 80, 100, 100 ].reverse()
-    const center = Math.floor( procents.length / 2 )
-
-    this.player = new Spider( center, center )
-
-    this.level = Array.from( { length:procents.length }, (_, y) =>
-      Array.from( { length:procents.length }, (_, x) =>
-        [ Math.random() > procents[ Math.abs( center - y ) + Math.abs( center - x ) ] / 100 ? null : new WebCell() ]
-      )
-    )
-    this.level.forEach( (row, y) => row.forEach( ([ webCell ], x) => {
-      if (!webCell) return
-      if (this.level[ y + 0 ]?.[ x - 1 ]?.some( cell => cell instanceof WebCell )) webCell.neighbours.left = true
-      if (this.level[ y - 1 ]?.[ x + 0 ]?.some( cell => cell instanceof WebCell )) webCell.neighbours.top = true
-      if (this.level[ y + 0 ]?.[ x + 1 ]?.some( cell => cell instanceof WebCell )) webCell.neighbours.right = true
-      if (this.level[ y + 1 ]?.[ x + 0 ]?.some( cell => cell instanceof WebCell )) webCell.neighbours.bottom = true
+    this.level = [
+      [ `b`,`b`,`b`, `b`, `b`, `b`,  ...`b`.repeat( 50 ).split( `` ),`b`,`b`,`b` ],
+      [ `b`,`a`,`a`, `a`, `a`, `a`,  ...`a`.repeat( 50 ).split( `` ),`a`,`a`,`b` ],
+      ...Array.from( { length:15 }, () => [ `b`,`w`,`a`, `a`, `a`, `a`,  ...`a`.repeat( 50 ).split( `` ),`a`,`w`,`b` ] ),
+      [ `b`,`w`,`a`, `a`, `a`, `a`,  ...`a`.repeat( 50 ).split( `` ),`a`,`w`,`b` ],
+      [ `b`,`w`,`a`, `ca`,`ca`,`a`,  ...`a`.repeat( 50 ).split( `` ),`a`,`w`,`b` ],
+      [ `b`,`w`,`ca`,`ca`,`a`, `ca`, ...`a`.repeat( 50 ).split( `` ),`a`,`w`,`b` ],
+      [ `b`,`w`,`ca`,`ca`,`ca`,`a`,  ...`a`.repeat( 50 ).split( `` ),`a`,`w`,`b` ],
+      [ `b`,`w`,`ca`,`ca`,`ca`,`ca`, ...`a`.repeat( 50 ).split( `` ),`a`,`w`,`b` ],
+      [ `b`,`w`,`ca`,`a`, `ca`,`ca`, ...`a`.repeat( 50 ).split( `` ),`a`,`w`,`b` ],
+      [ `b`,`w`,`cg`,`cg`,`g`, `g`,  ...`g`.repeat( 50 ).split( `` ),`g`,`w`,`b` ],
+      [ `b`,`w`,`g`, `g`, `g`, `g`,  ...`g`.repeat( 50 ).split( `` ),`g`,`w`,`b` ],
+      [ `b`,`b`,`b`, `b`, `b`, `b`,  ...`b`.repeat( 50 ).split( `` ),`b`,`b`,`b` ],
+    ].map( row => row.map( char => {
+      switch (char) {
+        case `w`:  return [ new Wood() ]
+        case `g`:  return [ new Grass() ]
+        case `c`:  return [ new Cobweb() ]
+        case `ca`: return [ new Air(), new Cobweb() ]
+        case `cg`: return [ new Grass(), new Cobweb() ]
+        case `s`:  return [ new Stone() ]
+        case `b`:  return [ new Barrier() ]
+        case `a`:  return [ new Air() ]
+        default:   return []
+      }
     } ) )
+
+    this.player = new Spider( 3, this.level.length - 6 )
+
+    this.level.forEach( (row, y) => row.forEach( (stack, x) => {
+      const cobweb = stack.find( obj => obj instanceof Cobweb )
+
+      if (!cobweb) return
+      if (this.level[ y + 0 ]?.[ x - 1 ]?.some( cell => cell instanceof Cobweb )) cobweb.neighbours.left = true
+      if (this.level[ y - 1 ]?.[ x + 0 ]?.some( cell => cell instanceof Cobweb )) cobweb.neighbours.top = true
+      if (this.level[ y + 0 ]?.[ x + 1 ]?.some( cell => cell instanceof Cobweb )) cobweb.neighbours.right = true
+      if (this.level[ y + 1 ]?.[ x + 0 ]?.some( cell => cell instanceof Cobweb )) cobweb.neighbours.bottom = true
+    } ) )
+
+    const size = 50
+
+
   }
   setEvents() {
     document.addEventListener( `keydown`, ({ keyCode }) => this.keys[ keyCode ] = true )
@@ -90,9 +115,13 @@ export default class Web extends React.Component {
 
     const nextPlayerCell = this.level?.[ Math.round( this.player.y + moveY ) ]?.[ Math.round( this.player.x + moveX ) ]
 
-    if (!nextPlayerCell?.some( cell => cell instanceof Wall )) {
+    if (!nextPlayerCell?.some( cell => cell instanceof Barrier )) {
       this.player.x += moveX
-      this.player.y += nextPlayerCell?.some( cell => cell instanceof WebCell ) ? moveY : this.gravitySpeed
+      this.player.y += nextPlayerCell?.some( cell =>
+        cell instanceof Cobweb ||
+        cell instanceof Grass ||
+        cell instanceof Wood
+      ) ? moveY : this.gravitySpeed
     }
 
     this.level.forEach( row => row.length > longestRow && (longestRow = row.length) )
@@ -106,49 +135,75 @@ export default class Web extends React.Component {
     ctx.clearRect( 0, 0, width, height )
 
     // Draw cells
-    this.level.forEach( (row, y) => row.forEach( ([ webCell ], x) => {
-      if (!webCell) return
-
-      const { left, top, right, bottom } = webCell.neighbours
-
+    this.level.forEach( (row, y) => row.forEach( (stack, x) => stack.forEach( obj => {
       const offsetX = offsetLeft + x * webCellSize
       const offsetY = offsetTop + y * webCellSize
 
-      ctx.beginPath()
+      if (obj instanceof Wood) {
+        ctx.fillStyle = `orange`
+        ctx.fillRect( offsetX, offsetY, webCellSize + 1, webCellSize + 1 )
+      } else if (obj instanceof Air) {
+        ctx.fillStyle = `#00d6ff`
+        ctx.fillRect( offsetX, offsetY, webCellSize + 1, webCellSize + 1 )
+      } else if (obj instanceof Grass) {
+        ctx.fillStyle = `green`
+        ctx.fillRect( offsetX, offsetY, webCellSize + 1, webCellSize + 1 )
+      } else if (obj instanceof Cobweb) {
+        const { left, top, right, bottom } = obj.neighbours
 
-      ctx.moveTo( offsetX, offsetY + webCellSize / 2 )
-      ctx.lineTo( offsetX + webCellSize, offsetY + webCellSize / 2 )
+        ctx.fillStyle = `#fff8`
+        ctx.fillRect( offsetX, offsetY, webCellSize + 1, webCellSize + 1 )
 
-      ctx.moveTo( offsetX + webCellSize / 2, offsetY )
-      ctx.lineTo( offsetX + webCellSize / 2, offsetY + webCellSize )
+        ctx.beginPath()
 
-      ctx.strokeStyle = `#555`
-      ctx.stroke()
+        ctx.moveTo( offsetX, offsetY + webCellSize / 2 )
+        ctx.lineTo( offsetX + webCellSize, offsetY + webCellSize / 2 )
 
-      ctx.beginPath()
+        ctx.moveTo( offsetX + webCellSize / 2, offsetY )
+        ctx.lineTo( offsetX + webCellSize / 2, offsetY + webCellSize )
 
-      if (!left) {
-        ctx.moveTo( offsetX, offsetY )
-        ctx.lineTo( offsetX, offsetY + webCellSize )
+        ctx.strokeStyle = `#aaa`
+        ctx.lineWidth = 2
+        ctx.stroke()
+
+        ctx.beginPath()
+
+        if (!left) {
+          ctx.moveTo( offsetX, offsetY )
+          ctx.lineTo( offsetX, offsetY + webCellSize )
+        }
+        if (!top) {
+          ctx.moveTo( offsetX, offsetY )
+          ctx.lineTo( offsetX + webCellSize, offsetY )
+        }
+        if (!right) {
+          ctx.moveTo( offsetX + webCellSize, offsetY )
+          ctx.lineTo( offsetX + webCellSize, offsetY + webCellSize )
+        }
+        if (!bottom) {
+          ctx.moveTo( offsetX, offsetY + webCellSize )
+          ctx.lineTo( offsetX + webCellSize, offsetY + webCellSize )
+        }
+        ctx.strokeStyle = `#fff`
+        ctx.lineWidth = 3
+        ctx.stroke()
+      } else if (obj instanceof Stone) {
+
       }
-      if (!top) {
-        ctx.moveTo( offsetX, offsetY )
-        ctx.lineTo( offsetX + webCellSize, offsetY )
-      }
-      if (!right) {
-        ctx.moveTo( offsetX + webCellSize, offsetY )
-        ctx.lineTo( offsetX + webCellSize, offsetY + webCellSize )
-      }
-      if (!bottom) {
-        ctx.moveTo( offsetX, offsetY + webCellSize )
-        ctx.lineTo( offsetX + webCellSize, offsetY + webCellSize )
-      }
-      ctx.strokeStyle = `#fff`
-      ctx.stroke()
-    } ) )
+
+    } ) ) )
 
     ctx.fillStyle = `red`
-    ctx.fillRect( offsetLeft + this.player.x * webCellSize, offsetTop + this.player.y * webCellSize, webCellSize, webCellSize )
+
+    const playerOffsetX = offsetLeft + this.player.x * webCellSize
+    const playerOffsetY = offsetTop + this.player.y * webCellSize
+    const webCellSizeBy3 = webCellSize / 3
+
+    ctx.fillRect( playerOffsetX, playerOffsetY, webCellSizeBy3, webCellSizeBy3 )
+    ctx.fillRect( playerOffsetX + webCellSizeBy3, playerOffsetY + webCellSizeBy3, webCellSizeBy3, webCellSizeBy3 )
+    ctx.fillRect( playerOffsetX + webCellSizeBy3 * 2, playerOffsetY + webCellSizeBy3 * 2, webCellSizeBy3, webCellSizeBy3 )
+    ctx.fillRect( playerOffsetX + webCellSizeBy3 * 2, playerOffsetY, webCellSizeBy3, webCellSizeBy3 )
+    ctx.fillRect( playerOffsetX, playerOffsetY + webCellSizeBy3 * 2, webCellSizeBy3, webCellSizeBy3 )
   }
   render = () => <canvas ref={this.handleRef} className="game-web" />
 }

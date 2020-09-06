@@ -1,4 +1,4 @@
-export default class WebCell {
+export class Cobweb {
   neighbours = {
     left: false,
     top: false,
@@ -6,3 +6,6 @@ export default class WebCell {
     bottom: false,
   }
 }
+
+export class Wood {}
+export class Grass {}
