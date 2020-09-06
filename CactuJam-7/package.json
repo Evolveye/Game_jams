@@ -2,6 +2,7 @@
   "name": "cactujam-7",
   "version": "0.1.0",
   "private": true,
+  "homepage": "http://antrio.jcom.pl/cactujam/7/",
   "dependencies": {
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.5.0",
