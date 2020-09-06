@@ -16,6 +16,7 @@ export default class Web extends React.Component {
   /** @type {CanvasRenderingContext2D} */
   ctx = null
   loopId = 0
+  timerId = 0
   keys = []
   mouse = {
     _pressUsed: 0,
@@ -42,9 +43,31 @@ export default class Web extends React.Component {
   maxCobwebWidth = 200
   entities = []
   viewfinderSize = 30
+  spawnSpeed = 1
+  gameover = false
+  HomefliesLevels = [
+    { score:10,  size:5,  speed:1, hp:1 },
+    { score:12,  size:3,  speed:2, hp:1 },
+    { score:15,  size:2,  speed:2, hp:1 },
+    { score:20,  size:10, speed:2, hp:3 },
+    { score:25,  size:13, speed:3, hp:5 },
+    { score:33,  size:15, speed:3, hp:5 },
+    { score:40,  size:15, speed:5, hp:5 },
+    { score:50,  size:28, speed:6, hp:6 },
+    { score:65,  size:22, speed:7, hp:6 },
+    { score:80,  size:25, speed:8, hp:6 },
+    { score:100, size:30, speed:9, hp:7 },
+  ]
+
+  state = {
+    score: 0,
+    time: 0,
+    killed: 0,
+  }
 
   componentDidMount() {
     window.game = this
+    this.stopLoop()
     this.handleResize()
     this.setDefaults()
     this.setEvents()
@@ -52,12 +75,14 @@ export default class Web extends React.Component {
   }
 
   startLoop() {
+    this.timerId = setInterval( () => this.setState( ({ time }) => ({ time:(time + 1) }) ), 1000 )
     this.loopId = setInterval( () => {
       this.logic()
       if (this.ctx) requestAnimationFrame( this.draw )
     }, 1000 / 60 )
   }
   stopLoop() {
+    clearInterval( this.timerId )
     clearInterval( this.loopId )
   }
 
@@ -74,6 +99,15 @@ export default class Web extends React.Component {
     this.ctx = ref.getContext( `2d` )
   }
   setDefaults() {
+    this.gameover = false
+    this.gravitySpeed = 0.1
+    this.webColor = `white`
+    this.maxCobwebWidth = 200
+    this.entities = []
+    this.viewfinderSize = 30
+    this.spawnSpeed = 1
+    this.keys = []
+
     this.level = [
       [ `b`,`b`,`b`, `b`, `b`, `b`,  ...`b`.repeat( 50 ).split( `` ),`b`,`b`,`b` ],
       [ `b`,`a`,`a`, `a`, `a`, `a`,  ...`a`.repeat( 50 ).split( `` ),`a`,`a`,`b` ],
@@ -146,6 +180,8 @@ export default class Web extends React.Component {
       entities,
       viewfinderSize,
       maxCobwebWidth,
+      HomefliesLevels,
+      state,
     } = this
 
     let longestRow = 0
@@ -172,8 +208,12 @@ export default class Web extends React.Component {
         player.canShoot = true
       }, 10 )
     }
-    if (Math.random() <= 0.02) {
-      entities.push( new Housefly( randomBetween( 3, level[ 0 ].length - 2 ), randomBetween( 2, level.length - 5 ), 5 ) )
+    if (Math.random() <= 0.003 * (100 + state.time) / 100 ) {
+      const rand = Math.floor( player.kills / 10 )
+      const index = rand < HomefliesLevels.length ? rand : HomefliesLevels.length - 1
+      const homeflyConfig = HomefliesLevels[ randomBetween( index - 4 >= 0 ? index - 4 : 0, index ) ]
+
+      entities.push( new Housefly( randomBetween( 4, level[ 0 ].length - 3 ), randomBetween( 3, level.length - 6 ), homeflyConfig ) )
     }
 
     const nextPlayerCell = this.levelCell( player.x + moveX, player.y + moveY )
@@ -187,17 +227,23 @@ export default class Web extends React.Component {
       ) ? moveY : this.gravitySpeed
     }
     this.entities = entities.filter( (entity) => {
+      const entityNearPlayer = pythagoras( player.x + 0.5, player.y + 0.5, entity.x, entity.y ) < entity.size / webCellSize
       if (entity.hp > 0) {
-        let moveX = (Math.random() - 0.5) / 4
-        let moveY = (Math.random() - 0.5) / 4
+        if (entityNearPlayer) {
+          this.gameover = true
+        } else {
+          let moveX = (Math.random() - 0.5) / 4 * entity.speedMultiplier
+          let moveY = (Math.random() - 0.5) / 4 * entity.speedMultiplier
 
-        if (!this.levelCell( entity.x + moveX, entity.y + moveY )?.some( cell => cell instanceof Barrier )) {
-          entity.x += moveX
-          entity.y += moveY
+          if (!this.levelCell( entity.x + moveX, entity.y + moveY )?.some( cell => cell instanceof Barrier )) {
+            entity.x += moveX
+            entity.y += moveY
+          }
         }
       } else {
-        if (pythagoras( player.x + 0.5, player.y + 0.5, entity.x, entity.y ) < 1) {
-          player.score += 10
+        if (entityNearPlayer) {
+          player.kills += 1
+          this.setState( ({ score, killed }) => ({ score:(score + entity.score), killed:(killed + 1) }) )
           return false
         } else {
           const predicate = cell =>
@@ -214,6 +260,11 @@ export default class Web extends React.Component {
       return true
     } )
     level.forEach( row => row.length > longestRow && (longestRow = row.length) )
+
+    if (this.gameover) {
+      alert( `koniec gry` )
+      return this.componentDidMount()
+    }
 
     this.offsetLeft = width / 2 - longestRow * webCellSize / 2
     this.offsetTop = height / 2 - level.length * webCellSize / 2
@@ -336,5 +387,26 @@ export default class Web extends React.Component {
     ctx.fillRect( playerOffsetX + webCellSizeBy3 * 2, playerOffsetY, webCellSizeBy3, webCellSizeBy3 )
     ctx.fillRect( playerOffsetX, playerOffsetY + webCellSizeBy3 * 2, webCellSizeBy3, webCellSizeBy3 )
   }
-  render = () => <canvas ref={this.handleRef} className="game-web" />
+  render = () => <>
+    <article className="stats">
+      <span className="stats-item">Punkty: {this.state.score}</span>
+      <span className="stats-item">Czas gry: {this.state.time}</span>
+      <span className="stats-item">Zabite owady: {this.state.killed}</span>
+    </article>
+    <article className="description">
+      <p>Twój pająk, to ten czerwony krzyżyk.</p>
+      <p>Poruszaj się strzałkami, a w owady strzelaj pajaczą nicią za pomocą myszki.</p>
+      <p>Jeśli zajedzie spotkanie pająka z żywym owadem, to przegrywasz.</p>
+      <p>
+        Wraz z wzrostem liczby zabójstw zaczna pojawiać się kolejne rodzaje owadów. Będą miały różne rozmiary, różne prędkości, i różną ilość życia
+      </p>
+      <p>Osiagnij najwyższy poprzez zdobycie wyoskiej punktów i niskiej liczby zabójstw w jak najkrótszym czasie</p>
+      <p>
+        Zielony to trawa, po której mozesz chodzić;<br />
+        pomarańcz to drewno, po którym możesz się wspinać;<br />
+        cyjan to niebo, po którym możesz swobodnie spadać.
+      </p>
+    </article>
+    <canvas ref={this.handleRef} className="game-web" />
+  </>
 }

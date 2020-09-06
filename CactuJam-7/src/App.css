@@ -2,9 +2,25 @@ body {
   margin: 0;
   background-color: black;
   overflow: hidden;
+  color: white;
 }
 
 .game-web {
   width: 100vw;
   height: 100vh;
+}
+
+.stats {
+  position: absolute;
+  width: 100vw;
+  text-align: center;
+}
+  .stats-item {
+    margin: 0 20px;
+  }
+
+.description {
+  position: absolute;
+  width: 200px;
+  right: 0;
 }
