@@ -46,17 +46,21 @@ export default class Web extends React.Component {
   spawnSpeed = 1
   gameover = false
   HomefliesLevels = [
-    { score:10,  size:5,  speed:1, hp:1 },
-    { score:12,  size:3,  speed:2, hp:1 },
-    { score:15,  size:2,  speed:2, hp:1 },
-    { score:20,  size:10, speed:2, hp:3 },
-    { score:25,  size:13, speed:3, hp:5 },
-    { score:33,  size:15, speed:3, hp:5 },
-    { score:40,  size:15, speed:5, hp:5 },
-    { score:50,  size:28, speed:6, hp:6 },
-    { score:65,  size:22, speed:7, hp:6 },
-    { score:80,  size:25, speed:8, hp:6 },
-    { score:100, size:30, speed:9, hp:7 },
+    { score:10,  size:5,  speed:1,  hp:1 },
+    { score:12,  size:3,  speed:2,  hp:1 },
+    { score:15,  size:2,  speed:2,  hp:1 },
+    { score:20,  size:10, speed:2,  hp:3 },
+    { score:25,  size:13, speed:3,  hp:5 },
+    { score:33,  size:15, speed:3,  hp:5 },
+    { score:40,  size:15, speed:5,  hp:5 },
+    { score:50,  size:28, speed:6,  hp:6 },
+    { score:65,  size:22, speed:7,  hp:6 },
+    { score:80,  size:25, speed:8,  hp:6 },
+    { score:100, size:30, speed:9,  hp:7 },
+    { score:115, size:35, speed:12, hp:7 },
+    { score:140, size:39, speed:12, hp:8 },
+    { score:160, size:41, speed:13, hp:8 },
+    { score:160, size:41, speed:13, hp:8 },
   ]
 
   state = {
@@ -66,11 +70,14 @@ export default class Web extends React.Component {
   }
 
   componentDidMount() {
-    window.game = this
-    this.stopLoop()
+    // window.game = this
     this.handleResize()
-    this.setDefaults()
     this.setEvents()
+    this.init()
+  }
+  init() {
+    this.stopLoop()
+    this.setDefaults()
     this.startLoop()
   }
 
@@ -92,6 +99,14 @@ export default class Web extends React.Component {
 
     this.canvas.width = this.width
     this.canvas.height = this.height
+
+    if (this.width < 1550) {
+      this.webCellSize = 10
+    } else if (this.width < 1550) {
+      this.webCellSize = 14
+    } else {
+      this.webCellSize = 19
+    }
   }
   /** @param {HTMLCanvasElement} ref */
   handleRef = ref => {
@@ -159,6 +174,7 @@ export default class Web extends React.Component {
       this.mouse.x = clientX
       this.mouse.y = clientY
     } )
+    window.addEventListener( `resize`, this.handleResize )
   }
 
   levelCell( x, y ) {
@@ -263,7 +279,7 @@ export default class Web extends React.Component {
 
     if (this.gameover) {
       alert( `koniec gry` )
-      return this.componentDidMount()
+      return this.init()
     }
 
     this.offsetLeft = width / 2 - longestRow * webCellSize / 2
@@ -391,21 +407,26 @@ export default class Web extends React.Component {
     <article className="stats">
       <span className="stats-item">Punkty: {this.state.score}</span>
       <span className="stats-item">Czas gry: {this.state.time}</span>
-      <span className="stats-item">Zabite owady: {this.state.killed}</span>
+      <span className="stats-item">Zjedzone owady: {this.state.killed}</span>
+      <span className="stats-item">
+        Wynik: {Math.floor( this.state.score ** 2 / (this.state.killed || 1) / (1 + (this.state.time || 1) / 100) )}
+      </span>
     </article>
     <article className="description">
       <p>Twój pająk, to ten czerwony krzyżyk.</p>
       <p>Poruszaj się strzałkami, a w owady strzelaj pajaczą nicią za pomocą myszki.</p>
       <p>Jeśli zajedzie spotkanie pająka z żywym owadem, to przegrywasz.</p>
       <p>
-        Wraz z wzrostem liczby zabójstw zaczna pojawiać się kolejne rodzaje owadów. Będą miały różne rozmiary, różne prędkości, i różną ilość życia
+        Wraz z wzrostem liczby zabójstw zaczna pojawiać się kolejne rodzaje owadów.
+        Będą miały różne rozmiary, różne prędkości, i różną ilość życia
       </p>
-      <p>Osiagnij najwyższy poprzez zdobycie wyoskiej punktów i niskiej liczby zabójstw w jak najkrótszym czasie</p>
+      <p>Osiagnij najwyższy wynik poprzez zdobycie wyoskiej punktów i niskiej liczby zabójstw w jak najkrótszym czasie</p>
       <p>
         Zielony to trawa, po której mozesz chodzić;<br />
         pomarańcz to drewno, po którym możesz się wspinać;<br />
         cyjan to niebo, po którym możesz swobodnie spadać.
       </p>
+      <p>Czy osiagniesz chociaż wynik większy niż 10 tysięcy?</p>
     </article>
     <canvas ref={this.handleRef} className="game-web" />
   </>
