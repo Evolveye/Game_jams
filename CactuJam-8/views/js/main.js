@@ -39,10 +39,13 @@ class Game {
   sceneDimensions = null
   /** @type {Cell[] */
   inventory = []
+  /** @type {Object<string,Image} */
+  sprites = {}
 
   constructor( gameRootSelector ) {
     this.setUi( gameRootSelector )
     this.start()
+    this.addSprite( `sand`, `./img/sand.png` )
 
     window.addEventListener( `resize`, this.handleResize )
     this.ui.root.addEventListener( `click`, this.handleClick )
@@ -237,9 +240,9 @@ class Game {
       item.dataset.count -= -1
     } else {
       const item = document.createElement( `div` )
-      const img = new Image()
+      const img = new Image( 50, 50 )
 
-      img.src = `./img/cactus.png`
+      img.src = `./img/${cell.type}.png`
 
       item.className = `game-inventory-item`
       item.dataset.count = 1
@@ -266,6 +269,13 @@ class Game {
   clearInventory() {
     this.ui.inventory.innerHTML = ``
     this.inventory = []
+  }
+  addSprite( name, src ) {
+    const sprite = new Image()
+
+    sprite.src = src
+
+    this.sprites[ name ] = sprite
   }
 
 
