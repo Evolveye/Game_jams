@@ -5,3 +5,7 @@ export default class Cell {
     this.falling = falling
   }
 }
+
+export class SandCell extends Cell {
+  type = `sand`
+}

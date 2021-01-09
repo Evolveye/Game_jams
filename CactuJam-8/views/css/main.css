@@ -3,6 +3,9 @@ body {
   background-color: #171718;
   overflow: hidden;
 }
+.game {
+  user-select: none;
+}
 .game-canvas-background,
 .game-canvas-entieis {
   position: absolute;
@@ -10,4 +13,30 @@ body {
 .game-entity {
   position: absolute;
   image-rendering: pixelated;;
+}
+.game-inventory {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-height: 100vh;
+  max-width: 250px;
+  display: flex;
+  flex-wrap: wrap;
+}
+.game-inventory-item {
+  position: relative;
+  margin: 3px;
+  background-color: #0005;
+  background-color: white;
+}
+.game-inventory-item::after {
+  position: absolute;
+  left: calc( 100%  - 13px );
+  top: calc( 100%  - 18px );
+  content: attr( data-count );
+  padding: 1px 3px;
+  background-color: black;
+  color: white;
+  border: 1px solid white;
+  border-radius: 10px;
 }

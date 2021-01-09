@@ -1,4 +1,4 @@
-import Cell from "./cell.js"
+import Cell, { SandCell } from "./cell.js"
 
 /**
  * @typedef {object} sceneDimensions
@@ -14,6 +14,8 @@ class Game {
     root: null,
     /** @type {HTMLElement} */
     entities: null,
+    /** @type {HTMLElement} */
+    inventory: null,
     /** @type {HTMLCanvasElement} */
     canvasBackground: null,
     /** @type {HTMLCanvasElement} */
@@ -32,18 +34,23 @@ class Game {
   cellSpadding = 0
   sceneWidth = 100
   sceneHeight = 50
+  sandLimit = 5
   /** @type {sceneDimensions */
   sceneDimensions = null
+  /** @type {Cell[] */
+  inventory = []
 
   constructor( gameRootSelector ) {
     this.setUi( gameRootSelector )
     this.start()
 
-    window.addEventListener( `resize`, this.resize )
+    window.addEventListener( `resize`, this.handleResize )
+    this.ui.root.addEventListener( `click`, this.handleClick )
   }
 
   start = () => {
     this.initScene()
+    this.clearInventory()
 
     this.mainInterval = setInterval( () => {
       this.doFalling()
@@ -59,11 +66,11 @@ class Game {
 
         setTimeout( this.start, 1000 * 5 )
       }
-    }, 1 )
+    }, 100 )
 
     this.stageInterval = setInterval( () => {
       this.clearArea( this.cactusEatingArea )
-    }, 100 )
+    }, 1000 )
   }
   stop() {
     clearInterval( this.mainInterval )
@@ -77,20 +84,12 @@ class Game {
     this.ui.entities = root.querySelector( `.game-entities` )
     this.ui.canvasBackground = root.querySelector( `.game-canvas-background` )
     this.ui.canvasSprites = root.querySelector( `.game-canvas-sprites` )
+    this.ui.inventory = root.querySelector( `.game-inventory` )
 
     this.ctxBackground = this.ui.canvasBackground.getContext( `2d` )
     this.ctxSprites = this.ui.canvasSprites.getContext( `2d` )
 
-    this.resize()
-  }
-  resize = () => {
-    this.ui.canvasBackground.width = window.innerWidth
-    this.ui.canvasBackground.height = window.innerHeight
-
-    this.ui.canvasSprites.width = window.innerWidth
-    this.ui.canvasSprites.height = window.innerHeight
-
-    if (this.ctxBackground) this.sceneDimensions = this.getSceneDimensions()
+    this.handleResize()
   }
   initScene() {
     this.scene = Array.from(
@@ -99,7 +98,7 @@ class Game {
     )
 
     const len = this.scene.length
-    this.scene[ len - 1 ] = this.scene[ len - 1 ].map( (_, x) => new Cell( x, len - 1 ) )
+    this.scene[ len - 1 ] = this.scene[ len - 1 ].map( (_, x) => new SandCell( x, len - 1 ) )
 
     this.cactusEatingArea = []
 
@@ -159,7 +158,7 @@ class Game {
     }
   }
   spawnSand( x, y ) {
-    if (this.getSceneCell( x, y ) !== undefined) this.scene[ y ][ x ] = new Cell( x, y, true )
+    if (this.getSceneCell( x, y ) !== undefined) this.scene[ y ][ x ] = new SandCell( x, y, true )
   }
 
 
@@ -229,6 +228,75 @@ class Game {
   }
   clearArea( coords ) {
     coords.forEach( ({ x, y }) => this.scene[ y ][ x ] = null )
+  }
+  addToInventory( cell ) {
+    const items = Array.from( this.ui.inventory.querySelectorAll( `.game-inventory-item` ) )
+    const item = items.find( ({ dataset }) => dataset.type === cell.type )
+
+    if (item) {
+      item.dataset.count -= -1
+    } else {
+      const item = document.createElement( `div` )
+      const img = new Image()
+
+      img.src = `./img/cactus.png`
+
+      item.className = `game-inventory-item`
+      item.dataset.count = 1
+      item.dataset.type = cell.type
+      item.appendChild( img )
+
+      this.ui.inventory.appendChild( item )
+    }
+
+    this.inventory.push( cell )
+  }
+  removeFromInventory( type ) {
+    const item = this.ui.inventory.querySelector( `[data-type="${type}"]` )
+    const index = this.inventory.findIndex( cell => cell.type === type )
+
+    if (index === -1) return false
+
+    this.inventory.splice( index, 1 )
+
+    item.dataset.count -= 1
+
+    return true
+  }
+  clearInventory() {
+    this.ui.inventory.innerHTML = ``
+    this.inventory = []
+  }
+
+
+  //
+
+
+  handleResize = () => {
+    this.ui.canvasBackground.width = window.innerWidth
+    this.ui.canvasBackground.height = window.innerHeight
+
+    this.ui.canvasSprites.width = window.innerWidth
+    this.ui.canvasSprites.height = window.innerHeight
+
+    if (this.ctxBackground) this.sceneDimensions = this.getSceneDimensions()
+  }
+  handleClick = ({ layerX, layerY }) => {
+    const { sceneDimensions, cellSize, inventory, sandLimit } = this
+    const x = layerX - sceneDimensions.sceneX
+    const y = layerY - sceneDimensions.sceneY
+    const cellX = Math.floor( x / cellSize )
+    const cellY = Math.floor( y / cellSize )
+    const cell = this.getSceneCell( cellX, cellY )
+
+    if (!cell) {
+      if (this.removeFromInventory( `sand` )) {
+        this.spawnSand( cellX, cellY )
+      }
+    } else if (cell.type === `sand` && inventory.filter( ({ type }) => type === `sand` ).length < sandLimit) {
+      this.clearArea( [ { x:cellX, y:cellY } ] )
+      this.addToInventory( cell )
+    }
   }
 }
 
