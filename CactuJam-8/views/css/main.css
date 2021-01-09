@@ -1,0 +1,13 @@
+body {
+  margin: 0;
+  background-color: #171718;
+  overflow: hidden;
+}
+.game-canvas-background,
+.game-canvas-entieis {
+  position: absolute;
+}
+.game-entity {
+  position: absolute;
+  image-rendering: pixelated;;
+}

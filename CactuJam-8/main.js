@@ -13,5 +13,5 @@ function main() {
     }
   } )
 
-  win.loadFile( `./index.html` )
+  win.loadFile( `./views/index.html` )
 }
