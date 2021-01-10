@@ -25,6 +25,8 @@ class Game {
     /** @type {HTMLElement} */
     capacity: null,
     /** @type {HTMLElement} */
+    eatedItems: null,
+    /** @type {HTMLElement} */
     highlight: null,
     /** @type {HTMLElement} */
     highlighter: null,
@@ -46,7 +48,8 @@ class Game {
     mainIntervalTimestamp: 10,
     stageIntervalTimestamp: 4000,
     stageClockPositions: 12,
-    newPointPerTransportedItems: 10,
+    newPointPerTransportedItems: Infinity,
+    newPointPerEatedItems: 10,
 
     highlightScreens: {
       capacity: `
@@ -72,6 +75,7 @@ class Game {
   inventory = []
 
   transportedItemsCount = 0
+  eatedItems = 0
   capacity = this.config.initialCapacity
   isPaused = false
 
@@ -86,7 +90,15 @@ class Game {
   }
 
   start = () => {
-    const { mainIntervalTimestamp, stageIntervalTimestamp, stageClockPositions } = this.config
+    const {
+      mainIntervalTimestamp,
+      stageIntervalTimestamp,
+      stageClockPositions,
+      newPointPerEatedItems,
+      initialCapacity,
+      highlightScreens,
+    } = this.config
+
     this.initScene()
     this.clearInventory()
     this.updateHud( { reset:true } )
@@ -120,7 +132,15 @@ class Game {
       this.updateHud( { clockPosition } )
 
       if (clockPosition === stageClockPositions) {
+        this.cactusEatingArea.forEach( ({ x, y }) => this.getSceneCell( x, y ) && ++this.eatedItems )
+        this.updateHud( { eatedItems:this.eatedItems } )
         this.clearArea( this.cactusEatingArea )
+
+        if ((this.eatedItems / (this.capacity - initialCapacity + 1)) >= newPointPerEatedItems) {
+          this.showScreen( highlightScreens.capacity, () =>
+            this.updateHud( { capacity:++this.capacity } )
+          )
+        }
 
         clockPosition = 0
       }
@@ -148,8 +168,9 @@ class Game {
     this.ui.hud = root.querySelector( `.game-hud` )
     this.ui.stageClock = root.querySelector( `.game-hud-stage_clock` )
     this.ui.stageClockHand = root.querySelector( `.game-hud-stage_clock-hand` )
-    this.ui.transportedItems = root.querySelector( `.game-hud-transportedItems` )
+    this.ui.transportedItems = root.querySelector( `.game-hud-transported_items` )
     this.ui.capacity = root.querySelector( `.game-hud-capacity` )
+    this.ui.eatedItems = root.querySelector( `.game-hud-eated_items` )
     this.ui.highlight = root.querySelector( `.game-highlight` )
     this.ui.highlighter = root.querySelector( `.game-highlight-highlighter` )
     this.ui.highlightContent = root.querySelector( `.game-highlight-content` )
@@ -361,7 +382,7 @@ class Game {
 
     this.sprites[ name ] = sprite
   }
-  updateHud( { reset, clockPosition, transportedItemsCount, capacity } ) {
+  updateHud( { reset, clockPosition, transportedItemsCount, capacity, eatedItems } ) {
     const { stageClockPositions, initialCapacity } = this.config
 
     if (clockPosition) {
@@ -380,6 +401,12 @@ class Game {
       this.ui.capacity.dataset.count = capacity
     } else if (reset) {
       this.ui.capacity.dataset.count = initialCapacity
+    }
+
+    if (eatedItems) {
+      this.ui.eatedItems.dataset.count = eatedItems
+    } else if (reset) {
+      this.ui.eatedItems.dataset.count = 0
     }
   }
   /**
@@ -430,6 +457,23 @@ class Game {
 
     highlight.style.display = `block`
   }
+  showScreen( htmlContent, buttonsOrOkCb=null ) {
+    const defaultButtons = [
+      {
+        content: `Ok`,
+        onclick: closeFn => {
+          closeFn()
+
+          if (typeof buttonsOrOkCb === `function`) buttonsOrOkCb()
+
+          this.resume()
+        }
+      }
+    ]
+
+    this.pause()
+    this.setHighLightScreen( null, htmlContent, buttonsOrOkCb?.length ? buttonsOrOkCb : defaultButtons  )
+  }
 
 
   //
@@ -466,20 +510,9 @@ class Game {
         this.updateHud( { transportedItemsCount:this.transportedItemsCount } )
 
         if (this.transportedItemsCount % newPointPerTransportedItems === 0) {
-          this.pause()
-          this.setHighLightScreen( null, highlightScreens.capacity, [
-            {
-              content: `Ok`,
-              onclick: closeFn => {
-                closeFn()
-
-                ++this.capacity
-
-                this.updateHud( { capacity:this.capacity } )
-                this.resume()
-              }
-            }
-          ] )
+          this.showScreen( highlightScreens.capacity, () =>
+            this.updateHud( { capacity:++this.capacity } )
+          )
         }
       }
     } else if (cell.type === `sand` && inventory.filter( ({ type }) => type === `sand` ).length < capacity) {
