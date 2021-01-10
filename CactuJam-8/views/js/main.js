@@ -24,6 +24,12 @@ class Game {
     transportedItems: null,
     /** @type {HTMLElement} */
     capacity: null,
+    /** @type {HTMLElement} */
+    highlight: null,
+    /** @type {HTMLElement} */
+    highlighter: null,
+    /** @type {HTMLElement} */
+    highlightContent: null,
     /** @type {HTMLCanvasElement} */
     canvasBackground: null,
     /** @type {HTMLCanvasElement} */
@@ -37,9 +43,10 @@ class Game {
     initialCapacity: 5,
     initialSceneRandomSand: 100,
     initialScenePyramidSandCount: 50,
-    mainIntervalTimestamp: 100,
+    mainIntervalTimestamp: 10,
     stageIntervalTimestamp: 4000,
     stageClockPositions: 12,
+    newPointPerTransportedItems: 10,
   }
 
   /** @type {Cell[][]} */
@@ -59,6 +66,7 @@ class Game {
 
   transportedItemsCount = 0
   capacity = this.config.initialCapacity
+  isPaused = false
 
   constructor( gameRootSelector ) {
     this.setUi( gameRootSelector )
@@ -79,8 +87,10 @@ class Game {
     this.capacity = this.config.initialCapacity
 
     this.mainInterval = setInterval( () => {
+      if (this.isPaused) return
+
       this.doFalling()
-      // this.spawnSand( Math.floor( Math.random() * this.scene[ 0 ].length ), 0 )
+      this.spawnSand( Math.floor( Math.random() * this.scene[ 0 ].length ), 0 )
       // this.spawnSand( 13, 0 )
       requestAnimationFrame( this.draw )
 
@@ -96,6 +106,8 @@ class Game {
 
     let clockPosition = 0
     this.stageInterval = setInterval( () => {
+      if (this.isPaused) return
+
       ++clockPosition
 
       this.updateHud( { clockPosition } )
@@ -111,6 +123,12 @@ class Game {
     clearInterval( this.mainInterval )
     clearInterval( this.stageInterval )
   }
+  pause() {
+    this.isPaused = true
+  }
+  resume = () => {
+    this.isPaused = false
+  }
   setUi( gameRootSelector ) {
     this.ui.root = document.querySelector( gameRootSelector )
 
@@ -125,6 +143,11 @@ class Game {
     this.ui.stageClockHand = root.querySelector( `.game-hud-stage_clock-hand` )
     this.ui.transportedItems = root.querySelector( `.game-hud-transportedItems` )
     this.ui.capacity = root.querySelector( `.game-hud-capacity` )
+    this.ui.highlight = root.querySelector( `.game-highlight` )
+    this.ui.highlighter = root.querySelector( `.game-highlight-highlighter` )
+    this.ui.highlightContent = root.querySelector( `.game-highlight-content` )
+
+    this.ui.highlight.style.display = `none`
 
     this.ctxBackground = this.ui.canvasBackground.getContext( `2d` )
     this.ctxSprites = this.ui.canvasSprites.getContext( `2d` )
@@ -352,6 +375,54 @@ class Game {
       this.ui.capacity.dataset.count = initialCapacity
     }
   }
+  /**
+   * @param {{ x:number y:number width:number height:number }} highlightArea
+   * @param {string} htmlContent
+   * @param {{ content:string onclick:(closeFn) => void }[]} buttonsData
+   */
+  setHighLightScreen( highlightArea, htmlContent, buttonsData ) {
+    const { highlight, highlighter, highlightContent:content } = this.ui
+    const { sceneHeight } = this.sceneDimensions
+    const contentHeight = getComputedStyle( content ).height
+    const { x, y, width, height } = highlightArea || { x:0, y:0, width:0, height:0 }
+
+    highlighter.style.left = `calc( -100vw + ${y}px )`
+    highlighter.style.top = `calc( -100vw + ${x}px )`
+    highlighter.style.width = `${width}px`
+    highlighter.style.height = `${height}px`
+
+    content.innerHTML = htmlContent
+
+    if (buttonsData.length) {
+      const buttons = document.createElement( `div` )
+
+      buttons.className = `game-highlight-content-buttons`
+
+      for (const { content, onclick} of buttonsData) {
+        const btn = document.createElement( `button` )
+
+        btn.textContent = content
+        btn.className = `game-highlight-content-button`
+        btn.onclick = () => onclick( () => highlight.style.display = `none` )
+
+        buttons.appendChild( btn )
+      }
+
+      content.appendChild( buttons )
+    }
+
+    if (highlightArea) {
+      content.style.left = `50%`
+      content.style.top = y > sceneHeight / 2 ? y - contentHeight - 20 : y + 20
+      content.style.transform = `translateX( -50% )`
+    } else {
+      content.style.left = `50%`
+      content.style.top = `50%`
+      content.style.transform = `translate( -50%, -50% )`
+    }
+
+    highlight.style.display = `block`
+  }
 
 
   //
@@ -370,7 +441,7 @@ class Game {
   }
   handleClick = ({ layerX, layerY }) => {
     const { sceneDimensions, inventory, capacity } = this
-    const { cellSize } = this.config
+    const { cellSize, newPointPerTransportedItems } = this.config
 
     const x = layerX - sceneDimensions.sceneX
     const y = layerY - sceneDimensions.sceneY
@@ -386,6 +457,19 @@ class Game {
 
         this.spawnSand( cellX, cellY )
         this.updateHud( { transportedItemsCount:this.transportedItemsCount } )
+
+        if (this.transportedItemsCount % newPointPerTransportedItems === 0) {
+          this.pause()
+          this.setHighLightScreen( null, `Test <b>test</b>`, [
+            {
+              content: `abc`,
+              onclick: closeFn => {
+                closeFn()
+                this.resume()
+              }
+            }
+          ] )
+        }
       }
     } else if (cell.type === `sand` && inventory.filter( ({ type }) => type === `sand` ).length < capacity) {
       this.clearArea( [ { x:cellX, y:cellY } ] )
