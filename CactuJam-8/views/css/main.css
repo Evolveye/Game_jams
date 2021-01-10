@@ -5,6 +5,9 @@ body {
 }
 .game {
   user-select: none;
+  font-family: 'Courier New', Courier, monospace;
+
+  --hud-height: 30px;
 }
 .game-canvas-background,
 .game-canvas-entieis {
@@ -17,7 +20,7 @@ body {
 .game-inventory {
   position: absolute;
   left: 0;
-  top: 0;
+  top: var( --hud-height );
   max-height: 100vh;
   max-width: 250px;
   display: flex;
@@ -44,12 +47,19 @@ body {
   border-radius: 10px;
 }
 .game-hud {
-  position: absolute;
-  right: 0;
-  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  position: relative;
+  width: 100vw;
+  height: var( --hud-height );
+  background-color: black;
+  color: white;
 }
 .game-hud-stage_clock {
-  position: relative;
+  position: absolute;
+  right: 0;
+  top: 100%;
   width: 50px;
   height: 50px;
   background-color: white;
@@ -78,4 +88,8 @@ body {
   width: 5px;
   height: 5px;
   background-color: green;
+}
+.game-hud-capacity::after,
+.game-hud-transportedItems::after {
+  content: " " attr( data-count );
 }

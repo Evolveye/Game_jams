@@ -20,6 +20,10 @@ class Game {
     hud: null,
     /** @type {HTMLElement} */
     stageClockHand: null,
+    /** @type {HTMLElement} */
+    transportedItems: null,
+    /** @type {HTMLElement} */
+    capacity: null,
     /** @type {HTMLCanvasElement} */
     canvasBackground: null,
     /** @type {HTMLCanvasElement} */
@@ -30,10 +34,12 @@ class Game {
     cellsPadding: 0,
     sceneWidth: 100,
     sceneHeight: 50,
-    sandLimit: 5,
+    initialCapacity: 5,
+    initialSceneRandomSand: 100,
+    initialScenePyramidSandCount: 50,
     mainIntervalTimestamp: 100,
     stageIntervalTimestamp: 4000,
-    stageClockPositions: 4,
+    stageClockPositions: 12,
   }
 
   /** @type {Cell[][]} */
@@ -46,10 +52,13 @@ class Game {
 
   /** @type {sceneDimensions */
   sceneDimensions = null
-  /** @type {Cell[] */
-  inventory = []
   /** @type {Object<string,Image} */
   sprites = {}
+  /** @type {Cell[] */
+  inventory = []
+
+  transportedItemsCount = 0
+  capacity = this.config.initialCapacity
 
   constructor( gameRootSelector ) {
     this.setUi( gameRootSelector )
@@ -67,9 +76,11 @@ class Game {
     this.clearInventory()
     this.updateHud( { reset:true } )
 
+    this.capacity = this.config.initialCapacity
+
     this.mainInterval = setInterval( () => {
       this.doFalling()
-      this.spawnSand( Math.floor( Math.random() * this.scene[ 0 ].length ), 0 )
+      // this.spawnSand( Math.floor( Math.random() * this.scene[ 0 ].length ), 0 )
       // this.spawnSand( 13, 0 )
       requestAnimationFrame( this.draw )
 
@@ -112,6 +123,8 @@ class Game {
     this.ui.hud = root.querySelector( `.game-hud` )
     this.ui.stageClock = root.querySelector( `.game-hud-stage_clock` )
     this.ui.stageClockHand = root.querySelector( `.game-hud-stage_clock-hand` )
+    this.ui.transportedItems = root.querySelector( `.game-hud-transportedItems` )
+    this.ui.capacity = root.querySelector( `.game-hud-capacity` )
 
     this.ctxBackground = this.ui.canvasBackground.getContext( `2d` )
     this.ctxSprites = this.ui.canvasSprites.getContext( `2d` )
@@ -119,7 +132,7 @@ class Game {
     this.handleResize()
   }
   initScene() {
-    const { sceneWidth, sceneHeight } = this.config
+    const { sceneWidth, sceneHeight, initialSceneRandomSand, initialScenePyramidSandCount } = this.config
 
     this.scene = Array.from(
       { length:sceneHeight },
@@ -135,15 +148,28 @@ class Game {
       this.cactusEatingArea.push( { x:(start + i), y:(this.scene.length - 2) } )
     }
 
+    for (let i = 0; i < initialSceneRandomSand; ++i) {
+      this.spawnSand( Math.floor( Math.random() * this.scene[ 0 ].length ), 0 )
+      this.doFalling()
+    }
+
+    for (let i = 0; i < initialScenePyramidSandCount; ++i) {
+      this.spawnSand( 10, 0 )
+      this.doFalling()
+    }
+
+    for (let i = 0;  i < sceneHeight;  ++i) this.doFalling()
+
     this.sceneDimensions = this.getSceneDimensions( this.cellSpadding )
     const dim = this.sceneDimensions
+    const hudHeight = Number( getComputedStyle( this.ui.hud ).height.split( `px` )[ 0 ] )
 
     this.ui.entities.innerHTML = ``
 
     this.addEntity(
       `cactus`,
       dim.sceneX + dim.sceneWidth / 2 - 50,
-      dim.sceneY + dim.sceneHeight - 100,
+      dim.sceneY + dim.sceneHeight - 100 + hudHeight,
       100
     )
   }
@@ -305,12 +331,25 @@ class Game {
 
     this.sprites[ name ] = sprite
   }
-  updateHud( { reset, clockPosition } ) {
-    const { stageClockHand } = this.ui
-    const { stageClockPositions } = this.config
+  updateHud( { reset, clockPosition, transportedItemsCount, capacity } ) {
+    const { stageClockPositions, initialCapacity } = this.config
 
     if (clockPosition) {
-      stageClockHand.style.transform = `rotate( ${clockPosition * 360 / stageClockPositions}deg )`
+      this.ui.stageClockHand.style.transform = `rotate( ${clockPosition * 360 / stageClockPositions}deg )`
+    } else if (reset) {
+      this.ui.stageClockHand.style.transform = `rotate( 0deg )`
+    }
+
+    if (transportedItemsCount) {
+      this.ui.transportedItems.dataset.count = transportedItemsCount
+    } else if (reset) {
+      this.ui.transportedItems.dataset.count = 0
+    }
+
+    if (capacity) {
+      this.ui.capacity.dataset.count = capacity
+    } else if (reset) {
+      this.ui.capacity.dataset.count = initialCapacity
     }
   }
 
@@ -319,17 +358,19 @@ class Game {
 
 
   handleResize = () => {
+    const hudHeight = Number( getComputedStyle( this.ui.hud ).height.split( `px` )[ 0 ] )
+
     this.ui.canvasBackground.width = window.innerWidth
-    this.ui.canvasBackground.height = window.innerHeight
+    this.ui.canvasBackground.height = window.innerHeight - hudHeight
 
     this.ui.canvasSprites.width = window.innerWidth
-    this.ui.canvasSprites.height = window.innerHeight
+    this.ui.canvasSprites.height = window.innerHeight - hudHeight
 
     if (this.ctxBackground) this.sceneDimensions = this.getSceneDimensions()
   }
   handleClick = ({ layerX, layerY }) => {
-    const { sceneDimensions, inventory } = this
-    const { cellSize, sandLimit } = this.config
+    const { sceneDimensions, inventory, capacity } = this
+    const { cellSize } = this.config
 
     const x = layerX - sceneDimensions.sceneX
     const y = layerY - sceneDimensions.sceneY
@@ -341,9 +382,12 @@ class Game {
 
     if (!cell) {
       if (this.removeFromInventory( `sand` )) {
+        this.transportedItemsCount++
+
         this.spawnSand( cellX, cellY )
+        this.updateHud( { transportedItemsCount:this.transportedItemsCount } )
       }
-    } else if (cell.type === `sand` && inventory.filter( ({ type }) => type === `sand` ).length < sandLimit) {
+    } else if (cell.type === `sand` && inventory.filter( ({ type }) => type === `sand` ).length < capacity) {
       this.clearArea( [ { x:cellX, y:cellY } ] )
       this.addToInventory( cell )
     }
