@@ -86,6 +86,32 @@ class Game {
           Chmura piaskowa. Byt przywiewajacy powodujący zamiecie piaskowe.
           Kaktus jest w stanie przywoływać te nieprzyjemne chmury w momencie gdy nic nie zje.
         </p>
+        <p>To co, może tym razem obsypiesz kaktusa pokarmem w ramach rekompensaty?</p>
+      `,
+      overfedCactus: `
+        <h1>Przekarmiony</h1>
+        <p>
+          Nie sądziłem, że Ci się to uda, ale przekarmiłeś kaktusa.
+          Dosłownie zasypałeś go piachem. Dumny z siebie jesteś?
+        </p>
+      `,
+      introToStageThree: `
+        <h1>Przekarmiony</h1>
+        <p><strong style="color:red;">ETAP 2 ZAKOŃCZONY</strong></p>
+        <p>
+          Gniew kaktusa spowodowała wyrwę w czasze planety.
+          Teraz chmury piaskowe będą nadciągać tutan non stop,
+          a kaktus nie przeżyje już kolejnego ataku ze strony swego dokarmiacza!
+        </p>
+      `,
+      introToStageThree: `
+        <h1>Przekarmiony</h1>
+        <p><strong style="color:red;">ETAP 2 ZAKOŃCZONY</strong></p>
+        <p>Gniew kaktusa spowodował wyrwę w ziemi. Wyglada na to, ze to krater wulkaniczny!</p>
+        <p>
+          Teraz chmury piaskowe będą nadciągać tutan non stop,
+          a kaktus nie przeżyje już kolejnego ataku ze strony swego dokarmiacza!
+        </p>
       `,
       realEndByHp: `
         <h1>Zwiędłeś!</h1>
@@ -157,24 +183,20 @@ class Game {
     this.setDefaults()
     this.updateHud( { reset:true } )
 
-    this.startStage2()
+    for (let i = 0;  i < 120;  ++i) {
+      this.spawnSand( Math.floor( this.scene[ 0 ].length / 2 ) )
+      this.doFalling()
+    }
 
     this.mainInterval = setInterval( () => {
       if (this.isPaused) return
 
       this.doFalling()
-      // this.spawnSand()
-      // this.spawnSand( 13, 0 )
+      // this.spawnSand() // stage 1
+      // this.spawnSand( 13, 0 ) // stage 2
       requestAnimationFrame( this.draw )
 
-      const snowdrift = this.isCactusBuried()
-
-      if (snowdrift) {
-        this.clearArea( snowdrift )
-        this.stop()
-
-        setTimeout( this.start, 1000 * 5 )
-      }
+      if (this.isCactusBuried()) this.showScreen( hlScreens.overfedCactus, this.startStage3 )
     }, mainIntervalTimestamp )
 
     let clockPosition = 0
@@ -187,15 +209,20 @@ class Game {
       this.updateHud( { clockPosition } )
 
       if (clockPosition === stageClockPositions) {
+        let spawnCloud = true
+
         this.cactusEatingArea.forEach( ({ x, y }) => {
           if (this.getSceneCell( x, y )) {
             ++this.eatedItems
             ++this.hp
+
+            spawnCloud = false
           } else {
             --this.hp
           }
         } )
 
+        if (spawnCloud && this.stage === 2) this.spawnCloud()
         if (this.hp < 0) this.hp = 0
 
         this.updateHud( { eatedItems:this.eatedItems, hp:this.hp } )
@@ -220,7 +247,7 @@ class Game {
             onclick: closeFn => {
               closeFn()
 
-              Game.wait( 5000, () => this.showScreen( hlScreens.introToStageTwo, () => this.startStage2 ) )
+              Game.wait( 5000, () => this.showScreen( hlScreens.introToStageTwo, this.startStage2 ) )
             }
           } )
 
@@ -332,9 +359,9 @@ class Game {
     clouds.filter( Boolean ).forEach( ({ x }) => {
       ctxS.drawImage(
         this.sprites.cloud,
-        sceneX + addPaddingToCoord( x ) - cellSize / 2,
+        sceneX + addPaddingToCoord( x ) - cellSize / 1.2,
         sceneY + addPaddingToCoord( 2 ) - cellSize / 2,
-        cellSize * 2,
+        cellSize * 3,
         cellSize * 2,
       )
     } )
@@ -367,27 +394,28 @@ class Game {
     }
   }
   moveClouds() {
-    console.log( this.isPaused )
     const clouds = Array.from( { length:this.config.sceneWidth }, () => null )
 
     this.clouds.filter( Boolean ).forEach( cloud => {
-      let newX = cloud.x + (cloud.isGoingToRight ? 1 : -1)
+      let jump = cloud.isGoingToRight ? 1 : -1
 
-      if (clouds[ newX ] === undefined) {
+      if (clouds[ cloud.x + jump ] === undefined) {
         cloud.isGoingToRight = !cloud.isGoingToRight
-
-        newX = cloud.x + (cloud.isGoingToRight ? 1 : -1)
+        jump *= -1
       }
 
-      if (clouds[ newX ] != null) return
+      while (clouds[ cloud.x + jump ] !== null) {
+        if (clouds[ cloud.x + jump ] === undefined) return
+        else jump += jump
+      }
 
-      this.clouds[ newX ] = cloud
-      this.clouds[ cloud.x ] = null
-
-      cloud.x = newX
+      clouds[ cloud.x + jump ] = cloud
+      cloud.x += jump
 
       if (Math.random() > 0.8) this.spawnSand( cloud.x, 2 )
     } )
+
+    this.clouds = clouds
   }
   spawnSand( x, y ) {
     if (x === undefined) x = Math.floor( Math.random() * this.scene[ 0 ].length )
@@ -401,14 +429,16 @@ class Game {
 
     this.clouds[ x ] = new Cloud( x, isGoingToRight )
   }
-  startStage2() {
+  startStage2 = () => {
+    console.info( `stage 2` )
+
     const { cellSize, highlightScreens } = this.config
     const dim = this.sceneDimensions
     const hudHeight = Number( getComputedStyle( this.ui.hud ).height.split( `px` )[ 0 ] )
     this.stage = 2
 
     this.pause()
-    this.flicking( `#5f5`, 100, 0 ).then( () => {
+    this.flicking( `#5f5`, 100, 3000 ).then( () => {
       this.spawnCloud( 2, true )
       this.draw()
       this.setHighLightScreen( {
@@ -426,6 +456,55 @@ class Game {
         }
       ] )
     } )
+
+    return false
+  }
+  startStage3 = () => {
+    console.info( `stage 3` )
+
+    const isCactusBuried = this.isCactusBuried()
+    const { scene, config:{ highlightScreens } } = this
+
+    this.stage = 3
+
+    if (!isCactusBuried) return
+
+    this.pause()
+    // this.clearArea( isCactusBuried )
+    // this.draw()
+
+    this.flicking( `#faa`, 70, 2000 ).then( () =>
+      this.clearArea( scene.slice( scene.length - 9, scene.length - 2 ).flat().filter( Boolean )  )
+    )
+      .then( () => this.draw() )
+      .then( () => this.showScreen( highlightScreens.introToStageThree, () => {
+        //
+      } ) )
+    // const { cellSize, highlightScreens } = this.config
+    // const dim = this.sceneDimensions
+    // const hudHeight = Number( getComputedStyle( this.ui.hud ).height.split( `px` )[ 0 ] )
+    // this.stage = 2
+
+    // this.pause()
+    // this.flicking( `#5f5`, 100, 3000 ).then( () => {
+    //   this.spawnCloud( 2, true )
+    //   this.draw()
+    //   this.setHighLightScreen( {
+    //     x: dim.sceneX + (2 - 2) * cellSize,
+    //     y: hudHeight + dim.sceneY + (2 - 2) * cellSize,
+    //     width: cellSize * 5,
+    //     height: cellSize * 5,
+    //   }, highlightScreens.sandCloud, [
+    //     {
+    //       content: `Ok`,
+    //       onclick: closeFn => {
+    //         closeFn()
+    //         this.resume()
+    //       }
+    //     }
+    //   ] )
+    // } )
+    return false
   }
 
 
@@ -497,7 +576,7 @@ class Game {
 
     for (let y = cactusRows.from;  y < cactusRows.to;  ++y) {
       for (let x = cactusColumns.from;  x < cactusColumns.to;  ++x) {
-        if (!this.scene[ y ][ x ]) return null
+        if (!this.scene[ y ][ x ]) return false
 
         cactusCells.push( this.scene[ y ][ x ] )
       }
@@ -654,9 +733,9 @@ class Game {
         onclick: closeFn => {
           closeFn()
 
-          if (typeof buttonsOrOkCb === `function`) buttonsOrOkCb()
-
-          this.resume()
+          if (typeof buttonsOrOkCb === `function`) {
+            if (buttonsOrOkCb() !== false) this.resume()
+          } else this.resume()
         }
       }
     ]
