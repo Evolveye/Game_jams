@@ -43,3 +43,39 @@ body {
   border: 1px solid white;
   border-radius: 10px;
 }
+.game-hud {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+.game-hud-stage_clock {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  background-color: white;
+  border-radius: 50%;
+}
+.game-hud-stage_clock-hand {
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translateX( -50% );
+}
+.game-hud-stage_clock-hand::after {
+  position: absolute;
+  content: "";
+  border: 2px solid black;
+  height: 15px;
+  transform: translate( -2px, -100% );
+}
+.game-hud-stage_clock-12 {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX( -50% );
+  width: 5px;
+  height: 5px;
+  background-color: green;
+}

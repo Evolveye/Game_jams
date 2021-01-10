@@ -16,10 +16,24 @@ class Game {
     entities: null,
     /** @type {HTMLElement} */
     inventory: null,
+    /** @type {HTMLElement} */
+    hud: null,
+    /** @type {HTMLElement} */
+    stageClockHand: null,
     /** @type {HTMLCanvasElement} */
     canvasBackground: null,
     /** @type {HTMLCanvasElement} */
     canvasSprites: null,
+  }
+  config = {
+    cellSize: 10,
+    cellsPadding: 0,
+    sceneWidth: 100,
+    sceneHeight: 50,
+    sandLimit: 5,
+    mainIntervalTimestamp: 100,
+    stageIntervalTimestamp: 4000,
+    stageClockPositions: 4,
   }
 
   /** @type {Cell[][]} */
@@ -30,11 +44,6 @@ class Game {
   /** @type {CanvasRenderingContext2D} */
   ctxSprites = null
 
-  cellSize = 10
-  cellSpadding = 0
-  sceneWidth = 100
-  sceneHeight = 50
-  sandLimit = 5
   /** @type {sceneDimensions */
   sceneDimensions = null
   /** @type {Cell[] */
@@ -48,12 +57,15 @@ class Game {
     this.addSprite( `sand`, `./img/sand.png` )
 
     window.addEventListener( `resize`, this.handleResize )
+
     this.ui.root.addEventListener( `click`, this.handleClick )
   }
 
   start = () => {
+    const { mainIntervalTimestamp, stageIntervalTimestamp, stageClockPositions } = this.config
     this.initScene()
     this.clearInventory()
+    this.updateHud( { reset:true } )
 
     this.mainInterval = setInterval( () => {
       this.doFalling()
@@ -69,11 +81,20 @@ class Game {
 
         setTimeout( this.start, 1000 * 5 )
       }
-    }, 100 )
+    }, mainIntervalTimestamp )
 
+    let clockPosition = 0
     this.stageInterval = setInterval( () => {
-      this.clearArea( this.cactusEatingArea )
-    }, 1000 )
+      ++clockPosition
+
+      this.updateHud( { clockPosition } )
+
+      if (clockPosition === stageClockPositions) {
+        this.clearArea( this.cactusEatingArea )
+
+        clockPosition = 0
+      }
+    }, stageIntervalTimestamp / stageClockPositions )
   }
   stop() {
     clearInterval( this.mainInterval )
@@ -88,6 +109,9 @@ class Game {
     this.ui.canvasBackground = root.querySelector( `.game-canvas-background` )
     this.ui.canvasSprites = root.querySelector( `.game-canvas-sprites` )
     this.ui.inventory = root.querySelector( `.game-inventory` )
+    this.ui.hud = root.querySelector( `.game-hud` )
+    this.ui.stageClock = root.querySelector( `.game-hud-stage_clock` )
+    this.ui.stageClockHand = root.querySelector( `.game-hud-stage_clock-hand` )
 
     this.ctxBackground = this.ui.canvasBackground.getContext( `2d` )
     this.ctxSprites = this.ui.canvasSprites.getContext( `2d` )
@@ -95,9 +119,11 @@ class Game {
     this.handleResize()
   }
   initScene() {
+    const { sceneWidth, sceneHeight } = this.config
+
     this.scene = Array.from(
-      { length:this.sceneHeight },
-      () => Array.from( { length:this.sceneWidth }, () => null )
+      { length:sceneHeight },
+      () => Array.from( { length:sceneWidth }, () => null )
     )
 
     const len = this.scene.length
@@ -122,9 +148,10 @@ class Game {
     )
   }
   draw = () => {
-    const { scene, ctxBackground:ctx, cellSize, cellSpadding } = this
+    const { scene, ctxBackground:ctx } = this
+    const { cellSize, cellsPadding } = this.config
     const { sceneX, sceneY, sceneWidth, sceneHeight } = this.sceneDimensions
-    const addPaddingToCoord = coord => coord * (cellSize + cellSpadding) + cellSpadding
+    const addPaddingToCoord = coord => coord * (cellSize + cellsPadding) + cellsPadding
 
     ctx.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height )
     ctx.beginPath()
@@ -169,7 +196,8 @@ class Game {
 
 
   getSceneDimensions( padding=0 ) {
-    const { scene, cellSize, ctxBackground:{ canvas } } = this
+    const { scene, ctxBackground:{ canvas } } = this
+    const { cellSize } = this.config
 
     return {
       sceneX: ((canvas.width - scene[ 0 ].length * (cellSize + padding) - padding)) / 2,
@@ -277,6 +305,14 @@ class Game {
 
     this.sprites[ name ] = sprite
   }
+  updateHud( { reset, clockPosition } ) {
+    const { stageClockHand } = this.ui
+    const { stageClockPositions } = this.config
+
+    if (clockPosition) {
+      stageClockHand.style.transform = `rotate( ${clockPosition * 360 / stageClockPositions}deg )`
+    }
+  }
 
 
   //
@@ -292,11 +328,15 @@ class Game {
     if (this.ctxBackground) this.sceneDimensions = this.getSceneDimensions()
   }
   handleClick = ({ layerX, layerY }) => {
-    const { sceneDimensions, cellSize, inventory, sandLimit } = this
+    const { sceneDimensions, inventory } = this
+    const { cellSize, sandLimit } = this.config
+
     const x = layerX - sceneDimensions.sceneX
     const y = layerY - sceneDimensions.sceneY
+
     const cellX = Math.floor( x / cellSize )
     const cellY = Math.floor( y / cellSize )
+
     const cell = this.getSceneCell( cellX, cellY )
 
     if (!cell) {
