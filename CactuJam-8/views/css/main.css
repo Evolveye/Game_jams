@@ -10,6 +10,7 @@ body {
   --hud-height: 30px;
 }
 .game-canvas-background,
+.game-canvas-background2,
 .game-canvas-entieis {
   position: absolute;
 }
@@ -89,6 +90,7 @@ body {
   height: 5px;
   background-color: green;
 }
+.game-hud-hp::after,
 .game-hud-capacity::after,
 .game-hud-eated_items::after,
 .game-hud-transported_items::after {

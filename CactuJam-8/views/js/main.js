@@ -31,7 +31,11 @@ class Game {
     /** @type {HTMLElement} */
     highlighter: null,
     /** @type {HTMLElement} */
+    hp: null,
+    /** @type {HTMLElement} */
     highlightContent: null,
+    /** @type {HTMLCanvasElement} */
+    canvasBackground2: null,
     /** @type {HTMLCanvasElement} */
     canvasBackground: null,
     /** @type {HTMLCanvasElement} */
@@ -49,19 +53,51 @@ class Game {
     stageIntervalTimestamp: 4000,
     stageClockPositions: 12,
     newPointPerTransportedItems: Infinity,
-    newPointPerEatedItems: 10,
+    newPointPerEatedItems: 15,
+    initialHp: -20,
 
     highlightScreens: {
       capacity: `
         <h1>Wzmacniasz się!</h1>
         <p>Twój udźwig zwiększył się</p>
-      `
+      `,
+      introToStageTwo: `
+        <h1>Nigdy nie przeceniaj mistycznych kaktusów</h1>
+        <p><strong style="color:red;">ETAP 1 ZAKOŃCZONY</strong></p>
+        <p>
+          Wyglada na to, że kaktus jeszcze nie jest w pełni zwiędły i
+          resztkami swych wzywa Cię do dostarczenia pokarmu.
+          Skoro tak trudno Ci zebrać pokarm, to kaktus postarał się o jego dostawę.
+          Większa ilość pożywienia powinna być prostsza w złapaniu i przeniesieniu.
+        </p>
+      `,
+      endByHp: `
+        <h1>Zwiędłeś!</h1>
+        <p>
+          Twoje życie spadło do zera.
+          To z kolei oznacza, że nie zadbałeś o zdrowie naszego kochanego kaktusa.
+          Teraz świat stanie w płomieniach a Ty już nigdy nie zobaczysz małego kotka ani pieska.
+        </p>
+      `,
+      realEndByHp: `
+        <h1>Zwiędłeś!</h1>
+        <p>
+          Nie masz godności ani rozumu człowieka.
+          Doprowadziłes nas wszystkich do klęski już drugi raz.
+          Zginiesz marnie...
+        </p>
+        <p>Tak jak wszyscy inni...</p>
+        <p>Oko nie będzie zadowolone</p>
+        <p><strong style="color:red;">PRZEGRANA</strong></p>
+      `,
     }
   }
 
   /** @type {Cell[][]} */
   scene = [[]]
 
+  /** @type {CanvasRenderingContext2D} */
+  ctxBackground2 = null
   /** @type {CanvasRenderingContext2D} */
   ctxBackground = null
   /** @type {CanvasRenderingContext2D} */
@@ -76,6 +112,8 @@ class Game {
 
   transportedItemsCount = 0
   eatedItems = 0
+  hp = 0
+  stage = 1
   capacity = this.config.initialCapacity
   isPaused = false
 
@@ -83,6 +121,7 @@ class Game {
     this.setUi( gameRootSelector )
     this.start()
     this.addSprite( `sand`, `./img/sand.png` )
+    this.addSprite( `heart`, `./img/heart.png` )
 
     window.addEventListener( `resize`, this.handleResize )
 
@@ -96,14 +135,14 @@ class Game {
       stageClockPositions,
       newPointPerEatedItems,
       initialCapacity,
-      highlightScreens,
+      highlightScreens: hlScreens,
     } = this.config
 
+    this.stop()
     this.initScene()
     this.clearInventory()
+    this.setDefaults()
     this.updateHud( { reset:true } )
-
-    this.capacity = this.config.initialCapacity
 
     this.mainInterval = setInterval( () => {
       if (this.isPaused) return
@@ -132,14 +171,49 @@ class Game {
       this.updateHud( { clockPosition } )
 
       if (clockPosition === stageClockPositions) {
-        this.cactusEatingArea.forEach( ({ x, y }) => this.getSceneCell( x, y ) && ++this.eatedItems )
-        this.updateHud( { eatedItems:this.eatedItems } )
+        this.cactusEatingArea.forEach( ({ x, y }) => {
+          if (this.getSceneCell( x, y )) {
+            ++this.eatedItems
+            ++this.hp
+          } else {
+            --this.hp
+          }
+        } )
+
+        if (this.hp < 0) this.hp = 0
+
+        this.updateHud( { eatedItems:this.eatedItems, hp:this.hp } )
         this.clearArea( this.cactusEatingArea )
 
         if ((this.eatedItems / (this.capacity - initialCapacity + 1)) >= newPointPerEatedItems) {
-          this.showScreen( highlightScreens.capacity, () =>
+          this.showScreen( hlScreens.capacity, () =>
             this.updateHud( { capacity:++this.capacity } )
           )
+        }
+        if (this.hp === 0) {
+          const buttons = [ {
+            content: `Restart`,
+            onclick: closeFn => {
+              closeFn()
+              this.start()
+            }
+          } ]
+
+          if (this.stage === 1) buttons.push( {
+            content: `Patrz jak kaktus kona`,
+            onclick: closeFn => {
+              closeFn()
+
+              Game.wait( 5, () => this.showScreen( hlScreens.introToStageTwo, () => {
+                this.stage = 2
+                this.flicking( `#5f5`, 100, 3 ).then( () => {
+                  this.resume()
+                } )
+              } ) )
+            }
+          } )
+
+          this.showScreen( this.stage === 1 ? hlScreens.endByHp : hlScreens.realEndByHp, buttons)
         }
 
         clockPosition = 0
@@ -162,21 +236,26 @@ class Game {
     const root = this.ui.root
 
     this.ui.entities = root.querySelector( `.game-entities` )
+    this.ui.canvasBackground2 = root.querySelector( `.game-canvas-background2` )
     this.ui.canvasBackground = root.querySelector( `.game-canvas-background` )
     this.ui.canvasSprites = root.querySelector( `.game-canvas-sprites` )
     this.ui.inventory = root.querySelector( `.game-inventory` )
+
     this.ui.hud = root.querySelector( `.game-hud` )
     this.ui.stageClock = root.querySelector( `.game-hud-stage_clock` )
     this.ui.stageClockHand = root.querySelector( `.game-hud-stage_clock-hand` )
     this.ui.transportedItems = root.querySelector( `.game-hud-transported_items` )
     this.ui.capacity = root.querySelector( `.game-hud-capacity` )
     this.ui.eatedItems = root.querySelector( `.game-hud-eated_items` )
+    this.ui.hp = root.querySelector( `.game-hud-hp` )
+
     this.ui.highlight = root.querySelector( `.game-highlight` )
     this.ui.highlighter = root.querySelector( `.game-highlight-highlighter` )
     this.ui.highlightContent = root.querySelector( `.game-highlight-content` )
 
     this.ui.highlight.style.display = `none`
 
+    this.ctxBackground2 = this.ui.canvasBackground2.getContext( `2d` )
     this.ctxBackground = this.ui.canvasBackground.getContext( `2d` )
     this.ctxSprites = this.ui.canvasSprites.getContext( `2d` )
 
@@ -272,6 +351,13 @@ class Game {
   //
 
 
+  setDefaults() {
+    this.isPaused = false
+    this.eatedItems = 0
+    this.capacity = this.config.initialCapacity
+    this.hp = this.config.initialHp
+    this.stage = 1
+  }
   getSceneDimensions( padding=0 ) {
     const { scene, ctxBackground:{ canvas } } = this
     const { cellSize } = this.config
@@ -382,37 +468,49 @@ class Game {
 
     this.sprites[ name ] = sprite
   }
-  updateHud( { reset, clockPosition, transportedItemsCount, capacity, eatedItems } ) {
-    const { stageClockPositions, initialCapacity } = this.config
+  updateHud( { reset, clockPosition, transportedItemsCount, capacity, eatedItems, hp } ) {
+    const { stageClockPositions, initialCapacity, initialHp } = this.config
+    const isNotUndef = something => something !== undefined
 
-    if (clockPosition) {
+    if (isNotUndef( clockPosition )) {
       this.ui.stageClockHand.style.transform = `rotate( ${clockPosition * 360 / stageClockPositions}deg )`
     } else if (reset) {
       this.ui.stageClockHand.style.transform = `rotate( 0deg )`
     }
 
-    if (transportedItemsCount) {
+    if (isNotUndef( transportedItemsCount )) {
       this.ui.transportedItems.dataset.count = transportedItemsCount
     } else if (reset) {
       this.ui.transportedItems.dataset.count = 0
     }
 
-    if (capacity) {
+    if (isNotUndef( capacity )) {
       this.ui.capacity.dataset.count = capacity
     } else if (reset) {
       this.ui.capacity.dataset.count = initialCapacity
     }
 
-    if (eatedItems) {
+    if (isNotUndef( eatedItems )) {
       this.ui.eatedItems.dataset.count = eatedItems
     } else if (reset) {
       this.ui.eatedItems.dataset.count = 0
     }
+
+    if (isNotUndef( hp )) {
+      this.ui.hp.dataset.count = hp
+    } else if (reset) {
+      this.ui.hp.dataset.count = initialHp
+    }
   }
+  /**
+   * @typedef {object} ButtonData
+   * @property {string} content
+   * @property {(closeFn:()=>void) => void} click
+   */
   /**
    * @param {{ x:number y:number width:number height:number }} highlightArea
    * @param {string} htmlContent
-   * @param {{ content:string onclick:(closeFn) => void }[]} buttonsData
+   * @param {ButtonData[]} buttonsData
    */
   setHighLightScreen( highlightArea, htmlContent, buttonsData ) {
     const { highlight, highlighter, highlightContent:content } = this.ui
@@ -432,7 +530,7 @@ class Game {
 
       buttons.className = `game-highlight-content-buttons`
 
-      for (const { content, onclick} of buttonsData) {
+      for (const { content, onclick } of buttonsData) {
         const btn = document.createElement( `button` )
 
         btn.textContent = content
@@ -457,6 +555,10 @@ class Game {
 
     highlight.style.display = `block`
   }
+  /**
+   * @param {string} htmlContent
+   * @param {ButtonData[]|() => void} [buttonsOrOkCb]
+   */
   showScreen( htmlContent, buttonsOrOkCb=null ) {
     const defaultButtons = [
       {
@@ -474,6 +576,22 @@ class Game {
     this.pause()
     this.setHighLightScreen( null, htmlContent, buttonsOrOkCb?.length ? buttonsOrOkCb : defaultButtons  )
   }
+  async flicking( color, speed, ms ) {
+    const ctx = this.ctxBackground2
+    // const dim = this.sceneDimensions
+    // const args = [ dim.sceneX, dim.sceneY, dim.sceneWidth, dim.sceneHeight ]
+    const args = [ 0, 0, ctx.canvas.width, ctx.canvas.height ]
+    const startTime = Date.now()
+
+    ctx.fillStyle = color
+
+    while (startTime > Date.now() - ms) {
+      ctx.fillRect( ...args )
+      await Game.wait( speed / 2 )
+      ctx.clearRect( ...args )
+      await Game.wait( speed / 2 )
+    }
+  }
 
 
   //
@@ -481,6 +599,9 @@ class Game {
 
   handleResize = () => {
     const hudHeight = Number( getComputedStyle( this.ui.hud ).height.split( `px` )[ 0 ] )
+
+    this.ui.canvasBackground2.width = window.innerWidth
+    this.ui.canvasBackground2.height = window.innerHeight - hudHeight
 
     this.ui.canvasBackground.width = window.innerWidth
     this.ui.canvasBackground.height = window.innerHeight - hudHeight
@@ -520,6 +641,16 @@ class Game {
       this.addToInventory( cell )
     }
   }
+
+
+  //
+
+
+  static wait = (ms, cb) => new Promise( res => setTimeout( () => {
+    if (cb) cb()
+
+    res()
+  }, ms ))
 }
 
 window.game = new Game( `.game` )
