@@ -117,5 +117,6 @@ body {
   top: calc( -100vw + 475px );
   width: 100px;
   height: 100px; */
-  border: 100vw solid #000a;
+  outline: 100vw solid #000a;
+  border: 1px solid #fff6;
 }

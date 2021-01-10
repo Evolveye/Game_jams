@@ -1,4 +1,5 @@
 import Cell, { SandCell } from "./cell.js"
+import Cloud from "./cloud.js"
 
 /**
  * @typedef {object} sceneDimensions
@@ -49,12 +50,12 @@ class Game {
     initialCapacity: 5,
     initialSceneRandomSand: 100,
     initialScenePyramidSandCount: 50,
-    mainIntervalTimestamp: 10,
+    mainIntervalTimestamp: 100,
     stageIntervalTimestamp: 4000,
     stageClockPositions: 12,
     newPointPerTransportedItems: Infinity,
     newPointPerEatedItems: 15,
-    initialHp: -20,
+    initialHp: 20,
 
     highlightScreens: {
       capacity: `
@@ -77,6 +78,13 @@ class Game {
           Twoje życie spadło do zera.
           To z kolei oznacza, że nie zadbałeś o zdrowie naszego kochanego kaktusa.
           Teraz świat stanie w płomieniach a Ty już nigdy nie zobaczysz małego kotka ani pieska.
+        </p>
+      `,
+      sandCloud: `
+        <h1>Sandcloud</h1>
+        <p>
+          Chmura piaskowa. Byt przywiewajacy powodujący zamiecie piaskowe.
+          Kaktus jest w stanie przywoływać te nieprzyjemne chmury w momencie gdy nic nie zje.
         </p>
       `,
       realEndByHp: `
@@ -109,6 +117,8 @@ class Game {
   sprites = {}
   /** @type {Cell[] */
   inventory = []
+  /** @type {Cloud[]} */
+  clouds = []
 
   transportedItemsCount = 0
   eatedItems = 0
@@ -119,13 +129,16 @@ class Game {
 
   constructor( gameRootSelector ) {
     this.setUi( gameRootSelector )
-    this.start()
-    this.addSprite( `sand`, `./img/sand.png` )
-    this.addSprite( `heart`, `./img/heart.png` )
 
     window.addEventListener( `resize`, this.handleResize )
 
     this.ui.root.addEventListener( `click`, this.handleClick )
+
+    Promise.all( [
+      this.addSprite( `sand`, `./img/sand.png` ),
+      this.addSprite( `heart`, `./img/heart.png` ),
+      this.addSprite( `cloud`, `./img/cloud.png` ),
+    ] ).then( this.start )
   }
 
   start = () => {
@@ -144,11 +157,13 @@ class Game {
     this.setDefaults()
     this.updateHud( { reset:true } )
 
+    this.startStage2()
+
     this.mainInterval = setInterval( () => {
       if (this.isPaused) return
 
       this.doFalling()
-      // this.spawnSand( Math.floor( Math.random() * this.scene[ 0 ].length ), 0 )
+      // this.spawnSand()
       // this.spawnSand( 13, 0 )
       requestAnimationFrame( this.draw )
 
@@ -168,6 +183,7 @@ class Game {
 
       ++clockPosition
 
+      this.moveClouds()
       this.updateHud( { clockPosition } )
 
       if (clockPosition === stageClockPositions) {
@@ -204,12 +220,7 @@ class Game {
             onclick: closeFn => {
               closeFn()
 
-              Game.wait( 5, () => this.showScreen( hlScreens.introToStageTwo, () => {
-                this.stage = 2
-                this.flicking( `#5f5`, 100, 3 ).then( () => {
-                  this.resume()
-                } )
-              } ) )
+              Game.wait( 5000, () => this.showScreen( hlScreens.introToStageTwo, () => this.startStage2 ) )
             }
           } )
 
@@ -264,6 +275,7 @@ class Game {
   initScene() {
     const { sceneWidth, sceneHeight, initialSceneRandomSand, initialScenePyramidSandCount } = this.config
 
+    this.clouds = Array.from( { length:sceneWidth }, () => null )
     this.scene = Array.from(
       { length:sceneHeight },
       () => Array.from( { length:sceneWidth }, () => null )
@@ -304,17 +316,28 @@ class Game {
     )
   }
   draw = () => {
-    const { scene, ctxBackground:ctx } = this
+    const { scene, clouds, ctxSprites:ctxS, ctxBackground:ctx } = this
     const { cellSize, cellsPadding } = this.config
-    const { sceneX, sceneY, sceneWidth, sceneHeight } = this.sceneDimensions
+    const { sceneX, sceneY } = this.sceneDimensions
     const addPaddingToCoord = coord => coord * (cellSize + cellsPadding) + cellsPadding
 
+    ctxS.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height )
     ctx.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height )
     ctx.beginPath()
 
     // ctx.rect( sceneX, sceneY, sceneWidth, sceneHeight )
     // ctx.fillStyle = `#222`
     // ctx.fill()
+
+    clouds.filter( Boolean ).forEach( ({ x }) => {
+      ctxS.drawImage(
+        this.sprites.cloud,
+        sceneX + addPaddingToCoord( x ) - cellSize / 2,
+        sceneY + addPaddingToCoord( 2 ) - cellSize / 2,
+        cellSize * 2,
+        cellSize * 2,
+      )
+    } )
 
     ctx.beginPath()
     scene.forEach( (row, y) => row.forEach( (cell, x) => {
@@ -343,8 +366,66 @@ class Game {
       } )
     }
   }
+  moveClouds() {
+    console.log( this.isPaused )
+    const clouds = Array.from( { length:this.config.sceneWidth }, () => null )
+
+    this.clouds.filter( Boolean ).forEach( cloud => {
+      let newX = cloud.x + (cloud.isGoingToRight ? 1 : -1)
+
+      if (clouds[ newX ] === undefined) {
+        cloud.isGoingToRight = !cloud.isGoingToRight
+
+        newX = cloud.x + (cloud.isGoingToRight ? 1 : -1)
+      }
+
+      if (clouds[ newX ] != null) return
+
+      this.clouds[ newX ] = cloud
+      this.clouds[ cloud.x ] = null
+
+      cloud.x = newX
+
+      if (Math.random() > 0.8) this.spawnSand( cloud.x, 2 )
+    } )
+  }
   spawnSand( x, y ) {
+    if (x === undefined) x = Math.floor( Math.random() * this.scene[ 0 ].length )
+    if (y === undefined) y = 0
+
     if (this.getSceneCell( x, y ) !== undefined) this.scene[ y ][ x ] = new SandCell( x, y, true )
+  }
+  spawnCloud( x, isGoingToRight ) {
+    if (x === undefined) x = Math.floor( Math.random() * this.scene[ 0 ].length )
+    if (isGoingToRight === undefined) isGoingToRight = Boolean( Math.floor( Math.random() * 2 ) )
+
+    this.clouds[ x ] = new Cloud( x, isGoingToRight )
+  }
+  startStage2() {
+    const { cellSize, highlightScreens } = this.config
+    const dim = this.sceneDimensions
+    const hudHeight = Number( getComputedStyle( this.ui.hud ).height.split( `px` )[ 0 ] )
+    this.stage = 2
+
+    this.pause()
+    this.flicking( `#5f5`, 100, 0 ).then( () => {
+      this.spawnCloud( 2, true )
+      this.draw()
+      this.setHighLightScreen( {
+        x: dim.sceneX + (2 - 2) * cellSize,
+        y: hudHeight + dim.sceneY + (2 - 2) * cellSize,
+        width: cellSize * 5,
+        height: cellSize * 5,
+      }, highlightScreens.sandCloud, [
+        {
+          content: `Ok`,
+          onclick: closeFn => {
+            closeFn()
+            this.resume()
+          }
+        }
+      ] )
+    } )
   }
 
 
@@ -357,6 +438,10 @@ class Game {
     this.capacity = this.config.initialCapacity
     this.hp = this.config.initialHp
     this.stage = 1
+
+    this.ctxBackground2.imageSmoothingEnabled = false
+    this.ctxBackground.imageSmoothingEnabled = false
+    this.ctxSprites.imageSmoothingEnabled = false
   }
   getSceneDimensions( padding=0 ) {
     const { scene, ctxBackground:{ canvas } } = this
@@ -467,6 +552,8 @@ class Game {
     sprite.src = src
 
     this.sprites[ name ] = sprite
+
+    return new Promise( res => sprite.onload = res )
   }
   updateHud( { reset, clockPosition, transportedItemsCount, capacity, eatedItems, hp } ) {
     const { stageClockPositions, initialCapacity, initialHp } = this.config
@@ -505,21 +592,21 @@ class Game {
   /**
    * @typedef {object} ButtonData
    * @property {string} content
-   * @property {(closeFn:()=>void) => void} click
+   * @property {(closeFn:()=>void) => void} onclick
    */
   /**
    * @param {{ x:number y:number width:number height:number }} highlightArea
    * @param {string} htmlContent
    * @param {ButtonData[]} buttonsData
    */
-  setHighLightScreen( highlightArea, htmlContent, buttonsData ) {
+  setHighLightScreen( highlightArea, htmlContent, buttonsData=[] ) {
     const { highlight, highlighter, highlightContent:content } = this.ui
     const { sceneHeight } = this.sceneDimensions
     const contentHeight = getComputedStyle( content ).height
     const { x, y, width, height } = highlightArea || { x:0, y:0, width:0, height:0 }
 
-    highlighter.style.left = `calc( -100vw + ${y}px )`
-    highlighter.style.top = `calc( -100vw + ${x}px )`
+    highlighter.style.left = `${x}px`
+    highlighter.style.top = `${y}px`
     highlighter.style.width = `${width}px`
     highlighter.style.height = `${height}px`
 
@@ -544,8 +631,9 @@ class Game {
     }
 
     if (highlightArea) {
+      console.log( y , sceneHeight / 2 )
       content.style.left = `50%`
-      content.style.top = y > sceneHeight / 2 ? y - contentHeight - 20 : y + 20
+      content.style.top = `${y > sceneHeight / 2 ? y - contentHeight - 20 : y + height + 20}px`
       content.style.transform = `translateX( -50% )`
     } else {
       content.style.left = `50%`
