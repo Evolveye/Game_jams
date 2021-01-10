@@ -47,6 +47,13 @@ class Game {
     stageIntervalTimestamp: 4000,
     stageClockPositions: 12,
     newPointPerTransportedItems: 10,
+
+    highlightScreens: {
+      capacity: `
+        <h1>Wzmacniasz się!</h1>
+        <p>Twój udźwig zwiększył się</p>
+      `
+    }
   }
 
   /** @type {Cell[][]} */
@@ -90,7 +97,7 @@ class Game {
       if (this.isPaused) return
 
       this.doFalling()
-      this.spawnSand( Math.floor( Math.random() * this.scene[ 0 ].length ), 0 )
+      // this.spawnSand( Math.floor( Math.random() * this.scene[ 0 ].length ), 0 )
       // this.spawnSand( 13, 0 )
       requestAnimationFrame( this.draw )
 
@@ -441,7 +448,7 @@ class Game {
   }
   handleClick = ({ layerX, layerY }) => {
     const { sceneDimensions, inventory, capacity } = this
-    const { cellSize, newPointPerTransportedItems } = this.config
+    const { cellSize, newPointPerTransportedItems, highlightScreens } = this.config
 
     const x = layerX - sceneDimensions.sceneX
     const y = layerY - sceneDimensions.sceneY
@@ -460,11 +467,15 @@ class Game {
 
         if (this.transportedItemsCount % newPointPerTransportedItems === 0) {
           this.pause()
-          this.setHighLightScreen( null, `Test <b>test</b>`, [
+          this.setHighLightScreen( null, highlightScreens.capacity, [
             {
-              content: `abc`,
+              content: `Ok`,
               onclick: closeFn => {
                 closeFn()
+
+                ++this.capacity
+
+                this.updateHud( { capacity:this.capacity } )
                 this.resume()
               }
             }

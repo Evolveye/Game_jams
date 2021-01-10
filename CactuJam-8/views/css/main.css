@@ -102,6 +102,11 @@ body {
 }
 .game-highlight-content {
   position: absolute;
+  color: white;
+  text-align: center;
+}
+.game-highlight-content-buttons {
+  margin-top: 100px;
 }
 .game-highlight-highlighter {
   position: absolute;
