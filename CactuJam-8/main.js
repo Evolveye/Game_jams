@@ -4,8 +4,8 @@ app.whenReady().then( main )
 
 function main() {
   const win = new BrowserWindow( {
-    width: 1000,
-    height: 1000,
+    width: 1050,
+    height: 650,
     webPreferences: {
       nodeIntegration: false,
       worldSafeExecuteJavaScript: true,
@@ -13,5 +13,6 @@ function main() {
     }
   } )
 
+  win.removeMenu()
   win.loadFile( `./views/index.html` )
 }
