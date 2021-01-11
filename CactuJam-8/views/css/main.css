@@ -111,6 +111,12 @@ body {
 .game-highlight-content-buttons {
   margin-top: 50px;
 }
+.game-highlight-content-button {
+  background-color: #fff1;
+  color: white;
+  padding: 10px 20px ;
+  margin: 10px;
+}
 .game-highlight-highlighter {
   position: absolute;
   /* left: calc( -100vw + 480px );
