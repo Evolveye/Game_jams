@@ -55,10 +55,45 @@ class Game {
     stageIntervalTimestamp: 4000,
     stageClockPositions: 12,
     newPointPerTransportedItems: Infinity,
-    newPointPerEatedItems: 10,
+    newPointPerEatedItems: 20,
     initialHp: 20,
 
     highlightScreens: {
+      initCactus: `
+        <h1>Mistyczny kaktus</h1>
+        <p>
+          To jest kaktus, którego musisz karmić. Gdy zwiędnie,
+          gra dobiegnie końca a świat popadnie w zagładę.
+        </p>
+      `,
+      initClock: `
+        <h1>Zegar</h1>
+        <p>
+          Za każdym razem, gdy wskazówka zegara najedzie na zieloną kropkę,
+          kaktus zje wszystkie jednostki piasku znajdujace się na jego spodzie
+        </p>
+        <p>
+          Każde pole z którego je kaktus dostarcza lub zabiera punkty zdrowia.
+          Za każde pole z piaskeim je zyskujesz, a za każde bez piasku tracisz.
+        </p>
+      `,
+      initSand: `
+        <h1>Przenoszenie piasku</h1>
+        <p>Jak dostarczać piasek do kaktusa?</p>
+        <p>
+          Wystarczy kliknać na jakiś klocek piasku aby pojawił się w inwentarzu.
+          Aby postawić piasek, wystarczy kliknac na pustą przestrzeń.
+        </p>
+      `,
+      initEnd: `
+        <h1>Dalej musisz radzić sobie sam</h1>
+        <p><strong style="color:red;">ETAP 0 ZAKOŃCZONY</strong></p>
+        <p>
+          W tym momencie masz pojęcie o podstawowej funkcjonalności.
+          Dodatkowe informacje znajdują się na górze w pasku.
+          W późniejszych etapach gry będa pojawiać się kolejne ekrany instruktażowe.
+        </p>
+      `,
       capacity: `
         <h1>Wzmacniasz się!</h1>
         <p>Twój udźwig zwiększył się</p>
@@ -84,10 +119,13 @@ class Game {
       sandCloud: `
         <h1>Sandcloud</h1>
         <p>
-          Chmura piaskowa. Byt przywiewajacy powodujący zamiecie piaskowe.
+          Chmura piaskowa. Byt powodujący zamiecie piaskowe.
           Kaktus jest w stanie przywoływać te nieprzyjemne chmury w momencie gdy nic nie zje.
         </p>
-        <p>To co, może tym razem obsypiesz kaktusa pokarmem w ramach rekompensaty?</p>
+        <p>
+          To co, może tym razem obsypiesz kaktusa pokarmem
+          w ramach rekompensaty za niedoszłe zagłodzenie?
+        </p>
       `,
       overfedCactus: `
         <h1>Przekarmiony</h1>
@@ -100,7 +138,7 @@ class Game {
         <h1>Wulkan!</h1>
         <p><strong style="color:red;">ETAP 2 ZAKOŃCZONY</strong></p>
         <p>
-          Gniew kaktusa spowodowała wyrwę w czasze planety.
+          Gniew kaktusa spowodował wyrwę w czasze planety.
           Teraz chmury piaskowe będą nadciągać tutaj non stop,
           a kaktus nie przeżyje już kolejnego ataku ze strony swego dokarmiacza!
         </p>
@@ -172,12 +210,14 @@ class Game {
   }
 
   start = () => {
+    const hudHeight = Number( getComputedStyle( this.ui.hud ).height.split( `px` )[ 0 ] )
     const {
       mainIntervalTimestamp,
       stageIntervalTimestamp,
       stageClockPositions,
       newPointPerEatedItems,
       initialCapacity,
+      cellSize,
       highlightScreens: hlScreens,
     } = this.config
 
@@ -187,10 +227,36 @@ class Game {
     this.setDefaults()
     this.updateHud( { reset:true } )
 
-    // for (let i = 0;  i < 120;  ++i) {
-    //   this.spawnSand( Math.floor( this.scene[ 0 ].length / 2 ) )
-    //   this.doFalling()
-    // }
+    this.pause()
+    this.draw()
+
+    const { sceneDimensions:dim } = this
+
+    new Promise( res =>
+      // res()
+      this.setHighLightScreen( {
+        x: dim.sceneX + dim.sceneWidth / 2 - 50,
+        y: dim.sceneY + dim.sceneHeight - 85,
+        width: 100,
+        height: 100,
+      }, hlScreens.initCactus, [ { content:`Ok`, onclick: closeFn => closeFn( res() ) } ] )
+    ).then( () => new Promise( res =>
+      this.setHighLightScreen( {
+        x: window.innerWidth - 55,
+        y: hudHeight - 5,
+          width: 60,
+          height: 60,
+      }, hlScreens.initClock, [ { content:`Ok`, onclick: closeFn => closeFn( res() ) } ] )
+    ) ).then( () => new Promise( res =>
+      this.setHighLightScreen( { x:0, y:0, width:0, height:0 }, hlScreens.initSand, [
+        { content:`Ok`, onclick: closeFn => this.resume( closeFn( res() ) ) }
+      ] )
+    ) )
+
+    for (let i = 0;  i < 120;  ++i) {
+      this.spawnSand( Math.floor( this.scene[ 0 ].length / 2 ) )
+      this.doFalling()
+    }
 
     this.mainInterval = setInterval( () => {
       if (this.isPaused) return
@@ -205,7 +271,7 @@ class Game {
 
     let clockPosition = 0
     this.stageInterval = setInterval( () => {
-      if (this.isPaused) return
+      if (this.isPaused || this.isIntro) return
 
       ++clockPosition
 
@@ -492,6 +558,8 @@ class Game {
           content: `Ok`,
           onclick: closeFn => {
             closeFn()
+            this.hp = 10
+            this.updateHud( { hp:this.hp } )
             this.resume()
           }
         }
@@ -515,7 +583,7 @@ class Game {
     // this.clearArea( isCactusBuried )
     // this.draw()
 
-    this.flicking( `#faa`, 70, 0 ).then( () =>
+    this.flicking( `#faa`, 70, 3000 ).then( () =>
       this.clearArea( scene.slice( scene.length - 9, scene.length - 2 ).flat().filter( Boolean )  )
     )
       .then( () => {
@@ -582,9 +650,10 @@ class Game {
     this.isPaused = false
     this.eatedItems = 0
     this.capacity = this.config.initialCapacity
-    this.nextCapacityUpgradePoints = this.config.initialCapacity
+    this.nextCapacityUpgradePoints = this.config.newPointPerEatedItems
     this.hp = this.config.initialHp
     this.stage = 1
+    this.isIntro = true
 
     this.ctxBackground2.imageSmoothingEnabled = false
     this.ctxBackground.imageSmoothingEnabled = false
@@ -779,8 +848,7 @@ class Game {
       content.appendChild( buttons )
     }
 
-    if (highlightArea) {
-      console.log( y , sceneHeight / 2 )
+    if (false && highlightArea) {
       content.style.left = `50%`
       content.style.top = `${y > sceneHeight / 2 ? y - contentHeight - 20 : y + height + 20}px`
       content.style.transform = `translateX( -50% )`
@@ -862,6 +930,10 @@ class Game {
 
     if (!cell) {
       if (this.removeFromInventory( `sand` )) {
+        if (this.isIntro) this.showScreen( highlightScreens.initEnd, () => {
+          this.isIntro = false
+          this.stage = 1
+        } )
         this.transportedItemsCount++
 
         this.spawnSand( cellX, cellY )
