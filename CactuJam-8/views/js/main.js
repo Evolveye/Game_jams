@@ -160,7 +160,7 @@ class Game {
       `,
       endScreen: `
         <h1>Koniec!</h1>
-        <p>Kaktus skonał, świat zacyzna płonąć, oczy strzelają</p>
+        <p>Kaktus skonał, świat zaczyna płonąć, oczy strzelają</p>
         <p>
           Jednak tutaj masz szansę rozpocząć przygodę od początku.
           Zrób to aby pobić swój (lub znajomych) rekord punktowy.
@@ -199,6 +199,7 @@ class Game {
   capacity = this.config.initialCapacity
   isPaused = false
   nextCapacityUpgradePoints = this.config.initialCapacity
+  cactus = null
 
   constructor( gameRootSelector ) {
     this.setUi( gameRootSelector )
@@ -667,7 +668,27 @@ class Game {
     // } )
     return false
   }
-  showEndscreen = () => {}
+  showEndscreen = () => {
+    const time = new Date( Date.now() - this.startTime )
+    const html = `
+      <h1>Podsumowanie</h1>
+      <p>Czas gry: ${time.getHours()}h ${time.getMinutes()}m ${time.getSeconds()}s</p>
+      <p>Punkty: ${this.points}</p>
+      <p>Przeniesione przedmioty: ${this.transportedItemsCount}</p>
+      <p>Zjadzony przez kaktusa piasek: ${this.eatedItems}</p>
+    `
+    this.showScreen( html, [
+      {
+        content: `Restart`,
+        onclick: closeFn => {
+          closeFn()
+          this.start()
+        }
+      }
+    ] )
+
+    return false
+  }
 
 
   //
@@ -733,6 +754,7 @@ class Game {
     if (height) img.height = height
 
     this.ui.entities.appendChild( img )
+    this.cactus = img
   }
   isCactusBuried() {
     const { scene } = this
@@ -950,6 +972,13 @@ class Game {
     this.ui.canvasSprites.height = window.innerHeight - hudHeight
 
     if (this.ctxBackground) this.sceneDimensions = this.getSceneDimensions()
+    if (this.cactus) {
+      const dim = this.sceneDimensions
+      const { cellSize } = this.config
+
+      this.cactus.style.left = `${dim.sceneX + dim.sceneWidth / 2 - 50}px`
+      this.cactus.style.top = `${dim.sceneY + dim.sceneHeight - 100 - cellSize + hudHeight}px`
+    }
   }
   handleClick = ({ layerX, layerY }) => {
     const { sceneDimensions, inventory, capacity } = this
