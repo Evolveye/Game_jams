@@ -13,6 +13,7 @@ function main() {
     }
   } )
 
+  win.setResizable( false )
   win.removeMenu()
   win.loadFile( `./views/index.html` )
 }
