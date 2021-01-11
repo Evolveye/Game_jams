@@ -1,5 +1,6 @@
-import Cell, { SandCell } from "./cell.js"
+import Cell, { SandCell, BarrierCell, LavaCell } from "./cell.js"
 import Cloud from "./cloud.js"
+import Ray from "./ray.js"
 
 /**
  * @typedef {object} sceneDimensions
@@ -47,14 +48,14 @@ class Game {
     cellsPadding: 0,
     sceneWidth: 100,
     sceneHeight: 50,
-    initialCapacity: 5,
+    initialCapacity: 1,
     initialSceneRandomSand: 100,
     initialScenePyramidSandCount: 50,
     mainIntervalTimestamp: 100,
     stageIntervalTimestamp: 4000,
     stageClockPositions: 12,
     newPointPerTransportedItems: Infinity,
-    newPointPerEatedItems: 15,
+    newPointPerEatedItems: 10,
     initialHp: 20,
 
     highlightScreens: {
@@ -96,23 +97,23 @@ class Game {
         </p>
       `,
       introToStageThree: `
-        <h1>Przekarmiony</h1>
+        <h1>Wulkan!</h1>
         <p><strong style="color:red;">ETAP 2 ZAKOŃCZONY</strong></p>
         <p>
           Gniew kaktusa spowodowała wyrwę w czasze planety.
-          Teraz chmury piaskowe będą nadciągać tutan non stop,
+          Teraz chmury piaskowe będą nadciągać tutaj non stop,
           a kaktus nie przeżyje już kolejnego ataku ze strony swego dokarmiacza!
         </p>
       `,
-      introToStageThree: `
-        <h1>Przekarmiony</h1>
-        <p><strong style="color:red;">ETAP 2 ZAKOŃCZONY</strong></p>
-        <p>Gniew kaktusa spowodował wyrwę w ziemi. Wyglada na to, ze to krater wulkaniczny!</p>
-        <p>
-          Teraz chmury piaskowe będą nadciągać tutan non stop,
-          a kaktus nie przeżyje już kolejnego ataku ze strony swego dokarmiacza!
-        </p>
-      `,
+      // introToStageThree: `
+      //   <h1>Przekarmiony</h1>
+      //   <p><strong style="color:red;">ETAP 2 ZAKOŃCZONY</strong></p>
+      //   <p>Gniew kaktusa spowodował wyrwę w ziemi. Wyglada na to, ze to krater wulkaniczny!</p>
+      //   <p>
+      //     Teraz chmury piaskowe będą nadciągać tutaj non stop,
+      //     a kaktus nie przeżyje już kolejnego ataku ze strony swego dokarmiacza!
+      //   </p>
+      // `,
       realEndByHp: `
         <h1>Zwiędłeś!</h1>
         <p>
@@ -145,6 +146,8 @@ class Game {
   inventory = []
   /** @type {Cloud[]} */
   clouds = []
+  /** @type {Ray[]} */
+  rays = []
 
   transportedItemsCount = 0
   eatedItems = 0
@@ -152,6 +155,7 @@ class Game {
   stage = 1
   capacity = this.config.initialCapacity
   isPaused = false
+  nextCapacityUpgradePoints = this.config.initialCapacity
 
   constructor( gameRootSelector ) {
     this.setUi( gameRootSelector )
@@ -183,10 +187,10 @@ class Game {
     this.setDefaults()
     this.updateHud( { reset:true } )
 
-    for (let i = 0;  i < 120;  ++i) {
-      this.spawnSand( Math.floor( this.scene[ 0 ].length / 2 ) )
-      this.doFalling()
-    }
+    // for (let i = 0;  i < 120;  ++i) {
+    //   this.spawnSand( Math.floor( this.scene[ 0 ].length / 2 ) )
+    //   this.doFalling()
+    // }
 
     this.mainInterval = setInterval( () => {
       if (this.isPaused) return
@@ -209,6 +213,7 @@ class Game {
       this.updateHud( { clockPosition } )
 
       if (clockPosition === stageClockPositions) {
+        if (this.stage === 3) this.spawnCloudFromLava()
         let spawnCloud = true
 
         this.cactusEatingArea.forEach( ({ x, y }) => {
@@ -228,7 +233,9 @@ class Game {
         this.updateHud( { eatedItems:this.eatedItems, hp:this.hp } )
         this.clearArea( this.cactusEatingArea )
 
-        if ((this.eatedItems / (this.capacity - initialCapacity + 1)) >= newPointPerEatedItems) {
+        if ((this.eatedItems / (this.capacity - initialCapacity + 1)) >= this.nextCapacityUpgradePoints) {
+          this.nextCapacityUpgradePoints += 2
+
           this.showScreen( hlScreens.capacity, () =>
             this.updateHud( { capacity:++this.capacity } )
           )
@@ -300,7 +307,13 @@ class Game {
     this.handleResize()
   }
   initScene() {
-    const { sceneWidth, sceneHeight, initialSceneRandomSand, initialScenePyramidSandCount } = this.config
+    const {
+      cellSize,
+      sceneWidth,
+      sceneHeight,
+      initialSceneRandomSand,
+      initialScenePyramidSandCount
+    } = this.config
 
     this.clouds = Array.from( { length:sceneWidth }, () => null )
     this.scene = Array.from(
@@ -309,12 +322,13 @@ class Game {
     )
 
     const len = this.scene.length
-    this.scene[ len - 1 ] = this.scene[ len - 1 ].map( (_, x) => new SandCell( x, len - 1 ) )
+    this.scene[ len - 1 ] = this.scene[ len - 1 ].map( (_, x) => new BarrierCell( x, len - 1 ) )
+    this.scene[ len - 2 ] = this.scene[ len - 1 ].map( (_, x) => new SandCell( x, len - 2 ) )
 
     this.cactusEatingArea = []
 
     for (let start = Math.floor( this.scene[ 0 ].length / 2 ) - 4, i = 0;  i < 8;  ++i) {
-      this.cactusEatingArea.push( { x:(start + i), y:(this.scene.length - 2) } )
+      this.cactusEatingArea.push( { x:(start + i), y:(this.scene.length - 3) } )
     }
 
     for (let i = 0; i < initialSceneRandomSand; ++i) {
@@ -338,14 +352,14 @@ class Game {
     this.addEntity(
       `cactus`,
       dim.sceneX + dim.sceneWidth / 2 - 50,
-      dim.sceneY + dim.sceneHeight - 100 + hudHeight,
+      dim.sceneY + dim.sceneHeight - 100 - cellSize + hudHeight,
       100
     )
   }
   draw = () => {
     const { scene, clouds, ctxSprites:ctxS, ctxBackground:ctx } = this
     const { cellSize, cellsPadding } = this.config
-    const { sceneX, sceneY } = this.sceneDimensions
+    const { sceneX, sceneY, sceneHeight } = this.sceneDimensions
     const addPaddingToCoord = coord => coord * (cellSize + cellsPadding) + cellsPadding
 
     ctxS.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height )
@@ -366,12 +380,28 @@ class Game {
       )
     } )
 
+    /** @type {Cell[]} */
+    const cells = scene.flat().filter( Boolean )
+
     ctx.beginPath()
-    scene.forEach( (row, y) => row.forEach( (cell, x) => {
-      if (cell) ctx.rect( sceneX + addPaddingToCoord( x ), sceneY + addPaddingToCoord( y ), cellSize, cellSize )
-    } ) )
+    cells.filter( cell => cell instanceof SandCell ).forEach( cell => {
+      ctx.rect( sceneX + addPaddingToCoord( cell.x ), sceneY + addPaddingToCoord( cell.y ), cellSize, cellSize )
+    } )
 
     ctx.fillStyle = `#ffc764`
+    ctx.fill()
+
+    ctx.beginPath()
+    cells.filter( cell => cell instanceof LavaCell ).forEach( cell => {
+      ctx.rect( sceneX + addPaddingToCoord( cell.x ), sceneY + addPaddingToCoord( cell.y ), cellSize, cellSize )
+    } )
+
+    ctx.fillStyle = `#f22`
+    ctx.fill()
+
+    this.rays.forEach( ({ x }) => ctx.rect( sceneX + addPaddingToCoord( x ), sceneY, cellSize, sceneHeight ) )
+
+    ctx.fillStyle = `#f44`
     ctx.fill()
   }
   doFalling() {
@@ -385,7 +415,6 @@ class Game {
     for (let y = scene.length - 1;  y >= 0;  --y) {
       scene[ y ].forEach( (cell, x ) => {
         if (this.getSceneCell( x, y )?.falling) {
-
           for (const { jumpX, jumpY } of directionsCheckingOrder) {
             if (this.moveCell( x, y, x + jumpX, y + jumpY )) break
           }
@@ -429,6 +458,18 @@ class Game {
 
     this.clouds[ x ] = new Cloud( x, isGoingToRight )
   }
+  spawnCloudFromLava() {
+    /** @type {LavaCell[]} */
+    const lavaCells = this.scene.flat().filter( cell => cell instanceof LavaCell )
+    const index = Math.floor( Math.random() * lavaCells.length )
+    const lavaCell = lavaCells[ index ]
+
+    const rayIndex = this.rays.push( new Ray( lavaCell.x, lavaCell.y ) ) - 1
+
+    this.spawnCloud( lavaCell.x )
+
+    setTimeout( () => this.rays.splice( rayIndex, 1 ), this.config.mainIntervalTimestamp * 4 )
+  }
   startStage2 = () => {
     console.info( `stage 2` )
 
@@ -463,7 +504,8 @@ class Game {
     console.info( `stage 3` )
 
     const isCactusBuried = this.isCactusBuried()
-    const { scene, config:{ highlightScreens } } = this
+    const { scene, sceneDimensions:dim, config:{ cellSize, highlightScreens:hlScreens } } = this
+    const hudHeight = Number( getComputedStyle( this.ui.hud ).height.split( `px` )[ 0 ] )
 
     this.stage = 3
 
@@ -473,13 +515,38 @@ class Game {
     // this.clearArea( isCactusBuried )
     // this.draw()
 
-    this.flicking( `#faa`, 70, 2000 ).then( () =>
+    this.flicking( `#faa`, 70, 0 ).then( () =>
       this.clearArea( scene.slice( scene.length - 9, scene.length - 2 ).flat().filter( Boolean )  )
     )
+      .then( () => {
+        const { scene } = this
+        const lastSceneY = scene.length - 1
+        const cactusRows = { from:(scene.length - 9), to:lastSceneY }
+        const cactusColumns = { from:1, to:4 }
+        const coords = []
+
+        for (let y = cactusRows.from;  y < cactusRows.to;  ++y) {
+          for (let x = cactusColumns.from;  x < cactusColumns.to;  ++x) {
+            coords.push( { x, y } )
+          }
+        }
+
+        this.clearArea( coords )
+
+        for (let x = cactusColumns.from;  x < cactusColumns.to;  ++x) {
+          scene[ lastSceneY ][ x ] = new LavaCell( x, lastSceneY )
+        }
+      } )
       .then( () => this.draw() )
-      .then( () => this.showScreen( highlightScreens.introToStageThree, () => {
-        //
-      } ) )
+      .then( () => this.setHighLightScreen( {
+        x: dim.sceneX + (2 - 2) * cellSize,
+        y: hudHeight + dim.sceneHeight + cellSize * 9,
+        width: cellSize * 5,
+        height: cellSize * 5,
+      }, hlScreens.introToStageThree, [ { content:`Ok`, onclick: closeFn => {
+        closeFn()
+        this.resume()
+      } } ] ) )
     // const { cellSize, highlightScreens } = this.config
     // const dim = this.sceneDimensions
     // const hudHeight = Number( getComputedStyle( this.ui.hud ).height.split( `px` )[ 0 ] )
@@ -515,6 +582,7 @@ class Game {
     this.isPaused = false
     this.eatedItems = 0
     this.capacity = this.config.initialCapacity
+    this.nextCapacityUpgradePoints = this.config.initialCapacity
     this.hp = this.config.initialHp
     this.stage = 1
 
@@ -538,10 +606,13 @@ class Game {
   }
   moveCell( x, y, newX, newY, onlyIfEmpty=true ) {
     const newCell = this.getSceneCell( newX, newY )
-    const cell = this.scene[ y ]?.[ x ]
+    const cell = this.getSceneCell( x, y )
 
     if (newCell === undefined || cell === undefined) return false
-    if (newCell !== null && onlyIfEmpty) return false
+    if (newCell !== null && onlyIfEmpty) {
+      if (newCell instanceof LavaCell) this.scene[ y ][ x ] = null
+      return false
+    }
 
     cell.x = newX
     cell.y = newY
@@ -571,7 +642,6 @@ class Game {
 
     let temp = Math.floor( scene[ 0 ].length / 2 ) - 4
     const cactusColumns = { from:temp, to:(temp + 8) }
-
     const cactusCells = []
 
     for (let y = cactusRows.from;  y < cactusRows.to;  ++y) {

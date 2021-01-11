@@ -9,3 +9,9 @@ export default class Cell {
 export class SandCell extends Cell {
   type = `sand`
 }
+export class BarrierCell extends Cell {
+  type = `barrier`
+}
+export class LavaCell extends Cell {
+  type = `lava`
+}
