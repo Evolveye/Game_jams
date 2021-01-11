@@ -59,6 +59,9 @@ class Game {
     initialHp: 20,
 
     highlightScreens: {
+      start: `
+        <h1>CactuJam 8</h1>
+      `,
       initCactus: `
         <h1>Mistyczny kaktus</h1>
         <p>
@@ -221,6 +224,8 @@ class Game {
       highlightScreens: hlScreens,
     } = this.config
 
+    this.ui.hud.style.display = `none`
+
     this.stop()
     this.initScene()
     this.clearInventory()
@@ -228,11 +233,22 @@ class Game {
     this.updateHud( { reset:true } )
 
     this.pause()
-    this.draw()
 
     const { sceneDimensions:dim } = this
 
     new Promise( res =>
+      this.setHighLightScreen( {
+        x: dim.sceneX + dim.sceneWidth / 2 - 50,
+        y: dim.sceneY + dim.sceneHeight - 85,
+        width: 100,
+        height: 100,
+      }, hlScreens.start, [ { content:`Rozpocznij grę`, onclick: closeFn => {
+        this.draw()
+        closeFn()
+        this.ui.hud.style.display = `flex`
+        res()
+      } } ] )
+    ).then( () => new Promise( res =>
       // res()
       this.setHighLightScreen( {
         x: dim.sceneX + dim.sceneWidth / 2 - 50,
@@ -240,7 +256,7 @@ class Game {
         width: 100,
         height: 100,
       }, hlScreens.initCactus, [ { content:`Ok`, onclick: closeFn => closeFn( res() ) } ] )
-    ).then( () => new Promise( res =>
+    ) ).then( () => new Promise( res =>
       this.setHighLightScreen( {
         x: window.innerWidth - 55,
         y: hudHeight - 5,
@@ -253,10 +269,10 @@ class Game {
       ] )
     ) )
 
-    for (let i = 0;  i < 120;  ++i) {
-      this.spawnSand( Math.floor( this.scene[ 0 ].length / 2 ) )
-      this.doFalling()
-    }
+    // for (let i = 0;  i < 120;  ++i) {
+    //   this.spawnSand( Math.floor( this.scene[ 0 ].length / 2 ) )
+    //   this.doFalling()
+    // }
 
     this.mainInterval = setInterval( () => {
       if (this.isPaused) return
@@ -266,7 +282,7 @@ class Game {
       // this.spawnSand( 13, 0 ) // stage 2
       requestAnimationFrame( this.draw )
 
-      if (this.isCactusBuried()) this.showScreen( hlScreens.overfedCactus, this.startStage3 )
+      if (this.stage < 3 && this.isCactusBuried()) this.showScreen( hlScreens.overfedCactus, this.startStage3 )
     }, mainIntervalTimestamp )
 
     let clockPosition = 0
