@@ -61,6 +61,7 @@ class Game {
     highlightScreens: {
       start: `
         <h1>CactuJam 8</h1>
+        <p>Prosta gra stworzona pod temat "sand".</p>
       `,
       initCactus: `
         <h1>Mistyczny kaktus</h1>
@@ -146,15 +147,6 @@ class Game {
           a kaktus nie przeżyje już kolejnego ataku ze strony swego dokarmiacza!
         </p>
       `,
-      // introToStageThree: `
-      //   <h1>Przekarmiony</h1>
-      //   <p><strong style="color:red;">ETAP 2 ZAKOŃCZONY</strong></p>
-      //   <p>Gniew kaktusa spowodował wyrwę w ziemi. Wyglada na to, ze to krater wulkaniczny!</p>
-      //   <p>
-      //     Teraz chmury piaskowe będą nadciągać tutaj non stop,
-      //     a kaktus nie przeżyje już kolejnego ataku ze strony swego dokarmiacza!
-      //   </p>
-      // `,
       realEndByHp: `
         <h1>Zwiędłeś!</h1>
         <p>
@@ -165,6 +157,14 @@ class Game {
         <p>Tak jak wszyscy inni...</p>
         <p>Oko nie będzie zadowolone</p>
         <p><strong style="color:red;">PRZEGRANA</strong></p>
+      `,
+      endScreen: `
+        <h1>Koniec!</h1>
+        <p>Kaktus skonał, świat zacyzna płonąć, oczy strzelają</p>
+        <p>
+          Jednak tutaj masz szansę rozpocząć przygodę od początku.
+          Zrób to aby pobić swój (lub znajomych) rekord punktowy.
+        </p>
       `,
     }
   }
@@ -189,6 +189,8 @@ class Game {
   clouds = []
   /** @type {Ray[]} */
   rays = []
+  startTime = 0
+  points = 0
 
   transportedItemsCount = 0
   eatedItems = 0
@@ -224,7 +226,7 @@ class Game {
       highlightScreens: hlScreens,
     } = this.config
 
-    this.ui.hud.style.display = `none`
+    this.ui.hud.style.visibility = `hidden`
 
     this.stop()
     this.initScene()
@@ -245,7 +247,7 @@ class Game {
       }, hlScreens.start, [ { content:`Rozpocznij grę`, onclick: closeFn => {
         this.draw()
         closeFn()
-        this.ui.hud.style.display = `flex`
+        this.ui.hud.style.visibility = `unset`
         res()
       } } ] )
     ).then( () => new Promise( res =>
@@ -282,7 +284,10 @@ class Game {
       // this.spawnSand( 13, 0 ) // stage 2
       requestAnimationFrame( this.draw )
 
-      if (this.stage < 3 && this.isCactusBuried()) this.showScreen( hlScreens.overfedCactus, this.startStage3 )
+      if (this.isCactusBuried()) {
+        if (this.stage < 3) this.showScreen( hlScreens.overfedCactus, this.startStage3 )
+        else this.showScreen( hlScreens.endScreen, this.showEndscreen )
+      }
     }, mainIntervalTimestamp )
 
     let clockPosition = 0
@@ -292,7 +297,9 @@ class Game {
       ++clockPosition
 
       this.moveClouds()
-      this.updateHud( { clockPosition } )
+
+      this.points += this.stage
+      this.updateHud( { clockPosition, points:this.points } )
 
       if (clockPosition === stageClockPositions) {
         if (this.stage === 3) this.spawnCloudFromLava()
@@ -375,6 +382,7 @@ class Game {
     this.ui.capacity = root.querySelector( `.game-hud-capacity` )
     this.ui.eatedItems = root.querySelector( `.game-hud-eated_items` )
     this.ui.hp = root.querySelector( `.game-hud-hp` )
+    this.ui.points = root.querySelector( `.game-hud-points` )
 
     this.ui.highlight = root.querySelector( `.game-highlight` )
     this.ui.highlighter = root.querySelector( `.game-highlight-highlighter` )
@@ -559,6 +567,7 @@ class Game {
     const dim = this.sceneDimensions
     const hudHeight = Number( getComputedStyle( this.ui.hud ).height.split( `px` )[ 0 ] )
     this.stage = 2
+    this.points += 1500
 
     this.pause()
     this.flicking( `#5f5`, 100, 3000 ).then( () => {
@@ -592,6 +601,7 @@ class Game {
     const hudHeight = Number( getComputedStyle( this.ui.hud ).height.split( `px` )[ 0 ] )
 
     this.stage = 3
+    this.points += 3000
 
     if (!isCactusBuried) return
 
@@ -657,6 +667,7 @@ class Game {
     // } )
     return false
   }
+  showEndscreen = () => {}
 
 
   //
@@ -670,6 +681,8 @@ class Game {
     this.hp = this.config.initialHp
     this.stage = 1
     this.isIntro = true
+    this.startTime = Date.now()
+    this.points = 0
 
     this.ctxBackground2.imageSmoothingEnabled = false
     this.ctxBackground.imageSmoothingEnabled = false
@@ -789,7 +802,7 @@ class Game {
 
     return new Promise( res => sprite.onload = res )
   }
-  updateHud( { reset, clockPosition, transportedItemsCount, capacity, eatedItems, hp } ) {
+  updateHud( { reset, clockPosition, transportedItemsCount, capacity, eatedItems, hp, points } ) {
     const { stageClockPositions, initialCapacity, initialHp } = this.config
     const isNotUndef = something => something !== undefined
 
@@ -821,6 +834,12 @@ class Game {
       this.ui.hp.dataset.count = hp
     } else if (reset) {
       this.ui.hp.dataset.count = initialHp
+    }
+
+    if (isNotUndef( points )) {
+      this.ui.points.dataset.count = points
+    } else if (reset) {
+      this.ui.points.dataset.count = 0
     }
   }
   /**
