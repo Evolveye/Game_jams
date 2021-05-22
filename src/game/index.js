@@ -28,6 +28,10 @@ export default class extends React.Component {
     main: 0,
   }
 
+  level = {
+    speed: 1,
+  }
+
   /** @type {null|CanvasRenderingContext2D} */
   ctx = null
 
@@ -85,7 +89,8 @@ export default class extends React.Component {
     player.moveTo( width / 2, height - 200 )
 
     entities.splice( 0 )
-    entities.push( new Rock( 200, 200 ) )
+
+    for (let i = 0;  i < 10;  ++i) entities.push( new Rock( 200, Math.floor( Math.random() * height ) ) )
   }
 
 
@@ -103,7 +108,8 @@ export default class extends React.Component {
 
 
   #logic = () => {
-    const { player, entities } = this
+    const { player, entities, level } = this
+    const { width, height } = this.ctx.canvas
 
     // if (keys.getkey( `w` )) player.setVelocity( 2 )
     // else if (keys.getkey( `s` )) player.setVelocity( 0 )
@@ -133,7 +139,12 @@ export default class extends React.Component {
     let collision = false
 
     for (const entity of entities) {
-      if (player.isCollision( entity )) collision = true
+      entity.y += level.speed
+
+      if (entity.y > height + entity.height) {
+        entity.x = Math.floor( Math.random() * 500 ) + 300
+        entity.y = -entity.height
+      } else if (player.isCollision( entity )) collision = true
     }
 
     if (collision) {
@@ -150,8 +161,12 @@ export default class extends React.Component {
 
     ctx.clearRect( 0, 0, width, height )
 
-    entities.forEach( entity => entity.draw( ctx ) )
+    entities.forEach( entity => {
+      entity.draw( ctx )
+      if (this.#indev) entity.strokeHitboxes( ctx )
+    } )
 
+    if (this.#indev) player.strokeHitboxes( ctx )
     player.draw( ctx )
   }
 

@@ -57,6 +57,22 @@ export class Entity {
   }
 
 
+  /** @param {CanvasRenderingContext2D} ctx */
+  strokeHitboxes = ctx => {
+    const { visible, x, y, width, height, hitboxes } = this
+
+    if (!ctx || !visible) return
+
+    ctx.strokeStyle = `red`
+    ctx.beginPath()
+    ctx.save()
+    ctx.translate( x, y )
+    hitboxes.forEach( hb => ctx.rect( hb.x, hb.y, hb.width, hb.height ) )
+    ctx.restore()
+    ctx.stroke()
+  }
+
+
   moveTo( x, y ) {
     this.x = x
     this.y = y
@@ -127,11 +143,11 @@ export class Player extends MovingEntity {
     const size = 20
 
     super( 0, 0, size, size * 2, imageCar, false, 0 )
-    
+
     this.hitboxes.splice( 0 )
     this.hitboxes.push(
-      new Hitbox( -size / 2, -size / 2, size, size ),
-      new Hitbox( -size / 2,  size / 2, size, size ),
+      new Hitbox( -size / 2, -size, size, size ),
+      new Hitbox( -size / 2, 0,     size, size ),
     )
   }
 }
