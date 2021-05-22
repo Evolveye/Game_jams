@@ -3,6 +3,7 @@ import React from "react"
 // import Img from "gatsby-image"
 
 import { Entity, Player, Rock } from "./entities.js"
+import levels, { Level } from "./levels.js"
 import keys from "./keys.js"
 
 import * as classes from "./main.module.css"
@@ -28,26 +29,31 @@ export default class extends React.Component {
     main: 0,
   }
 
-  level = {
-    speed: 1,
-  }
+  /** @type {null|Level} */
+  level = null
 
   /** @type {null|CanvasRenderingContext2D} */
   ctx = null
 
   player = new Player()
 
+  /** @type {null|CanvasRenderingContext2D} */
+  offscreenCtx = null
+
 
   /** @param {HTMLCanvasElement} canvas */
   #init = canvas => {
     if (!canvas) return
+
+    const offscreenCanvas = document.createElement( `canvas` )
+    this.offscreenCtx = offscreenCanvas.getContext( `2d` )
 
     this.ctx = canvas.getContext( `2d` )
 
     this.#resize()
     this.start()
 
-    this.initlevel( -1 )
+    this.initlevel( 0 )
   }
 
 
@@ -70,7 +76,7 @@ export default class extends React.Component {
     const loop = () => {
       this.intervals.main = requestAnimationFrame( loop )
 
-      if (this.paused) return
+      if (this.paused || !this.offscreenCtx || !this.level) return
 
       this.#logic()
       this.#draw()
@@ -82,15 +88,14 @@ export default class extends React.Component {
 
 
   initlevel = levelId => {
-    const { ctx, player, entities } = this
-    const { width, height } = ctx.canvas
-
-    player.visible = true
-    player.moveTo( width / 2, height - 200 )
+    const { entities, player, ctx } = this
 
     entities.splice( 0 )
+    player.visible = false
 
-    for (let i = 0;  i < 10;  ++i) entities.push( new Rock( 200, Math.floor( Math.random() * height ) ) )
+    this.level = levels[ levelId ]
+    this.level.init( this )
+    this.level.generatebackground( this.offscreenCtx )
   }
 
 
@@ -99,6 +104,9 @@ export default class extends React.Component {
 
     canvas.width  = canvas.offsetWidth
     canvas.height = canvas.offsetHeight
+
+    this.offscreenCtx.canvas.width  = canvas.offsetWidth
+    this.offscreenCtx.canvas.height = canvas.offsetHeight
   }
 
 
@@ -110,6 +118,8 @@ export default class extends React.Component {
   #logic = () => {
     const { player, entities, level } = this
     const { width, height } = this.ctx.canvas
+
+    level.tick()
 
     // if (keys.getkey( `w` )) player.setVelocity( 2 )
     // else if (keys.getkey( `s` )) player.setVelocity( 0 )
@@ -156,18 +166,19 @@ export default class extends React.Component {
 
 
   #draw = () => {
-    const { ctx, player, entities } = this
+    const { ctx, player, entities, level } = this
     const { width, height } = ctx.canvas
+    // const moduloDistanceY = level.distanceY - Math.floor( level.distanceY / height ) * height
+    const moduloDistanceY = level.distanceY - Math.floor( level.distanceY / (height * 3) ) * height * 3
 
     ctx.clearRect( 0, 0, width, height )
 
-    entities.forEach( entity => {
-      entity.draw( ctx )
-      if (this.#indev) entity.strokeHitboxes( ctx )
-    } )
+    ctx.drawImage( this.offscreenCtx.canvas, 0, -height + moduloDistanceY )
+    // ctx.drawImage( this.offscreenCtx.canvas, 0, moduloDistanceY )
 
-    if (this.#indev) player.strokeHitboxes( ctx )
-    player.draw( ctx )
+    entities.forEach( entity => entity.draw( ctx, this.#indev ) )
+
+    player.draw( ctx, this.#indev )
   }
 
 

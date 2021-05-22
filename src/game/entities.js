@@ -43,23 +43,12 @@ export class Entity {
   }
 
 
-  /** @param {CanvasRenderingContext2D} ctx */
-  draw = ctx => {
-    const { visible, sprite, x, y, width, height } = this
-
-    if (!ctx || !visible) return
-
-    ctx.save()
-    ctx.translate( x, y )
-    ctx.rotate( this.#angle )
-    ctx.drawImage( sprite, -width / 2, -height / 2, width, height )
-    ctx.restore()
-  }
-
-
-  /** @param {CanvasRenderingContext2D} ctx */
-  strokeHitboxes = ctx => {
-    const { visible, x, y, width, height, hitboxes } = this
+  /**
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {boolean} hitboxes
+   */
+  draw = (ctx, drawHitboxes = false) => {
+    const { hitboxes, visible, sprite, x, y, width, height } = this
 
     if (!ctx || !visible) return
 
@@ -67,9 +56,11 @@ export class Entity {
     ctx.beginPath()
     ctx.save()
     ctx.translate( x, y )
-    hitboxes.forEach( hb => ctx.rect( hb.x, hb.y, hb.width, hb.height ) )
-    ctx.restore()
+    if (drawHitboxes) hitboxes.forEach( hb => ctx.rect( hb.x, hb.y, hb.width, hb.height ) )
     ctx.stroke()
+    ctx.rotate( this.#angle )
+    ctx.drawImage( sprite, -width / 2, -height / 2, width, height )
+    ctx.restore()
   }
 
 
