@@ -2,9 +2,10 @@ import React from "react"
 // import { useStaticQuery, graphql } from "gatsby"
 // import Img from "gatsby-image"
 
-import * as classes from "./main.module.css"
 import Player from "./entities.js"
+import keys from "./keys.js"
 
+import * as classes from "./main.module.css"
 
 // const query = graphql`
 //   query {
@@ -61,7 +62,6 @@ export default class extends React.Component {
 
     const loop = () => {
       this.intervals.main = requestAnimationFrame( loop )
-      console.log( 1 )
 
       if (this.paused) return
 
@@ -97,7 +97,14 @@ export default class extends React.Component {
 
 
   #logic = () => {
-    this.player.doTick()
+    const { player } = this
+
+    if (keys.getkey( `w` )) player.setAngle( 0 )
+    else if (keys.getkey( `s` )) player.setAngle( 180 )
+    else if (keys.getkey( `a` )) player.setAngle( 270 )
+    else if (keys.getkey( `d` )) player.setAngle( 90 )
+
+    player.doTick()
   }
 
 
