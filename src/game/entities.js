@@ -1,7 +1,24 @@
 import imageCar from "../images/car_black_1.png"
+import imageRock from "../images/rock1.png"
 
+class Hitbox {
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} width
+   * @param {number} height
+   */
+  constructor( x, y, width, height ) {
+    this.x = x
+    this.y = y
+    this.width = width
+    this.height = height
+  }
+}
 
-class Entity {
+export class Entity {
+  /** @type {Hitbox[]} */
+  hitboxes = []
   sprite = new Image()
   #angle = Math.PI / 180
 
@@ -13,6 +30,8 @@ class Entity {
     this.height = height
     this.sprite.src = imageObject
     this.visible = visible
+
+    this.hitboxes.push( new Hitbox( -width / 2, -height / 2, width, height ) )
   }
 
 
@@ -28,7 +47,7 @@ class Entity {
   draw = ctx => {
     const { visible, sprite, x, y, width, height } = this
 
-    if (!visible) return
+    if (!ctx || !visible) return
 
     ctx.save()
     ctx.translate( x, y )
@@ -49,13 +68,35 @@ class Entity {
   }
 
 
+  /** @param {Entity} entity */
+  isCollision( entity ) {
+    if (!entity) return
+
+    const getMinX = (entity, hitbox) => entity.x + hitbox.x
+    const getMaxX = (entity, hitbox) => entity.x + hitbox.x + hitbox.width
+
+    const getMinY = (entity, hitbox) => entity.y + hitbox.y
+    const getMaxY = (entity, hitbox) => entity.y + hitbox.y + hitbox.height
+
+    for (const thisHb of this.hitboxes) {
+      for (const entityHb of entity.hitboxes) {
+        const intersecting = true
+          && (getMinX( this, thisHb ) <= getMaxX( entity, entityHb ) && getMaxX( this, thisHb ) >= getMinX( entity, entityHb ))
+          && (getMinY( this, thisHb ) <= getMaxY( entity, entityHb ) && getMaxY( this, thisHb ) >= getMinY( entity, entityHb ))
+
+        if (intersecting) return true
+      }
+    }
+
+    return false
+  }
+
+
   doTick() { /* for overriding */ }
 }
 
 
 class MovingEntity extends Entity {
-
-
   constructor( x, y, width, height, imageObject, visible, velocity = 0 ) {
     super( x, y, width, height, imageObject, visible )
 
@@ -81,10 +122,26 @@ class MovingEntity extends Entity {
   }
 }
 
-export default class Player extends MovingEntity {
+export class Player extends MovingEntity {
   constructor() {
     const size = 20
 
-    super( 0, 0, size, size * 2, imageCar, false, 0.5 )
+    super( 0, 0, size, size * 2, imageCar, false, 0 )
+    
+    this.hitboxes.splice( 0 )
+    this.hitboxes.push(
+      new Hitbox( -size / 2, -size / 2, size, size ),
+      new Hitbox( -size / 2,  size / 2, size, size ),
+    )
+  }
+}
+
+
+export class Rock extends Entity {
+  constructor( x, y ) {
+    const multiplier = 89 / 72
+    const size = 20
+
+    super( x, y, size * multiplier, size, imageRock )
   }
 }
