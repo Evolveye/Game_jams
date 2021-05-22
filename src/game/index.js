@@ -17,9 +17,10 @@ import Player from "./entities.js"
 // `
 
 export default class extends React.Component {
-  #indev = true
+  #indev = false
 
   intervals = {
+    every1s: 0,
     main: 0,
   }
 
@@ -44,20 +45,41 @@ export default class extends React.Component {
 
   pause = () => this.paused = true
   resume = () => this.paused = false
-  stop = () => clearInterval( this.intervals.main )
+  componentWillUnmount = () => this.stop()
+
+
+  stop = () => {
+    const { intervals } = this
+
+    cancelAnimationFrame( intervals.main )
+    clearInterval( intervals.every1s )
+  }
+
+
   start = () => {
-    this.intervals.main = setInterval( () => {
+    this.intervals.every1s = setInterval( this.#logic1s, 1000 )
+
+    const loop = () => {
+      this.intervals.main = requestAnimationFrame( loop )
+      console.log( 1 )
+
       if (this.paused) return
 
+      this.#logic()
       this.#draw()
-    }, this.#indev ? 100 : 1000 / 60 )
+      // requestAnimationFrame( this.#draw )
+    }
+
+    loop()
   }
 
 
   initlevel = levelId => {
-    const { player } = this
+    const { ctx, player } = this
+    const { width, height } = ctx.canvas
 
     player.visible = true
+    player.moveTo( width / 2, height - 200 )
   }
 
 
@@ -69,15 +91,21 @@ export default class extends React.Component {
   }
 
 
+  #logic1s = () => {
+    this.player.setAngle( Math.floor( Math.random() * 360 ) )
+  }
+
+
+  #logic = () => {
+    this.player.doTick()
+  }
+
+
   #draw = () => {
     const { ctx, player } = this
     const { width, height } = ctx.canvas
 
-    ctx.strokeStyle = `white`
-    ctx.lineWidth = 5
-    ctx.rect( 0, 0, width, height )
-    ctx.stroke()
-
+    ctx.clearRect( 0, 0, width, height )
 
     player.draw( ctx )
   }
