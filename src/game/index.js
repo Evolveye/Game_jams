@@ -7,8 +7,9 @@ import levels, { Level } from "./levels.js"
 import keys from "./keys.js"
 
 import * as classes from "./main.module.css"
-import { getDate } from "./utils.js"
+import { fancyTimeFormat, getDate } from "./utils.js"
 import Effect from "./effects.js"
+import LuckMatrice from "./luckMatrice.js"
 
 // const query = graphql`
 //   query {
@@ -30,6 +31,13 @@ const STATE = {
 const SCREENS = {
   LEVEL_SUMMARY: 0,
   CHECK_LUCK: 1,
+  DRAW_NUMBER: 2,
+}
+const GOOD_LUCK = {
+  REMOVE_BLIND: `niwelacja ślepoty`,
+}
+const BAD_LUCK = {
+  BLIND: `ślepota`,
 }
 
 export default class extends React.Component {
@@ -44,7 +52,7 @@ export default class extends React.Component {
   }
 
   /** @type {Effect[]} */
-  effects = [ new Effect( Effect.EFFECTS.BLIND, 0 ) ]
+  effects = []
 
   state = {
     statsPoints: 0,
@@ -57,6 +65,7 @@ export default class extends React.Component {
     buttonClickable: false,
     time: 0,
     showedScreen: null,
+    newEffect: null,
   }
 
   /** @type {null|Level} */
@@ -185,9 +194,11 @@ export default class extends React.Component {
 
     if (!onlyRestart) {
       this.levelNumber++
+      console.log( this.effects, 10 * (this.levelNumber / 2) + 50 )
       this.level = new Level({
         speed: 1,
-        map: Level.generateMap( 100 ),
+        map: Level.generateMap( 10 * this.levelNumber + 50 ),
+        // map: Level.generateMap( 1 ),
         init: game => {
           const { ctx, player, entities } = game
           const { width, height } = ctx.canvas
@@ -230,46 +241,46 @@ export default class extends React.Component {
 
       this.setState({ [ stateProp ]:value })
 
-      if (value < max) setTimeout( () => _count( resolve, stateProp, max, value + 9 ), 1 )
+      if (value < max) setTimeout( () => _count( resolve, stateProp, max, value + 43 ), 1 )
       else resolve()
     }
     const count = (stateProp, max, value) =>
       new Promise( r => _count( r, stateProp, Math.floor( max ), value ))
 
     await count( `statsTime`, new Date( Date.now() - level.startTime ).getTime() )
-    await count( `statsPoints`, level.earnedPoints * 10 + 100 * this.levelNumber )
+    await count( `statsPoints`, level.earnedPoints * 10 + 300 * this.levelNumber )
 
     this.setState( old => {
       return ({
         statsPointsSum: old.statsPointsSum + old.statsPoints,
         statsTimeSum: old.statsTimeSum + old.statsTime,
         buttonClickable: true,
-      }) } )
+      })
+    } )
 
     // setTimeout( () => this.initlevel( true ), 1000 * 5 )
   }
 
 
-  #checkLuck = async() => {
+  #drawNumber = async() => {
     this.setState({
       significantNumber: null,
       chanceLuck: null,
       chanceBadLuck: null,
-      showedScreen: SCREENS.CHECK_LUCK,
+      showedScreen: SCREENS.DRAW_NUMBER,
       buttonClickable: false,
     })
 
     let randomNum = 0
 
-    const _draw = (resolve, i = 100) => {
+    const _draw = (resolve, i = 2) => {
       const randNum = Math.floor( Math.random() * 100 ) / 100
       this.setState({ significantNumber:randNum  })
 
-      if (i > 0) return setTimeout( () => _draw( resolve, i - 1 ), 20 / (i + 3) * 300 )
+      if (i > 0) return setTimeout( () => _draw( resolve, i - 1 ), 20 / (i + 3) * 200 )
 
       resolve()
       randomNum = randNum
-
     }
 
     const draw = () => new Promise( r => _draw( r ))
@@ -281,6 +292,65 @@ export default class extends React.Component {
       chanceBadLuck: 1 - randomNum,
       buttonClickable: true,
     })
+  }
+
+
+  #checkLuck = async() => {
+    this.setState({
+      showedScreen: SCREENS.CHECK_LUCK,
+      newEffect: null,
+    })
+  }
+
+
+  addGoodEffect = multiplier => {
+    this.#addEfect( GOOD_LUCK.REMOVE_BLIND, multiplier )
+  }
+
+
+  addBadEffect = multiplier => {
+    this.#addEfect( BAD_LUCK.BLIND, multiplier )
+  }
+
+
+  #addEfect = (effect, multiplier = 1) => {
+    const { effects } = this
+    const removeEffect = type => {
+      const effectIndex = effects.findIndex( e => e.type == type )
+
+      if (effectIndex == -1) return false
+
+      const effect = effects[ effectIndex ]
+
+      console.log( effectIndex, effect, effects )
+
+      if (effect.value > 1) effect.value--
+      else effects.splice( effectIndex, 1 )
+
+      console.log( effects )
+
+      return true
+    }
+    const findEffectOrPush = type => {
+      const effect = effects.find( e => e.type == type )
+
+      if (effect) effect.value++
+      else effects.push( new Effect( Effect.EFFECTS.BLIND, 1 ) )
+    }
+
+    this.setState({ newEffect:effect + (typeof multiplier == `number` ? ` x${multiplier}` : ``) })
+
+    for (let i = 0;  i < multiplier;  ++i) switch (effect) {
+      case GOOD_LUCK.REMOVE_BLIND : {
+        removeEffect( Effect.EFFECTS.BLIND )
+        break
+      }
+
+      case BAD_LUCK.BLIND : {
+        findEffectOrPush( Effect.EFFECTS.BLIND )
+        break
+      }
+    }
   }
 
 
@@ -356,6 +426,8 @@ export default class extends React.Component {
     const mapDistanceY = height - level.height + level.distanceY
 
     ctx.clearRect( 0, 0, width, height )
+    helpingCtx.clearRect( 0, 0, width, height )
+
     ctx.drawImage( this.offscreenCtx.canvas, 0, mapDistanceY )
 
     entities.forEach( entity => entity.draw( ctx, this.#indev ) )
@@ -371,7 +443,7 @@ export default class extends React.Component {
           helpingCtx.globalCompositeOperation = `destination-out`
 
           helpingCtx.beginPath()
-          helpingCtx.arc( player.x, player.y, player.height * (10 - value), 0, Math.PI * 2 )
+          helpingCtx.arc( player.x, player.y, player.height * (11 - value / 2), 0, Math.PI * 2 )
           helpingCtx.fill()
 
           helpingCtx.globalCompositeOperation = `source-over`
@@ -393,7 +465,17 @@ export default class extends React.Component {
       chanceLuck,
       chanceBadLuck,
       buttonClickable,
+      newEffect,
     } = this.state
+
+
+    const countOfGoods = chanceLuck < 0.1
+      ? 4
+      : chanceLuck < 0.45
+        ? 3
+        : chanceLuck < 0.65
+          ? 2
+          : 1
 
     return (
       <article>
@@ -409,7 +491,7 @@ export default class extends React.Component {
                 <ul className={classes.screenStats}>
                   {
                     [
-                      { key:`Czas`, current:statsTime, sum:statsTimeSum },
+                      { key:`Czas`, current:fancyTimeFormat( statsTime ), sum:fancyTimeFormat( statsTimeSum ) },
                       { key:`Punkty`, current:statsPoints, sum:statsPointsSum },
                     ].map( ({ key, current, sum }) => (
                       <li key={key} className={classes.screenStatsItem}>
@@ -434,8 +516,43 @@ export default class extends React.Component {
 
                 <button
                   className={`neumorphizm is-button ${classes.buttonNext}`}
-                  onClick={() => this.#checkLuck()}
+                  onClick={() => this.#drawNumber()}
                   children="Sprawdź swoje szczęście"
+                  disabled={!buttonClickable}
+                />
+              </div>
+            </div>
+          </article>
+        )}
+
+        {this.state.showedScreen == SCREENS.DRAW_NUMBER && (
+          <article className={classes.screen}>
+            <div className={classes.screeenWrapper}>
+              <h2 className={classes.screenTitle}>Poziom ukończony!</h2>
+
+              <div className={classes.screenContent}>
+                <h3>Nowa liczba znacząca</h3>
+                <span className={classes.significantNumber}>{significantNumber}</span>
+
+                <br />
+
+                {chanceLuck != null && <p>Oznacza ona...</p>}
+                <ul className={classes.screenStats}>
+
+                  <li className={classes.screenStatsItem}>
+                    {chanceLuck != null ? ` ...szansę na szczęście: ${Math.round( chanceLuck * 100 )}%` : null}
+                  </li>
+                  <li className={classes.screenStatsItem}>
+                    {chanceBadLuck != null ? ` ...szansę na pecha ${Math.round( chanceBadLuck * 100 )}%` : null}
+                  </li>
+                </ul>
+
+                <br />
+
+                <button
+                  className={`neumorphizm is-button ${classes.buttonNext}`}
+                  onClick={() => this.#checkLuck()}
+                  children="Kolejny poziom"
                   disabled={!buttonClickable}
                 />
               </div>
@@ -449,28 +566,45 @@ export default class extends React.Component {
               <h2 className={classes.screenTitle}>Poziom ukończony!</h2>
 
               <div className={classes.screenContent}>
-                <h3>Nowa liczba znacząca</h3>
-                <span className={classes.significantNumber}>{significantNumber}</span>
+                <p>Trafienie w szczęśliwą komórkę: pozytywny efekt lub kasacja złego</p>
+                <p>Trafienie w pechową komórkę: dodatkowe 2 złe efekty</p>
+                <p>Pominięcie hazardu: dodatkowy 1 zły efekt</p>
 
                 <br />
 
-                {chanceLuck && <p>Oznacza ona...</p>}
-                <ul className={classes.screenStats}>
+                {countOfGoods > 1 && <p>
+                  Szansa na wygraną mówi, że możesz wylosować
+                  {` `}
+                  {countOfGoods}
+                  {` `}
+                  pozytywne efekty
+                </p>}
 
-                  <li className={classes.screenStatsItem}>
-                    {chanceLuck ? ` ...szansę na szczęście: ${Math.round( chanceLuck * 100 )}%` : null}
-                  </li>
-                  <li className={classes.screenStatsItem}>
-                    {chanceBadLuck ? ` ...szansę na pecha ${Math.round( chanceBadLuck * 100 )}%` : null}
-                  </li>
-                </ul>
+                <br />
+
+                <section className={classes.newEffect}>
+                  <LuckMatrice
+                    onLuck={() => this.addGoodEffect( countOfGoods )}
+                    onBadLuck={() => this.addBadEffect( 2 )}
+                    luckChance={significantNumber}
+                  />
+
+                  {newEffect != null && (
+                    <p>
+                      <strong>Wylosowany efekt</strong>
+                      <br />
+                      {newEffect}
+                    </p>
+                  )}
+                </section>
 
                 <br />
 
                 <button
                   className={`neumorphizm is-button ${classes.buttonNext}`}
-                  onClick={() => this.#nextLevel()}
-                  children="Kolejny poziom"
+                  onClick={newEffect ? this.#nextLevel : this.addBadEffect}
+                  // onClick={() => this.#nextLevel()}
+                  children={newEffect ? `Następny poziom` : `Nie biorę udziału w hazardzie`}
                   disabled={!buttonClickable}
                 />
               </div>

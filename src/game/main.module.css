@@ -24,7 +24,8 @@ body {
       left: 50%;
       top: 50%;
       transform: translate( -50%, -50% );
-      width: 600px;
+      min-width: 600px;
+      /* min-height: 450px; */
       background-color: whitesmoke;
     }
     .screenTitle {
@@ -69,7 +70,7 @@ body {
           height: 2em;
         }
             .screenStatsItemSum {
-              min-width: 140px;
+              min-width: 160px;
             }
     .significantNumber {
       display: block;
@@ -91,6 +92,24 @@ body {
           background-size: contain;
           background-repeat: no-repeat;
         }
+
+  .newEffect {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+  }
+      .luckyTable {}
+          .luckyTableCell {
+            height: 10px;
+          }
+              .luckyCell {
+                display: block;
+                width: 15px;
+                height: 15px;
+                background-color: #0001;
+              }
+              .luckyCell.is-lucky { background-color: green }
+              .luckyCell.is-notLucky { background-color: tomato }
 
 
 

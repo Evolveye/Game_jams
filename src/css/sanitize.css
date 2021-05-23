@@ -114,6 +114,10 @@ hr {
   width: 80%;
 }
 
+table {
+  border-spacing: 0;
+}
+
 /* :focus:not( .is-not-focus ) {
   position: relative;
   outline: none;
