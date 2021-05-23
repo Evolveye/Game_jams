@@ -84,6 +84,7 @@ button {
   padding: 0;
   border: unset;
   background-color: unset;
+  font-family: inherit;
   cursor: pointer;
   color: inherit;
 }

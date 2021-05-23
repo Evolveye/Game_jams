@@ -29,6 +29,8 @@ export class Level {
     dirtyRoad: new Image(),
   }
 
+  earnedPoints = 0
+  startTime = 0
   distanceY = 0
   roadSize = 128
 
@@ -138,6 +140,12 @@ export class Level {
   }
 
 
+  start = game => {
+    this.startTime = Date.now()
+    this.init( game )
+  }
+
+
   get( x, y ) {
     return this.map[ this.map.length - 1 - y ]?.[ x ]
   }
@@ -149,6 +157,7 @@ export class Level {
 
 
   tick( additionalSpeed ) {
+    this.earnedPoints += this.speed * additionalSpeed
     this.distanceY += this.speed + additionalSpeed
   }
 

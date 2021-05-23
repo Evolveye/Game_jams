@@ -7,6 +7,7 @@ import levels, { Level } from "./levels.js"
 import keys from "./keys.js"
 
 import * as classes from "./main.module.css"
+import { getDate } from "./utils.js"
 
 // const query = graphql`
 //   query {
@@ -25,8 +26,13 @@ const STATE = {
   END: 3,
   PRE_START: 4,
 }
+const SCREENS = {
+  LEVEL_SUMMARY: 0,
+  CHECK_LUCK: 1,
+}
 
 export default class extends React.Component {
+
   #indev = false
 
   /** @type {Entity[]} */
@@ -37,8 +43,22 @@ export default class extends React.Component {
     main: 0,
   }
 
+  state = {
+    statsPoints: 0,
+    statsTime: 0,
+    statsPointsSum: 0,
+    statsTimeSum: 0,
+    significantNumber: null,
+    chanceLuck: null,
+    chanceBadLuck: null,
+    buttonClickable: false,
+    time: 0,
+    showedScreen: null,
+  }
+
   /** @type {null|Level} */
   level = null
+  levelNumber = 0
 
   /** @type {null|CanvasRenderingContext2D} */
   ctx = null
@@ -112,36 +132,42 @@ export default class extends React.Component {
   clearLevelState = () => {
     const { entities, player } = this
 
+    this.setState({ statsPoints:0, statsTime:0 })
+
     entities.splice( 0 )
     player.visible = false
   }
 
 
   initlevel = (onlyRestart = false) => {
+    this.setState({ showedScreen:null })
     this.clearLevelState()
 
     // this.level = levels[ levelId ]
 
-    if (!onlyRestart) this.level = new Level({
-      speed: 1,
-      map: Level.generateMap( 30 ),
-      init: game => {
-        const { ctx, player, entities } = game
-        const { width, height } = ctx.canvas
-        const random = max => Math.floor( Math.random() * max )
+    if (!onlyRestart) {
+      this.levelNumber++
+      this.level = new Level({
+        speed: 1,
+        map: Level.generateMap( 1 ),
+        init: game => {
+          const { ctx, player, entities } = game
+          const { width, height } = ctx.canvas
+          const random = max => Math.floor( Math.random() * max )
 
-        player.visible = true
-        player.moveTo( width / 2, height - 200 )
+          player.visible = true
+          player.moveTo( width / 2, height - 200 )
 
-        for (let i = 0;  i < 30;  ++i) {
-          entities.push( new Rock( random( width ), random( height ) ) )
-        }
-      },
-    })
+          for (let i = 0;  i < 30;  ++i) {
+            entities.push( new Rock( random( width ), random( height ) ) )
+          }
+        },
+      })
+    }
 
     this.level.distanceY = 0
     this.level.generatebackground( this.offscreenCtx )
-    this.level.init( this )
+    this.level.start( this )
     this.gameState = STATE.RUNNING
   }
 
@@ -162,11 +188,78 @@ export default class extends React.Component {
   }
 
 
-  #levelEnd = () => {
-    console.log( `end` )
+  #levelEnd = async() => {
+    const { level } = this
+
     this.gameState = STATE.LEVEL_END
 
-    setTimeout( () => this.initlevel( true ), 1000 * 5 )
+    this.setState({
+      showedScreen: SCREENS.LEVEL_SUMMARY,
+      buttonClickable: false,
+    })
+
+    const _count = (resolve, stateProp, max, value = 0) => {
+      if (value > max) value = max
+
+      this.setState({ [ stateProp ]:value })
+
+      if (value < max) setTimeout( () => _count( resolve, stateProp, max, value + 9 ), 1 )
+      else resolve()
+    }
+    const count = (stateProp, max, value) =>
+      new Promise( r => _count( r, stateProp, Math.floor( max ), value ))
+
+    await count( `statsTime`, new Date( Date.now() - level.startTime ).getTime() )
+    await count( `statsPoints`, level.earnedPoints * 10 + 100 * this.levelNumber )
+
+    this.setState( old => {
+      return ({
+        statsPointsSum: old.statsPointsSum + old.statsPoints,
+        statsTimeSum: old.statsTimeSum + old.statsTime,
+        buttonClickable: true,
+      }) } )
+
+    // setTimeout( () => this.initlevel( true ), 1000 * 5 )
+  }
+
+
+  #checkLuck = async() => {
+    this.setState({
+      significantNumber: null,
+      chanceLuck: null,
+      chanceBadLuck: null,
+      showedScreen: SCREENS.CHECK_LUCK,
+      buttonClickable: false,
+    })
+
+    let randomNum = 0
+
+    const _draw = (resolve, i = 100) => {
+      const randNum = Math.floor( Math.random() * 100 ) / 100
+      this.setState({ significantNumber:randNum  })
+
+      if (i > 0) return setTimeout( () => _draw( resolve, i - 1 ), 20 / (i + 3) * 300 )
+
+      resolve()
+      randomNum = randNum
+
+    }
+
+    const draw = () => new Promise( r => _draw( r ))
+
+    await draw()
+
+    this.setState({
+      chanceLuck: randomNum,
+      chanceBadLuck: 1 - randomNum,
+      buttonClickable: true,
+    })
+  }
+
+
+  #nextLevel = () => {
+    this.setState({ showedScreen:null })
+    this.initlevel()
   }
 
 
@@ -245,9 +338,98 @@ export default class extends React.Component {
 
 
   render = () => {
+    const {
+      statsTime,
+      statsPoints,
+      statsPointsSum,
+      statsTimeSum,
+      significantNumber,
+      chanceLuck,
+      chanceBadLuck,
+      buttonClickable,
+    } = this.state
+
     return (
       <article>
         <canvas ref={this.#init} className={classes.canvas} />
+
+        {this.state.showedScreen == SCREENS.LEVEL_SUMMARY && (
+          <article className={classes.screen}>
+            <div className={classes.screeenWrapper}>
+              <h2 className={classes.screenTitle}>Poziom ukończony!</h2>
+
+              <div className={classes.screenContent}>
+                <ul className={classes.screenStats}>
+                  {
+                    [
+                      { key:`Czas`, current:statsTime, sum:statsTimeSum },
+                      { key:`Punkty`, current:statsPoints, sum:statsPointsSum },
+                    ].map( ({ key, current, sum }) => (
+                      <li key={key} className={classes.screenStatsItem}>
+                        {!current ? null : (
+                          <>
+                            <span className={classes.screenStatsItemCurrent}>
+                              {key}
+                              {`: `}
+                              {current}
+                            </span>
+                            <span className={classes.screenStatsItemSum}>
+                              Suma:
+                              {` `}
+                              {sum}
+                            </span>
+                          </>
+                        )}
+                      </li>
+                    ) )
+                  }
+                </ul>
+
+                <button
+                  className={`neumorphizm is-button ${classes.buttonNext}`}
+                  onClick={() => this.#checkLuck()}
+                  children="Sprawdź swoje szczęście"
+                  disabled={!buttonClickable}
+                />
+              </div>
+            </div>
+          </article>
+        )}
+
+        {this.state.showedScreen == SCREENS.CHECK_LUCK && (
+          <article className={classes.screen}>
+            <div className={classes.screeenWrapper}>
+              <h2 className={classes.screenTitle}>Poziom ukończony!</h2>
+
+              <div className={classes.screenContent}>
+                <h3>Nowa liczba znacząca</h3>
+                <span className={classes.significantNumber}>{significantNumber}</span>
+
+                <br />
+
+                {chanceLuck && <p>Oznacza ona...</p>}
+                <ul className={classes.screenStats}>
+
+                  <li className={classes.screenStatsItem}>
+                    {chanceLuck ? ` ...szansę na szczęście: ${Math.round( chanceLuck * 100 )}%` : null}
+                  </li>
+                  <li className={classes.screenStatsItem}>
+                    {chanceBadLuck ? ` ...szansę na pecha ${Math.round( chanceBadLuck * 100 )}%` : null}
+                  </li>
+                </ul>
+
+                <br />
+
+                <button
+                  className={`neumorphizm is-button ${classes.buttonNext}`}
+                  onClick={() => this.#nextLevel()}
+                  children="Kolejny poziom"
+                  disabled={!buttonClickable}
+                />
+              </div>
+            </div>
+          </article>
+        )}
       </article>
     )
   }
