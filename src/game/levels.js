@@ -39,7 +39,7 @@ export class Level {
    * @param {string[]} param0.map
    * @param {(game:Game) => void} param0.init
    */
-  constructor({ speed, map, backgroundImage, init }) {
+  constructor({ speed, map, backgroundImage = imageGrass, init }) {
     this.speed = speed
     this.backGroundImage = new Image
     this.backGroundImage.src = backgroundImage
@@ -47,19 +47,28 @@ export class Level {
 
     const longestMapStr = map.reduce( (num, str) => str.length > num ? str.length : num, 0 )
 
-    this.map = map.map( str => str.split( `` ) )
+    this.width = (longestMapStr + 2) * this.roadSize
+    this.height = (map.length + 0) * this.roadSize
+    this.map = [ ...map ].map( str => str.split( `` ) )
       .map( chars => {
         while (chars.length < longestMapStr) chars.push( ` ` )
 
-        return chars
+        return [ ` `, ...chars, ` ` ]
       } )
       .map( (chars, y, map) => chars.map( (char, x) => {
         if (char == `r`) return char
 
-        if (chars[ x - 1 ] == `r`) return `o`
-        if (chars[ x + 1 ] == `r`) return `o`
-        if (map[ y + 1 ]?.[ x ] == `r`) return `o`
-        if (map[ y - 1 ]?.[ x ] == `r`) return `o`
+        if (map[ y + 1 ]?.[ x - 1 ] == `r`) return `o`
+        if (map[ y + 1 ]?.[ x + 0 ] == `r`) return `o`
+        if (map[ y + 1 ]?.[ x + 1 ] == `r`) return `o`
+
+        if (map[ y + 0 ]?.[ x - 1 ] == `r`) return `o`
+        if (map[ y + 0 ]?.[ x + 0 ] == `r`) return `o`
+        if (map[ y + 0 ]?.[ x + 1 ] == `r`) return `o`
+
+        if (map[ y - 1 ]?.[ x - 1 ] == `r`) return `o`
+        if (map[ y - 1 ]?.[ x + 0 ] == `r`) return `o`
+        if (map[ y - 1 ]?.[ x + 1 ] == `r`) return `o`
 
         return char
       } ) )
@@ -91,8 +100,6 @@ export class Level {
     }
 
     const firstMapX = width / 2 - map[ 0 ].length / 2 * roadSize
-    const roadLeft = images.roadLeftGrass
-    const roadRight = images.roadRightGrass
 
     map.forEach( (chars, y) => chars.forEach( (char, x) => {
       const roadX = firstMapX + x * roadSize
@@ -112,10 +119,7 @@ export class Level {
             ctx.drawImage( roadRightSprite, roadX + roadSize, roadY, roadSize, roadSize )
           }
 
-          // ctx.drawImage( roadLeft, roadX - roadSize, roadY, roadSize, roadSize )
           ctx.drawImage( images.dirtyRoad, roadX, roadY, roadSize, roadSize )
-          // ctx.drawImage( roadRightSprite, roadX + roadSize, roadY, roadSize, roadSize )
-
 
           if (map[ y + 1 ]?.[ x - 1 ] == `r`) {
             ctx.drawImage( images.roadCornerRBGrass,  roadX - roadSize,     roadY, roadSize, roadSize )
@@ -124,7 +128,7 @@ export class Level {
             ctx.drawImage( images.roadCornerRTGrass,  roadX - roadSize,     roadY, roadSize, roadSize )
             ctx.drawImage( images.roadCornerRT2Grass, roadX - roadSize * 2, roadY, roadSize, roadSize )
           } else {
-            ctx.drawImage( roadLeft, roadX - roadSize, roadY, roadSize, roadSize )
+            ctx.drawImage( images.roadLeftGrass, roadX - roadSize, roadY, roadSize, roadSize )
           }
           break
         }
@@ -134,8 +138,44 @@ export class Level {
   }
 
 
-  tick() {
-    this.distanceY += this.speed
+  get( x, y ) {
+    return this.map[ this.map.length - 1 - y ]?.[ x ]
+  }
+
+
+  isDrivableArea( x, y ) {
+    return `ro`.includes( this.get( x, y ) )
+  }
+
+
+  tick( additionalSpeed ) {
+    this.distanceY += this.speed + additionalSpeed
+  }
+
+  static generateMap( length ) {
+    const random = (min, max) => Math.floor( Math.random() * (max - min + 1) ) + min
+    const arr = Array( length + 5 ).fill( 0 )
+
+    arr.forEach( (_, i) => {
+      const count = arr[ i - 1 ]
+
+      if (i < 5 || count == null) return arr[ i ] = 2
+
+      let min = arr[ i - 2 ] != null
+        ? (arr[ i - 2 ] == count - 1 ? count : count - 1)
+        : count - 1
+
+      let max = arr[ i - 2 ] != null
+        ? (arr[ i - 2 ] == count + 1 ? count : count + 1)
+        : count + 1
+
+      if (min < 0) min = 0
+      if (max > 5) max = 4
+
+      arr[ i ] = random( min, max )
+    } )
+
+    return arr.reverse().map( spacesCount => ` `.repeat( spacesCount ) + `r` )
   }
 }
 
@@ -143,29 +183,18 @@ export default [
   new Level({
     speed: 1,
     backgroundImage: imageGrass,
-    road: imageGrass,
+    map: Level.generateMap( 300 ),
     init: game => {
       const { ctx, player, entities } = game
       const { width, height } = ctx.canvas
+      const random = max => Math.floor( Math.random() * max )
 
       player.visible = true
       player.moveTo( width / 2, height - 200 )
 
-      for (let i = 0;  i < 10;  ++i) {
-        entities.push( new Rock( 200, Math.floor( Math.random() * height ) ) )
+      for (let i = 0;  i < 30;  ++i) {
+        entities.push( new Rock( random( width ), random( height ) ) )
       }
     },
-    map: [
-      ` r`,
-      `r`,
-      `r`,
-      `r`,
-      ` r`,
-      `  r`,
-      ` vr`,
-      ` r^`,
-      ` r`,
-      ` r`,
-    ],
   }),
 ]
