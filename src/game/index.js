@@ -8,6 +8,7 @@ import keys from "./keys.js"
 
 import * as classes from "./main.module.css"
 import { getDate } from "./utils.js"
+import Effect from "./effects.js"
 
 // const query = graphql`
 //   query {
@@ -32,7 +33,6 @@ const SCREENS = {
 }
 
 export default class extends React.Component {
-
   #indev = false
 
   /** @type {Entity[]} */
@@ -42,6 +42,9 @@ export default class extends React.Component {
     every1s: 0,
     main: 0,
   }
+
+  /** @type {Effect[]} */
+  effects = [ new Effect( Effect.EFFECTS.BLIND, 0 ) ]
 
   state = {
     statsPoints: 0,
@@ -62,13 +65,14 @@ export default class extends React.Component {
 
   /** @type {null|CanvasRenderingContext2D} */
   ctx = null
+  /** @type {null|CanvasRenderingContext2D} */
+  helpingCtx = null
+  /** @type {null|CanvasRenderingContext2D} */
+  offscreenCtx = null
 
   player = new Player()
 
   gameState = STATE.PRE_START
-
-  /** @type {null|CanvasRenderingContext2D} */
-  offscreenCtx = null
 
 
   /** @param {HTMLCanvasElement} canvas */
@@ -84,6 +88,36 @@ export default class extends React.Component {
     this.start()
 
     this.initlevel( 0 )
+
+    window.addEventListener( `resize`, this.#resize )
+  }
+
+
+  /** @param {HTMLCanvasElement} canvas */
+  #setHelpingCtx = canvas => {
+    if (!canvas) return
+
+    this.helpingCtx = canvas.getContext( `2d` )
+
+    this.#resize()
+  }
+
+
+  #resize = () => {
+    const { canvas } = this.ctx
+
+    canvas.width  = canvas.offsetWidth
+    canvas.height = canvas.offsetHeight
+
+    this.offscreenCtx.canvas.width  = canvas.offsetWidth
+    this.offscreenCtx.canvas.height = canvas.offsetHeight
+
+    if (this.level) this.level.generatebackground( this.offscreenCtx )
+
+    if (this.helpingCtx) {
+      this.helpingCtx.canvas.width  = canvas.offsetWidth
+      this.helpingCtx.canvas.height = canvas.offsetHeight
+    }
   }
 
 
@@ -99,7 +133,10 @@ export default class extends React.Component {
   }
 
 
-  componentWillUnmount = () => this.stop()
+  componentWillUnmount = () => {
+    window.removeEventListener( `resize`, this.#resize )
+    this.stop()
+  }
 
 
   stop = () => {
@@ -117,7 +154,7 @@ export default class extends React.Component {
     const loop = () => {
       this.intervals.main = requestAnimationFrame( loop )
 
-      if (this.paused || !this.offscreenCtx || !this.level) return
+      if (this.paused || !this.helpingCtx || !this.offscreenCtx || !this.level) return
       if (this.gameState == STATE.RUNNING) {
         this.#logic()
         this.#draw()
@@ -128,6 +165,7 @@ export default class extends React.Component {
 
     loop()
   }
+
 
   clearLevelState = () => {
     const { entities, player } = this
@@ -149,7 +187,7 @@ export default class extends React.Component {
       this.levelNumber++
       this.level = new Level({
         speed: 1,
-        map: Level.generateMap( 1 ),
+        map: Level.generateMap( 100 ),
         init: game => {
           const { ctx, player, entities } = game
           const { width, height } = ctx.canvas
@@ -169,17 +207,6 @@ export default class extends React.Component {
     this.level.generatebackground( this.offscreenCtx )
     this.level.start( this )
     this.gameState = STATE.RUNNING
-  }
-
-
-  #resize = () => {
-    const { canvas } = this.ctx
-
-    canvas.width  = canvas.offsetWidth
-    canvas.height = canvas.offsetHeight
-
-    this.offscreenCtx.canvas.width  = canvas.offsetWidth
-    this.offscreenCtx.canvas.height = canvas.offsetHeight
   }
 
 
@@ -324,7 +351,7 @@ export default class extends React.Component {
 
 
   #draw = () => {
-    const { ctx, player, entities, level } = this
+    const { ctx, helpingCtx, player, entities, effects, level } = this
     const { width, height } = ctx.canvas
     const mapDistanceY = height - level.height + level.distanceY
 
@@ -334,6 +361,25 @@ export default class extends React.Component {
     entities.forEach( entity => entity.draw( ctx, this.#indev ) )
 
     player.draw( ctx, this.#indev )
+
+    effects.forEach( ({ type, value }) => {
+      switch (type) {
+        case Effect.EFFECTS.BLIND: {
+          helpingCtx.fillStyle = `#000`
+          helpingCtx.fillRect( 0, 0, width, height )
+
+          helpingCtx.globalCompositeOperation = `destination-out`
+
+          helpingCtx.beginPath()
+          helpingCtx.arc( player.x, player.y, player.height * (10 - value), 0, Math.PI * 2 )
+          helpingCtx.fill()
+
+          helpingCtx.globalCompositeOperation = `source-over`
+
+          break
+        }
+      }
+    } )
   }
 
 
@@ -352,6 +398,7 @@ export default class extends React.Component {
     return (
       <article>
         <canvas ref={this.#init} className={classes.canvas} />
+        <canvas ref={this.#setHelpingCtx} className={classes.canvas} />
 
         {this.state.showedScreen == SCREENS.LEVEL_SUMMARY && (
           <article className={classes.screen}>
