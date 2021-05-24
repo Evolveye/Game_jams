@@ -13,5 +13,7 @@ export default class Effect {
 
   static EFFECTS = {
     BLIND: 0,
+    ROCK: 1,
+    SPEED: 2,
   }
 }

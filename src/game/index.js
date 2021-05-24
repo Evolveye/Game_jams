@@ -11,6 +11,11 @@ import { fancyTimeFormat, getDate } from "./utils.js"
 import Effect from "./effects.js"
 import LuckMatrice from "./luckMatrice.js"
 
+import audioClick from "../audio/click.mp3"
+import audioExplosion from "../audio/explosion.mp3"
+import audioTick from "../audio/tick.mp3"
+import audioToggle from "../audio/toggle.mp3"
+
 // const query = graphql`
 //   query {
 //     car: file( relativePath:{ eq:"car_black_1.png" } ) {
@@ -20,6 +25,26 @@ import LuckMatrice from "./luckMatrice.js"
 //     }
 //   }
 // `
+
+const audio = {
+  click: new Audio( audioClick ),
+  explosion: new Audio( audioExplosion ),
+  tick: new Audio( audioTick ),
+  toggle: new Audio( audioToggle ),
+}
+
+
+const Button = ({ className, onClick, children, disabled }) => (
+  <button
+    className={className}
+    onClick={() => {
+      audio.click.play()
+      onClick?.()
+    }}
+    children={children}
+    disabled={disabled}
+  />
+)
 
 const STATE = {
   PAUSE: 0,
@@ -34,10 +59,14 @@ const SCREENS = {
   DRAW_NUMBER: 2,
 }
 const GOOD_LUCK = {
+  SLOWMOTION: `Spowolnienie bez utraty bonusu za prędkosć`,
+  REMOVE_ROCKS: `usunięcie kamieni z drogi`,
   REMOVE_BLIND: `niwelacja ślepoty`,
 }
 const BAD_LUCK = {
+  SPEED: `Przyspieszenie`,
   BLIND: `ślepota`,
+  ROCKS: `więcej kamieni`,
 }
 
 export default class extends React.Component {
@@ -80,6 +109,8 @@ export default class extends React.Component {
   offscreenCtx = null
 
   player = new Player()
+  slowmotion = 0
+  health = 3
 
   gameState = STATE.PRE_START
 
@@ -127,6 +158,8 @@ export default class extends React.Component {
       this.helpingCtx.canvas.width  = canvas.offsetWidth
       this.helpingCtx.canvas.height = canvas.offsetHeight
     }
+
+    if (this.gameState == STATE.RUNNING) this.initlevel( true )
   }
 
 
@@ -194,20 +227,21 @@ export default class extends React.Component {
 
     if (!onlyRestart) {
       this.levelNumber++
-      console.log( this.effects, 10 * (this.levelNumber / 2) + 50 )
+
       this.level = new Level({
         speed: 1,
-        map: Level.generateMap( 10 * this.levelNumber + 50 ),
-        // map: Level.generateMap( 1 ),
+        // map: Level.generateMap( 10 * (this.levelNumber * 1.7) + 100 ),
+        map: Level.generateMap( 50 ),
         init: game => {
-          const { ctx, player, entities } = game
+          const { ctx, player, entities, effects } = game
           const { width, height } = ctx.canvas
           const random = max => Math.floor( Math.random() * max )
+          const rocks = effects.find( e => e.type == Effect.EFFECTS.EOCK )?.value ?? 0
 
           player.visible = true
           player.moveTo( width / 2, height - 200 )
 
-          for (let i = 0;  i < 30;  ++i) {
+          for (let i = 0;  i < (this.levelNumber * 1.5 + rocks * 2);  ++i) {
             entities.push( new Rock( random( width ), random( height ) ) )
           }
         },
@@ -236,12 +270,15 @@ export default class extends React.Component {
       buttonClickable: false,
     })
 
+    const countJump = 63
     const _count = (resolve, stateProp, max, value = 0) => {
       if (value > max) value = max
 
+      audio.tick.play()
+
       this.setState({ [ stateProp ]:value })
 
-      if (value < max) setTimeout( () => _count( resolve, stateProp, max, value + 43 ), 1 )
+      if (value < max) setTimeout( () => _count( resolve, stateProp, max, value + countJump ), 1 )
       else resolve()
     }
     const count = (stateProp, max, value) =>
@@ -249,6 +286,8 @@ export default class extends React.Component {
 
     await count( `statsTime`, new Date( Date.now() - level.startTime ).getTime() )
     await count( `statsPoints`, level.earnedPoints * 10 + 300 * this.levelNumber )
+
+    audio.toggle.play()
 
     this.setState( old => {
       return ({
@@ -273,11 +312,14 @@ export default class extends React.Component {
 
     let randomNum = 0
 
-    const _draw = (resolve, i = 2) => {
+    const _draw = (resolve, i = 100) => {
       const randNum = Math.floor( Math.random() * 100 ) / 100
+
+      audio.tick.play()
+
       this.setState({ significantNumber:randNum  })
 
-      if (i > 0) return setTimeout( () => _draw( resolve, i - 1 ), 20 / (i + 3) * 200 )
+      if (i > 0) return setTimeout( () => _draw( resolve, i - 1 ), 20 / i * 15 )
 
       resolve()
       randomNum = randNum
@@ -286,6 +328,8 @@ export default class extends React.Component {
     const draw = () => new Promise( r => _draw( r ))
 
     await draw()
+
+    audio.toggle.play()
 
     this.setState({
       chanceLuck: randomNum,
@@ -304,12 +348,18 @@ export default class extends React.Component {
 
 
   addGoodEffect = multiplier => {
-    this.#addEfect( GOOD_LUCK.REMOVE_BLIND, multiplier )
+    const effects = Object.keys( GOOD_LUCK )
+    const effect = effects[ Math.floor( Math.random() * effects.length - 1 ) ]
+
+    this.#addEfect( GOOD_LUCK[ effect ], multiplier )
   }
 
 
   addBadEffect = multiplier => {
-    this.#addEfect( BAD_LUCK.BLIND, multiplier )
+    const effects = Object.keys( BAD_LUCK )
+    const effect = effects[ Math.floor( Math.random() * effects.length - 1 ) ]
+
+    this.#addEfect( BAD_LUCK[ effect ], multiplier )
   }
 
 
@@ -322,12 +372,8 @@ export default class extends React.Component {
 
       const effect = effects[ effectIndex ]
 
-      console.log( effectIndex, effect, effects )
-
       if (effect.value > 1) effect.value--
       else effects.splice( effectIndex, 1 )
-
-      console.log( effects )
 
       return true
     }
@@ -335,7 +381,7 @@ export default class extends React.Component {
       const effect = effects.find( e => e.type == type )
 
       if (effect) effect.value++
-      else effects.push( new Effect( Effect.EFFECTS.BLIND, 1 ) )
+      else effects.push( new Effect( type, 1 ) )
     }
 
     this.setState({ newEffect:effect + (typeof multiplier == `number` ? ` x${multiplier}` : ``) })
@@ -345,9 +391,26 @@ export default class extends React.Component {
         removeEffect( Effect.EFFECTS.BLIND )
         break
       }
+      case GOOD_LUCK.REMOVE_ROCKS : {
+        removeEffect( Effect.EFFECTS.ROCK )
+        break
+      }
+      case GOOD_LUCK.SLOWMOTION : {
+        this.slowmotion += 0.2
+        break
+      }
+
 
       case BAD_LUCK.BLIND : {
         findEffectOrPush( Effect.EFFECTS.BLIND )
+        break
+      }
+      case BAD_LUCK.ROCKS : {
+        findEffectOrPush( Effect.EFFECTS.ROCKS )
+        break
+      }
+      case BAD_LUCK.SPEED : {
+        findEffectOrPush( Effect.EFFECTS.SPEED )
         break
       }
     }
@@ -361,13 +424,15 @@ export default class extends React.Component {
 
 
   #logic = () => {
-    const { player, entities, level } = this
+    const { player, entities, level, slowmotion, effects } = this
     const { width, height } = this.ctx.canvas
     const playerOnMapX =  Math.floor( (player.x - (width - level.width) / 2) / level.roadSize )
     const playerOnMapY =  Math.floor( ((height - player.y) + level.distanceY) / level.roadSize )
     const moduloDistanceY = height - level.height + level.distanceY
-    const additionalSpeed = 2 * (1 - player.y / height)
-    const speed = level.speed + additionalSpeed
+    const speedEffect = effects.find( e => e.type == Effect.EFFECTS.SPEED )?.value ?? 0
+    const additionalSpeed = (1 + speedEffect) * (1 - player.y / height)
+    const calculatedSpeed = level.speed + additionalSpeed - slowmotion
+    const speed = calculatedSpeed < 0.75 ? 0.75 : calculatedSpeed
 
     if (moduloDistanceY >= 0) return this.#levelEnd()
 
@@ -415,7 +480,7 @@ export default class extends React.Component {
       console.log( `collision` )
     }
 
-    level.tick( additionalSpeed )
+    level.tick( additionalSpeed - slowmotion, additionalSpeed )
     player.doTick()
   }
 
@@ -514,7 +579,7 @@ export default class extends React.Component {
                   }
                 </ul>
 
-                <button
+                <Button
                   className={`neumorphizm is-button ${classes.buttonNext}`}
                   onClick={() => this.#drawNumber()}
                   children="Sprawdź swoje szczęście"
@@ -549,7 +614,7 @@ export default class extends React.Component {
 
                 <br />
 
-                <button
+                <Button
                   className={`neumorphizm is-button ${classes.buttonNext}`}
                   onClick={() => this.#checkLuck()}
                   children="Kolejny poziom"
@@ -600,7 +665,7 @@ export default class extends React.Component {
 
                 <br />
 
-                <button
+                <Button
                   className={`neumorphizm is-button ${classes.buttonNext}`}
                   onClick={newEffect ? this.#nextLevel : this.addBadEffect}
                   // onClick={() => this.#nextLevel()}

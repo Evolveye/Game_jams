@@ -156,14 +156,14 @@ export class Level {
   }
 
 
-  tick( additionalSpeed ) {
-    this.earnedPoints += this.speed * additionalSpeed
+  tick( additionalSpeed, additionalSpeedForPoints = additionalSpeed ) {
+    this.earnedPoints += this.speed * additionalSpeedForPoints
     this.distanceY += this.speed + additionalSpeed
   }
 
   static generateMap( length ) {
     const random = (min, max) => Math.floor( Math.random() * (max - min + 1) ) + min
-    const arr = Array( length + 5 ).fill( 0 )
+    const arr = Array( Math.ceil( length ) + 5 ).fill( 0 )
 
     arr.forEach( (_, i) => {
       const count = arr[ i - 1 ]

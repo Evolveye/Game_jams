@@ -2,6 +2,14 @@ import React, { useState } from "react"
 
 import * as classes from "./main.module.css"
 
+import badLuckMp3 from "../audio/bad_luck.mp3"
+import goodLuckMp3 from "../audio/good_luck.mp3"
+
+const audio = {
+  badLuck: new Audio( badLuckMp3 ),
+  goodLuck: new Audio( goodLuckMp3 ),
+}
+
 export default function LuckMatrice({ luckChance, onLuck, onBadLuck }) {
   const [ areCellsShowed, setCellsVisibility ] = useState( false )
   const [ luckyNumbers ] = useState( () => {
@@ -32,8 +40,13 @@ export default function LuckMatrice({ luckChance, onLuck, onBadLuck }) {
       const onClick = () => {
         setCellsVisibility( true )
 
-        if (luckyIndex) onLuck?.()
-        else onBadLuck?.()
+        if (luckyIndex) {
+          audio.goodLuck.play()
+          onLuck?.()
+        } else {
+          audio.badLuck.play()
+          onBadLuck?.()
+        }
       }
 
       tds.push(
