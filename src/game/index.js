@@ -430,8 +430,8 @@ export default class extends React.Component {
     const playerOnMapY =  Math.floor( ((height - player.y) + level.distanceY) / level.roadSize )
     const moduloDistanceY = height - level.height + level.distanceY
     const speedEffect = effects.find( e => e.type == Effect.EFFECTS.SPEED )?.value ?? 0
-    const additionalSpeed = (1 + speedEffect) * (1 - player.y / height)
-    const calculatedSpeed = level.speed + additionalSpeed - slowmotion
+    const additionalSpeed = level.speed + (1 + speedEffect) * (1 - player.y / height)
+    const calculatedSpeed = additionalSpeed - slowmotion
     const speed = calculatedSpeed < 0.75 ? 0.75 : calculatedSpeed
 
     if (moduloDistanceY >= 0) return this.#levelEnd()
@@ -480,7 +480,7 @@ export default class extends React.Component {
       console.log( `collision` )
     }
 
-    level.tick( additionalSpeed - slowmotion, additionalSpeed )
+    level.tick( speed, additionalSpeed )
     player.doTick()
   }
 
@@ -543,7 +543,7 @@ export default class extends React.Component {
           : 1
 
     return (
-      <article>
+      <article className={classes.game}>
         <canvas ref={this.#init} className={classes.canvas} />
         <canvas ref={this.#setHelpingCtx} className={classes.canvas} />
 

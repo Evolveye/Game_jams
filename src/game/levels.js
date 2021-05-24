@@ -157,8 +157,8 @@ export class Level {
 
 
   tick( additionalSpeed, additionalSpeedForPoints = additionalSpeed ) {
-    this.earnedPoints += this.speed * additionalSpeedForPoints
-    this.distanceY += this.speed + additionalSpeed
+    this.earnedPoints += additionalSpeedForPoints
+    this.distanceY += additionalSpeed
   }
 
   static generateMap( length ) {
