@@ -2,6 +2,17 @@ body {
   overflow: hidden;
   background-color: black;
 }
+
+.game::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -100px;
+  right: 0;
+  bottom: -100px;
+  box-shadow: 0 0 150px black inset;
+}
+
 .canvas {
   position: absolute;
   left: 0;
@@ -18,6 +29,7 @@ body {
   height: 100vh;
   backdrop-filter: blur( 4px );
   background-color: #0005;
+  z-index: 10;
 }
     .screeenWrapper {
       position: absolute;
