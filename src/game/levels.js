@@ -14,19 +14,21 @@ import imageDirtyRoadCornerRT2Grass from "../images/land_grass06.png"
 
 /** @typedef {import("./index.js").default} Game */
 
+const isBrowser = typeof window != `undefined`
+
 export class Level {
   images = {
-    roadCornerRT2Grass: new Image(),
-    roadCornerRTGrass: new Image(),
-    roadCornerRB2Grass: new Image(),
-    roadCornerRBGrass: new Image(),
-    roadCornerLT2Grass: new Image(),
-    roadCornerLTGrass: new Image(),
-    roadCornerLB2Grass: new Image(),
-    roadCornerLBGrass: new Image(),
-    roadRightGrass: new Image(),
-    roadLeftGrass: new Image(),
-    dirtyRoad: new Image(),
+    roadCornerRT2Grass: isBrowser ? new Image() : {},
+    roadCornerRTGrass: isBrowser ? new Image() : {},
+    roadCornerRB2Grass: isBrowser ? new Image() : {},
+    roadCornerRBGrass: isBrowser ? new Image() : {},
+    roadCornerLT2Grass: isBrowser ? new Image() : {},
+    roadCornerLTGrass: isBrowser ? new Image() : {},
+    roadCornerLB2Grass: isBrowser ? new Image() : {},
+    roadCornerLBGrass: isBrowser ? new Image() : {},
+    roadRightGrass: isBrowser ? new Image() : {},
+    roadLeftGrass: isBrowser ? new Image() : {},
+    dirtyRoad: isBrowser ? new Image() : {},
   }
 
   earnedPoints = 0
@@ -43,7 +45,7 @@ export class Level {
    */
   constructor({ speed, map, backgroundImage = imageGrass, init }) {
     this.speed = speed
-    this.backGroundImage = new Image
+    this.backGroundImage = isBrowser ? new Image() : {}
     this.backGroundImage.src = backgroundImage
     this.init = init
 

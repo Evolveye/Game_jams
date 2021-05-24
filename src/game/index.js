@@ -15,6 +15,7 @@ import audioClick from "../audio/click.mp3"
 import audioExplosion from "../audio/explosion.mp3"
 import audioTick from "../audio/tick.mp3"
 import audioToggle from "../audio/toggle.mp3"
+import audioMusic from "../audio/music.mp3"
 
 // const query = graphql`
 //   query {
@@ -25,13 +26,21 @@ import audioToggle from "../audio/toggle.mp3"
 //     }
 //   }
 // `
+const isBrowser = typeof window != `undefined`
 
 const audio = {
-  click: new Audio( audioClick ),
-  explosion: new Audio( audioExplosion ),
-  tick: new Audio( audioTick ),
-  toggle: new Audio( audioToggle ),
+  music: isBrowser ? new Audio( audioMusic ) : {},
+  click: isBrowser ? new Audio( audioClick ) : {},
+  explosion: isBrowser ? new Audio( audioExplosion ) : {},
+  tick: isBrowser ? new Audio( audioTick ) : {},
+  toggle: isBrowser ? new Audio( audioToggle ) : {},
 }
+
+
+audio.music.addEventListener?.( `ended`, function() {
+  this.currentTime = 0
+  this.play()
+} )
 
 
 const Button = ({ className, onClick, children, disabled }) => (
@@ -57,6 +66,8 @@ const SCREENS = {
   LEVEL_SUMMARY: 0,
   CHECK_LUCK: 1,
   DRAW_NUMBER: 2,
+  END: 3,
+  PRE_START: 4,
 }
 const GOOD_LUCK = {
   SLOWMOTION: `Spowolnienie bez utraty bonusu za prędkosć`,
@@ -112,7 +123,7 @@ export default class extends React.Component {
   slowmotion = 0
   health = 3
 
-  gameState = STATE.PRE_START
+  gameState = null
 
 
   /** @param {HTMLCanvasElement} canvas */
@@ -126,8 +137,6 @@ export default class extends React.Component {
 
     this.#resize()
     this.start()
-
-    this.initlevel( 0 )
 
     window.addEventListener( `resize`, this.#resize )
   }
@@ -190,8 +199,13 @@ export default class extends React.Component {
 
 
   start = () => {
+    this.stop()
+
+    this.initlevel( 0 )
+
     this.intervals.every1s = setInterval( this.#logic1s, 1000 )
-    this.gameState = STATE.RUNNING
+    this.setState({ showedScreen:SCREENS.PRE_START })
+    this.gameState = STATE.PRE_START
 
     const loop = () => {
       this.intervals.main = requestAnimationFrame( loop )
@@ -349,7 +363,7 @@ export default class extends React.Component {
 
   addGoodEffect = multiplier => {
     const effects = Object.keys( GOOD_LUCK )
-    const effect = effects[ Math.floor( Math.random() * effects.length - 1 ) ]
+    const effect = effects[ Math.floor( Math.random() * effects.length ) ]
 
     this.#addEfect( GOOD_LUCK[ effect ], multiplier )
   }
@@ -357,7 +371,7 @@ export default class extends React.Component {
 
   addBadEffect = multiplier => {
     const effects = Object.keys( BAD_LUCK )
-    const effect = effects[ Math.floor( Math.random() * effects.length - 1 ) ]
+    const effect = effects[ Math.floor( Math.random() * effects.length ) ]
 
     this.#addEfect( BAD_LUCK[ effect ], multiplier )
   }
@@ -423,6 +437,17 @@ export default class extends React.Component {
   }
 
 
+  #end = () => {
+    audio.explosion.play()
+
+    this.gameState = STATE.END
+
+    this.setState({
+      showedScreen: SCREENS.END,
+    })
+  }
+
+
   #logic = () => {
     const { player, entities, level, slowmotion, effects } = this
     const { width, height } = this.ctx.canvas
@@ -476,9 +501,7 @@ export default class extends React.Component {
       if (!collision && player.isCollision( entity )) collision = true
     }
 
-    if (collision) {
-      console.log( `collision` )
-    }
+    if (collision) this.#end()
 
     level.tick( speed, additionalSpeed )
     player.doTick()
@@ -603,7 +626,6 @@ export default class extends React.Component {
 
                 {chanceLuck != null && <p>Oznacza ona...</p>}
                 <ul className={classes.screenStats}>
-
                   <li className={classes.screenStatsItem}>
                     {chanceLuck != null ? ` ...szansę na szczęście: ${Math.round( chanceLuck * 100 )}%` : null}
                   </li>
@@ -671,6 +693,68 @@ export default class extends React.Component {
                   // onClick={() => this.#nextLevel()}
                   children={newEffect ? `Następny poziom` : `Nie biorę udziału w hazardzie`}
                   disabled={!buttonClickable}
+                />
+              </div>
+            </div>
+          </article>
+        )}
+
+        {this.state.showedScreen == SCREENS.END && (
+          <article className={classes.screen}>
+            <div className={classes.screeenWrapper}>
+              <h2 className={classes.screenTitle}>Gra zakończona!</h2>
+
+              <div className={classes.screenContent}>
+                <ul className={classes.screenStats}>
+                  <li className={classes.screenStatsItem}>
+                    Suma zdobytych punktów:
+                    {` `}
+                    {statsPointsSum}
+                  </li>
+                  <li className={classes.screenStatsItem}>
+                    Spędzony czas:
+                    {` `}
+                    {fancyTimeFormat( new Date( Date.now() - this.level.startTime ).getTime() + statsTimeSum )}
+                  </li>
+                </ul>
+
+                <br />
+
+                <Button
+                  className={`neumorphizm is-button ${classes.buttonNext}`}
+                  onClick={this.start}
+                  // onClick={() => this.#nextLevel()}
+                  children="Rozpocznij od początku"
+                />
+              </div>
+            </div>
+          </article>
+        )}
+
+        {this.state.showedScreen == SCREENS.PRE_START && (
+          <article className={classes.screen}>
+            <div className={classes.screeenWrapper}>
+              <h2 className={classes.screenTitle}>Witaj!</h2>
+
+              <div className={classes.screenContent}>
+                <p>Przed Tobą gra oparta na sporej dawce losowości ale tez i szczypcie Twoich umiejętności</p>
+
+                <br />
+
+                <p>Licz więc na swe szczęście i zdobądź jak najwięcej punktów!</p>
+
+                <br />
+
+                <Button
+                  className={`neumorphizm is-button ${classes.buttonNext}`}
+                  onClick={() => {
+                    this.setState({ showedScreen:null })
+                    this.gameState = STATE.RUNNING
+
+                    if (audio.music.currentTime == 0) audio.music.play()
+                  }}
+                  // onClick={() => this.#nextLevel()}
+                  children="Rozpocznij"
                 />
               </div>
             </div>

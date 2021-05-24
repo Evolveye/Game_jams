@@ -5,9 +5,11 @@ import * as classes from "./main.module.css"
 import badLuckMp3 from "../audio/bad_luck.mp3"
 import goodLuckMp3 from "../audio/good_luck.mp3"
 
+const isBrowser = typeof window != `undefined`
+
 const audio = {
-  badLuck: new Audio( badLuckMp3 ),
-  goodLuck: new Audio( goodLuckMp3 ),
+  badLuck: isBrowser ? new Audio( badLuckMp3 ) : {},
+  goodLuck: isBrowser ? new Audio( goodLuckMp3 ) : {},
 }
 
 export default function LuckMatrice({ luckChance, onLuck, onBadLuck }) {

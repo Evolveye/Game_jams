@@ -1,13 +1,19 @@
+const isBrowser = typeof window != `undefined`
+
 class KeysHangler {
   #data = {}
   constructor() {
-    window.addEventListener( `keydown`, this.onKeyDown )
-    window.addEventListener( `keyup`, this.onKeyUp )
+    if (isBrowser) {
+      window.addEventListener( `keydown`, this.onKeyDown )
+      window.addEventListener( `keyup`, this.onKeyUp )
+    }
   }
 
   closeEvents() {
-    window.removeEventListener( `keydown`, this.onKeyDown )
-    window.removeEventListener( `keyup`, this.onKeyUp )
+    if (isBrowser) {
+      window.removeEventListener( `keydown`, this.onKeyDown )
+      window.removeEventListener( `keyup`, this.onKeyUp )
+    }
   }
 
   /** @param {KeyboardEvent} param0 */

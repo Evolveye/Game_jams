@@ -1,6 +1,8 @@
 import imageCar from "../images/car_black_1.png"
 import imageRock from "../images/rock1.png"
 
+const isBrowser = typeof window != `undefined`
+
 class Hitbox {
   /**
    * @param {number} x
@@ -19,7 +21,7 @@ class Hitbox {
 export class Entity {
   /** @type {Hitbox[]} */
   hitboxes = []
-  sprite = new Image()
+  sprite = isBrowser ? new Image() : {}
   #angle = Math.PI / 180
 
 
