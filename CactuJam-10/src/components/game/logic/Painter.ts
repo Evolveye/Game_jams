@@ -44,12 +44,18 @@ export default class Painter {
 
     const ctx = this.#ctx
 
-    const additionalX = mode === Mode.CENTER ? (ctx.canvas.width - level.width * tileSize) / 2 : 0
-    const additionalY = mode === Mode.CENTER ? (ctx.canvas.height - level.height * tileSize) / 2 : 0
+    const additionalX = mode === Mode.CENTER ? (ctx.canvas.width - level.width) / 2 : 0
+    const additionalY = mode === Mode.CENTER ? (ctx.canvas.height - level.height) / 2 : 0
 
     level.forEach( (cell, x, y) => {
-      cell.forEach( drawableItem => drawableItem.draw( ctx, additionalX + x, additionalY + y ) )
+      cell.forEach( drawableItem => {
+        if (!drawableItem) return
+
+        drawableItem?.draw( ctx, additionalX + x * tileSize, additionalY + y * tileSize, tileSize, tileSize )
+      } )
     } )
+
+    level.entities.forEach( e => e.draw( ctx, additionalX + e.x * tileSize, additionalY + e.y * tileSize, tileSize, tileSize ) )
   }
 
 

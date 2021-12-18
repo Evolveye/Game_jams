@@ -1,36 +1,71 @@
-import Drawable from "./Drawable"
 import Painter from "./Painter"
-import TiledLevel from "./TiledLevel"
+
+import level1 from "./levels/1"
 
 export default class Game {
-  #ctx:CanvasRenderingContext2D
   #painter:Painter
-  #loopIntervalId:number
+  #mainLoopAnimationId:number
   #framesIntervalId:number
 
+  #lastTick = performance.now()
+  lastRender = this.#lastTick
+  #tickLength = 50
 
-  constructor( canvas:HTMLCanvasElement, imagesSrcs:Record<string, string> ) {
+  level = level1
+
+
+  constructor( canvas:HTMLCanvasElement ) {
     this.#painter = new Painter(canvas)
+    this.startLoop()
+  }
 
-    const background = new Drawable( imagesSrcs.pacman, 2, 3 )
-    const level = new TiledLevel( 1, 1 )
 
-    level.putOnCell( 0, 0, background )
+  #loop = (tFrame = performance.now()) => {
+    this.#mainLoopAnimationId = window?.requestAnimationFrame( this.#loop )
 
-    this.#loopIntervalId = window?.setInterval( () => {
-      this.#painter.drawLevel( level )
-    }, 1000 / 60 )
+    const lastTick = this.#lastTick
+    const tickLength = this.#tickLength
 
-    this.#framesIntervalId = window?.setInterval( () => {
-      level.entities.forEach( e => e.nextFrame() )
-    }, 500 )
+    const nextTick = lastTick + tickLength
+    let numTicks = 0
+
+    if (tFrame > nextTick) {
+      const timeSinceTick = tFrame - lastTick
+      numTicks = Math.floor( timeSinceTick / tickLength )
+    }
+
+    for (var i = 0;  i < numTicks;  i++) {
+      this.#lastTick += tickLength
+      this.updateLogic( this.#lastTick )
+    }
+
+    this.render()
+  }
+
+
+  startLoop = () => {
+    this.#mainLoopAnimationId = window?.requestAnimationFrame( this.#loop )
+  }
+
+
+  stopLoop = () => {
+    window?.cancelAnimationFrame( this.#mainLoopAnimationId )
+    window?.clearInterval( this.#framesIntervalId )
+  }
+
+
+  updateLogic = tFrame => {
+    this.level.entities.forEach( e => e.nextFrame() )
+  }
+
+
+  render = () => {
+    this.#painter.drawLevel( this.level )
   }
 
 
   close = () => {
-    window?.clearInterval( this.#loopIntervalId )
-    window?.clearInterval( this.#framesIntervalId )
-
+    this.stopLoop()
     this.#painter.destroy()
   }
 }

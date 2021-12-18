@@ -1,15 +1,20 @@
-import Drawable from "./Drawable"
+import Entity from "./Entity"
 
 export default class LevelCell {
-  #data = []
+  #data:Entity[] = []
 
 
-  put( drawable:Drawable ) {
-    this.#data.push( drawable )
+  constructor( entities:Entity[] ) {
+    this.#data = entities
   }
 
 
-  forEach( callback:(item:Drawable, depth:number) => void ) {
+  put( entity:Entity ) {
+    this.#data.push( entity )
+  }
+
+
+  forEach( callback:(item:Entity|null, depth:number) => void ) {
     this.#data.forEach( (item, itemIdx) => callback( item, this.#data.length - itemIdx ) )
   }
 }
