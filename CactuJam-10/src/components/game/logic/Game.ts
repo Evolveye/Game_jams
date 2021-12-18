@@ -1,14 +1,16 @@
 import Painter from "./Painter"
 
 import level1 from "./levels/1"
+import Keys from "./Keys"
 
 export default class Game {
   #painter:Painter
   #mainLoopAnimationId:number
   #framesIntervalId:number
 
+  #keys = new Keys()
   #lastTick = performance.now()
-  lastRender = this.#lastTick
+  #lastRender = this.#lastTick
   #tickLength = 50
 
   level = level1
@@ -16,6 +18,7 @@ export default class Game {
 
   constructor( canvas:HTMLCanvasElement ) {
     this.#painter = new Painter(canvas)
+
     this.startLoop()
   }
 
@@ -55,7 +58,9 @@ export default class Game {
 
 
   updateLogic = tFrame => {
-    this.level.entities.forEach( e => e.nextFrame() )
+    const entities = this.level.getEntities()
+
+    entities.forEach( e => e.tick( tFrame ) )
   }
 
 

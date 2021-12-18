@@ -1,4 +1,3 @@
-import Sprite from "./Sprite"
 import LevelCell from "./LevelCell"
 import Entity from "./Entity"
 
@@ -73,5 +72,10 @@ export default class TiledLevel {
 
   forEach( callback:(cell:LevelCell, x:number, y:number)=>void ) {
     this.#data.forEach( (row, rowIdx) => row.forEach( (cell, columnIdx) => callback( cell, columnIdx, rowIdx ) ) )
+  }
+
+  getEntities( label?:string ) {
+    if (!label) return this.entities
+    else return this.entities.filter( e => e.labels.includes( label ) )
   }
 }
