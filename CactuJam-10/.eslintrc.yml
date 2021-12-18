@@ -1,0 +1,30 @@
+extends:
+- eye
+parser: "@typescript-eslint/parser"
+plugins:
+- "@typescript-eslint"
+ignorePatterns:
+- lib
+globals:
+  JSX: true
+rules:
+  linebreak-style:
+  - off
+  "@typescript-eslint/explicit-module-boundary-types":
+  - off
+  "@typescript-eslint/no-non-null-assertion":
+  - off
+  "@typescript-eslint/no-unused-vars":
+  - warn
+  "@typescript-eslint/no-redeclare":
+  - error
+  - ignoreDeclarationMerge: true
+  "@typescript-eslint/quotes":
+  - error
+  - backtick
+  no-unused-vars:
+  - off
+  no-redeclare:
+  - off
+  quotes:
+  - off
