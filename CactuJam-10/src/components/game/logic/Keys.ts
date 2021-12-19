@@ -1,9 +1,10 @@
 export type KeyBindValue = { code:string, result:string }
 export type SimplifiedKeyBinds = Record<string, (KeyBindValue | string)[]>
 export type KeyBinds = Record<string, KeyBindValue[]>
+export type KeyState = { code:string, active:boolean, updatedAt:number }
 
 export default class Keys {
-  static #data:Record<string, boolean> = {}
+  static #data:Record<string, KeyState> = {}
   static predefinedBinds:SimplifiedKeyBinds = {
     controls: [
       { code:`KeyW`,  result:`up` },    { code:`ArrowUp`,     result:`up` },
@@ -16,6 +17,8 @@ export default class Keys {
     upDirection: [ `KeyW`, `ArrowUp` ],
     downDirection: [ `KeyS`, `ArrowDown` ],
   }
+
+  #timeOfusedKeys:Record<string, number> = {}
 
   binds:KeyBinds
 
@@ -32,38 +35,56 @@ export default class Keys {
   }
 
 
-  is( code:string ) {
-    return Keys.is( code, this.binds )
+  is( code:string ):boolean {
+    return Keys.is( code, this.binds ).active
+  }
+
+  isOnce( code:string ):boolean {
+    const times = this.#timeOfusedKeys
+    const { active, updatedAt } = Keys.is( code, this.binds )
+
+    if (code in times && times[ code ] === updatedAt) return false
+    if (!active) return false
+
+    this.#timeOfusedKeys[ code ] = updatedAt
+
+    return true
   }
 
 
-  static is = (code:string, binds:KeyBinds = {}) => {
+  static is = (code:string, binds:KeyBinds = {}):KeyState => {
     const data = this.#data
 
-    if (/^[a-z]$/i.test( code )) return data[ `Key${code.toUpperCase()}` ]
-    if (/^[0-9]$/.test( code )) return data[ `Digit${code}` ]
-    if ([ `up`, `right`, `down`, `left` ].includes( code )) return data[ `Arrow${code.charAt( 0 ).toUpperCase() + code.slice( 1 )}` ]
-    if (code === `shift`) code = `ShiftLeft`
+    if (/^[a-z]$/i.test( code )) code = `Key${code.toUpperCase()}`
+    else if (/^[0-9]$/.test( code )) code = `Digit${code}`
+    else if ([ `up`, `right`, `down`, `left` ].includes( code )) code = `Arrow${code.charAt( 0 ).toUpperCase() + code.slice( 1 )}`
+    else if (code === `shift`) code = `ShiftLeft`
 
-    const state = data[ code ]
+    let state = data[ code ]
 
     if (!state && code in binds) {
-      return binds[ code ].find( ({ code }) => data[ code ] )?.result ?? false
+      const bind = binds[ code ].find( ({ code }) => data[ code ]?.active )
+
+      if (bind) {
+        const stateFromBind = data[ bind.code ]
+
+        state = { ...stateFromBind, code:bind.code }
+      }
     }
 
-    return state ?? false
+    return state ?? { code, active:false, updatedAt:0 }
   }
 
 
   static onKeyDown = ({ code }:KeyboardEvent) => {
-    if (this.#data[ code ]) return
+    if (this.#data[ code ]?.active) return
 
-    this.#data[ code ] = true
+    this.#data[ code ] = { code, active:true, updatedAt:Date.now() }
   }
 
 
   static onKeyUp = ({ code }:KeyboardEvent) => {
-    this.#data[ code ] = false
+    this.#data[ code ] = { code, active:false, updatedAt:Date.now() }
   }
 }
 

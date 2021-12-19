@@ -15,5 +15,6 @@ export default class Player extends Entity {
     if (this.isKey( `rightDirection` )) this.goRight()
     if (this.isKey( `upDirection` )) this.goUp()
     if (this.isKey( `downDirection` )) this.goDown()
+    if (this.isKeyOnce( `q` )) console.log( this.getThingImOn() )
   }
 }

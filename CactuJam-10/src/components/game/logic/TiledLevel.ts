@@ -1,7 +1,8 @@
 import LevelCell from "./LevelCell"
 import Entity from "./Entity"
+import Tile from "./Tile"
 
-export type SymbolDefinitions = Record<string, (x:number, y:number) => Entity>
+export type SymbolDefinitions = Record<string, (x:number, y:number) => (Tile|Entity)>
 export type Board = (string | string[])[][]
 export type LevelConfig = {
   symbolDefs: SymbolDefinitions
@@ -36,6 +37,8 @@ export default class TiledLevel {
         const cellData = symbolsStack.map( symbol => {
           const item = symbol in symbolDefs ? symbolDefs[ symbol ]( x, y ) : null
 
+          if (typeof item?.setExistingWorld === `function`) item?.setExistingWorld( this )
+
           if (item instanceof Entity) {
             this.entities.push( item )
             return undefined
@@ -60,22 +63,23 @@ export default class TiledLevel {
 
 
   getCell( x:number, y:number ) {
+    console.log( x, y )
     return this.#data[ y ]?.[ x ]
   }
 
 
-  putOnCell( x:number, y:number, item:Entity ) {
-    this.entities.push( item )
-    this.getCell( x, y )?.put( item )
-  }
+  // putOnCell( x:number, y:number, item:Tile ) {
+  //   this.entities.push( item )
+  //   this.getCell( x, y )?.put( item )
+  // }
 
 
   forEach( callback:(cell:LevelCell, x:number, y:number)=>void ) {
     this.#data.forEach( (row, rowIdx) => row.forEach( (cell, columnIdx) => callback( cell, columnIdx, rowIdx ) ) )
   }
 
-  getEntities( label?:string ) {
-    if (!label) return this.entities
-    else return this.entities.filter( e => e.labels.includes( label ) )
+
+  getEntities() {
+    return this.entities
   }
 }
