@@ -1,15 +1,15 @@
-import Tile from "./Tile"
+import Entity from "./Entity"
 
 export default class LevelCell {
-  #data:Tile[] = []
+  #data:Entity[] = []
 
 
-  constructor( entities:Tile[] ) {
+  constructor( entities:Entity[] ) {
     this.#data = entities
   }
 
 
-  put( entity:Tile ) {
+  put( entity:Entity ) {
     this.#data.push( entity )
   }
 
@@ -19,7 +19,11 @@ export default class LevelCell {
   }
 
 
-  forEach( callback:(item:Tile|null, depth:number) => void ) {
+  forEach( callback:(item:Entity|null, depth:number) => void ) {
     this.#data.forEach( (item, itemIdx) => callback( item, this.#data.length - itemIdx ) )
+  }
+
+  take() {
+    return this.#data.pop() ?? null
   }
 }

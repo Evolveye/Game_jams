@@ -1,4 +1,4 @@
-import TiledLevel from "./TiledLevel"
+import Level from "./Level"
 
 export enum Mode {
   CENTER = `center`,
@@ -39,7 +39,7 @@ export default class Painter {
   }
 
 
-  drawLevel( level:TiledLevel, { mode = Mode.CENTER, tileSize = 32 }:DrawLevelOptions = {} ) {
+  drawLevel( level:Level, { mode = Mode.CENTER, tileSize = 32 }:DrawLevelOptions = {} ) {
     const ctx = this.#ctx
 
     this.clear()
@@ -47,18 +47,11 @@ export default class Painter {
     ctx.save()
 
     if (mode === Mode.CENTER) {
-      ctx.translate( (ctx.canvas.width - level.width) / 2, (ctx.canvas.height - level.height) / 2 )
+      ctx.translate( (ctx.canvas.width - level.width * tileSize) / 2, (ctx.canvas.height - level.height * tileSize) / 2 )
     }
 
-    level.forEach( (cell, x, y) => {
-      cell.forEach( tile => {
-        if (!tile) return
-
-        tile?.draw( ctx, x * tileSize, y * tileSize, tile.w * tileSize, tile.h * tileSize )
-      } )
-    } )
-
-    level.entities.forEach( e => e.draw( ctx, e.x * tileSize, e.y * tileSize, tileSize, tileSize ) )
+    level.forEach( cell => cell.forEach( tile => tile?.draw( ctx, tileSize ) ) )
+    level.entities.forEach( e => e.draw( ctx, tileSize ) )
 
     ctx.restore()
   }

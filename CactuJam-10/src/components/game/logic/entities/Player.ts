@@ -1,24 +1,47 @@
-import Entity from "../Entity"
+import Gift from "./Gift"
 import playerSrc from "../../img/player.png"
+import MovingEntity from "../MovingEntity"
 
 export type PlayerConfig = {
   speed?: number,
   size?: number
 }
 
-export default class Player extends Entity {
-  constructor( x:number, y:number, { speed = 0.2, size }:PlayerConfig ) {
-    super( x, y, { size, spriteSrc:playerSrc, framesPerRow:2, framesPerColumn:3 } )
+export default class Player extends MovingEntity {
+  constructor( x:number, y:number, { speed = 0.2, size }:PlayerConfig = {} ) {
+    super( x, y, { labels:[ `player` ], size, spriteSrc:playerSrc, framesPerRow:2, framesPerColumn:3 } )
 
     if (speed) this.setSpeed( speed )
   }
 
+
   tick = (delta:number) => {
     this.nextFrame()
+    this.move( delta )
+
+    if (this.isKeyOnce( `q` )) {
+      const thing = this.getThingImOn()
+
+      if (thing instanceof Gift) {
+        this.addToInventory({
+          name: `Gift`,
+          entity: this.takeFromWorld(),
+        })
+      }
+    }
+  }
+
+
+  move = (delta:number) => {
+    const dirs = {
+      left: this.isKey( `leftDirection` ),
+      right: this.isKey( `rightDirection` ),
+      up: this.isKey( `upDirection` ),
+      down: this.isKey( `downDirection` ),
+    }
 
     let shouldGo = false
 
-    const dirs = this.getActiveMovementDirections()
     const setAngle = angle => {
       shouldGo = true
       this.setAngle( angle )
@@ -39,16 +62,5 @@ export default class Player extends Entity {
     }
 
     if (shouldGo) this.go( this.speed * delta )
-
-    if (this.isKeyOnce( `q` )) console.log( this.getThingImOn() )
-  }
-
-  getActiveMovementDirections = () => {
-    return {
-      left: this.isKey( `leftDirection` ),
-      right: this.isKey( `rightDirection` ),
-      up: this.isKey( `upDirection` ),
-      down: this.isKey( `downDirection` ),
-    }
   }
 }

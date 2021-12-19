@@ -2,6 +2,8 @@ import Painter from "./Painter"
 
 import level1 from "./levels/1"
 import Keys from "./Keys"
+import Level from "./Level"
+import Entity from "./Entity"
 
 export default class Game {
   #painter:Painter
@@ -13,12 +15,16 @@ export default class Game {
   #lastRender = this.#lastTick
   #tickLength = 50
 
-  level = level1
+  setActiveEntity:(entity:Entity) => void
+  level:Level
 
 
-  constructor( canvas:HTMLCanvasElement ) {
+  constructor( canvas:HTMLCanvasElement, setActiveEntity:(entity:Entity) => void ) {
     this.#painter = new Painter(canvas)
 
+    this.setActiveEntity = setActiveEntity
+
+    this.startLevel()
     this.startLoop()
   }
 
@@ -46,6 +52,18 @@ export default class Game {
   }
 
 
+  startLevel = () => {
+    this.level = level1
+    this.level.setGame( this )
+    this.level.runScript()
+  }
+
+
+  setHugForEntity = (entity:Entity) => {
+    this.setActiveEntity( entity )
+  }
+
+
   startLoop = () => {
     this.#mainLoopAnimationId = window?.requestAnimationFrame( this.#loop )
   }
@@ -58,6 +76,8 @@ export default class Game {
 
 
   updateLogic = delta => {
+    if (!this.level) return
+
     const entities = this.level.getEntities()
 
     entities.forEach( e => e.tick( delta ) )
@@ -65,6 +85,8 @@ export default class Game {
 
 
   render = () => {
+    if (!this.level) return
+
     this.#painter.drawLevel( this.level )
   }
 

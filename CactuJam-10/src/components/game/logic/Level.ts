@@ -1,22 +1,26 @@
 import LevelCell from "./LevelCell"
+import MovingEntity from "./MovingEntity"
 import Entity from "./Entity"
-import Tile from "./Tile"
+import Game from "./Game"
 
-export type SymbolDefinitions = Record<string, (x:number, y:number, size:number) => (Tile|Entity)>
+export type SymbolDefinitions = Record<string, (x:number, y:number) => (Entity|MovingEntity)>
 export type Board = (string | string[])[][]
 export type LevelConfig = {
   symbolDefs: SymbolDefinitions
   board: Board
   tileSize?: number
+  script: (level:Level) => void
 }
 
-export default class TiledLevel {
-  entities:Entity[] = []
+export default class Level {
+  game:Game
+  entities:MovingEntity[] = []
   tileSize = 32
 
+  #script:(level:Level) => void
   #width:number
   #height:number
-  #data: LevelCell[][]
+  #data:LevelCell[][]
 
 
   get width() {
@@ -27,10 +31,11 @@ export default class TiledLevel {
   }
 
 
-  constructor({ symbolDefs, board:boardLike, tileSize = 32 }:LevelConfig) {
+  constructor({ script, symbolDefs, board:boardLike, tileSize = 32 }:LevelConfig) {
     this.#width = 0
     this.#height = 0
     this.tileSize = tileSize
+    this.#script = script
 
     this.#data = boardLike.map( (row, y) => {
       if (row.length > this.#width) this.#width = row.length
@@ -38,11 +43,11 @@ export default class TiledLevel {
       return row.map( (symbolOrStack, x) => {
         const symbolsStack = Array.isArray( symbolOrStack ) ? symbolOrStack : [ symbolOrStack ]
         const cellData = symbolsStack.map( symbol => {
-          const item = symbol in symbolDefs ? symbolDefs[ symbol ]( x, y, 1 ) : null
+          const item = symbol in symbolDefs ? symbolDefs[ symbol ]( x, y ) : null
 
           if (typeof item?.setExistingWorld === `function`) item?.setExistingWorld( this )
 
-          if (item instanceof Entity) {
+          if (item instanceof MovingEntity) {
             this.entities.push( item )
             return undefined
           }
@@ -54,8 +59,18 @@ export default class TiledLevel {
       } )
     } )
 
+    if (this.#data.length > this.#height) this.#height = this.#data.length
+
     // this.#generatelevel( this.#width, this.#height )
   }
+
+
+  setGame = (game:Game) => {
+    this.game = game
+  }
+
+
+  runScript = () => this.#script( this )
 
 
   // #generatelevel( width:number, height:number ) {
@@ -65,9 +80,8 @@ export default class TiledLevel {
   // }
 
 
-  getCell( x:number, y:number ) {
-    console.log( x, y )
-    return this.#data[ y ]?.[ x ]
+  getCell( tileX:number, tileY:number ) {
+    return this.#data[ tileY ]?.[ tileX ]
   }
 
 
@@ -82,7 +96,14 @@ export default class TiledLevel {
   }
 
 
-  getEntities() {
+  getEntities( label?:string ) {
+    if (label) return this.entities.filter( e => e.labels.some( l => l === label ) )
+
     return this.entities
+  }
+
+
+  takeFromTop( tileX, tileY ) {
+    return this.#data[ tileY ]?.[ tileX ]?.take() ?? null
   }
 }
