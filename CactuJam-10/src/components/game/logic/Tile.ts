@@ -8,6 +8,7 @@ export type EntityConfig = {
   framesPerColumn?: number
   framesCount?: number
   keyBinds?: SimplifiedKeyBinds
+  size?: number
 }
 
 export default class Tile {
@@ -17,12 +18,16 @@ export default class Tile {
   keys:Keys
   x:number
   y:number
+  w:number
+  h:number
 
-  constructor( x:number, y:number, { keyBinds, spriteSrc, framesPerRow, framesPerColumn, framesCount }:EntityConfig ) {
+  constructor( x:number, y:number, { size, keyBinds, spriteSrc, framesPerRow, framesPerColumn, framesCount }:EntityConfig ) {
     this.keys = new Keys(keyBinds)
     this.#sprite = !spriteSrc ? null : new Sprite( spriteSrc, framesPerRow, framesPerColumn, framesCount )
     this.x = x
     this.y = y
+    this.w = size ?? this.#sprite.getWidth()
+    this.h = size ?? this.#sprite.getHeight()
   }
 
   setExistingWorld = (world:TiledLevel) => this.#world = world
@@ -31,7 +36,7 @@ export default class Tile {
   isKeyOnce = (code:string) => this.keys.isOnce( code )
   getThingImOn = () => this.#world?.getCell( Math.floor( this.x ), Math.floor( this.y ) )
 
-  draw = (ctx:CanvasRenderingContext2D, x:number, y:number, width?:number, height?:number) => this.#sprite?.draw( ctx, x, y, width, height )
+  draw = (ctx:CanvasRenderingContext2D, x:number = this.x, y:number = this.y, width:number = this.w, height:number = this.h) => this.#sprite?.draw( ctx, x, y, width, height )
   nextFrame = () => this.#sprite.nextFrame()
 
   tick = (tFrame:number):void => {

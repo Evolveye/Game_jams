@@ -24,6 +24,10 @@ export default class Sprite {
   }
 
 
+  getWidth = () => this.#spreadsheet.width / this.#framesPerRow
+  getHeight = () => this.#spreadsheet.height / this.#framesPerColumn
+
+
   nextFrame = () => {
     if (this.#currentFrame < this.#framesCount - 1) this.#currentFrame++
     else this.#currentFrame = 0

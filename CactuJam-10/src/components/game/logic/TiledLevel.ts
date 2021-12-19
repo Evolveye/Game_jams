@@ -2,15 +2,17 @@ import LevelCell from "./LevelCell"
 import Entity from "./Entity"
 import Tile from "./Tile"
 
-export type SymbolDefinitions = Record<string, (x:number, y:number) => (Tile|Entity)>
+export type SymbolDefinitions = Record<string, (x:number, y:number, size:number) => (Tile|Entity)>
 export type Board = (string | string[])[][]
 export type LevelConfig = {
   symbolDefs: SymbolDefinitions
   board: Board
+  tileSize?: number
 }
 
 export default class TiledLevel {
   entities:Entity[] = []
+  tileSize = 32
 
   #width:number
   #height:number
@@ -25,9 +27,10 @@ export default class TiledLevel {
   }
 
 
-  constructor({ symbolDefs, board:boardLike }:LevelConfig) {
+  constructor({ symbolDefs, board:boardLike, tileSize = 32 }:LevelConfig) {
     this.#width = 0
     this.#height = 0
+    this.tileSize = tileSize
 
     this.#data = boardLike.map( (row, y) => {
       if (row.length > this.#width) this.#width = row.length
@@ -35,7 +38,7 @@ export default class TiledLevel {
       return row.map( (symbolOrStack, x) => {
         const symbolsStack = Array.isArray( symbolOrStack ) ? symbolOrStack : [ symbolOrStack ]
         const cellData = symbolsStack.map( symbol => {
-          const item = symbol in symbolDefs ? symbolDefs[ symbol ]( x, y ) : null
+          const item = symbol in symbolDefs ? symbolDefs[ symbol ]( x, y, 1 ) : null
 
           if (typeof item?.setExistingWorld === `function`) item?.setExistingWorld( this )
 

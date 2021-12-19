@@ -23,7 +23,7 @@ export default class Game {
   }
 
 
-  #loop = (tFrame = performance.now()) => {
+  #loop = (timestamp = performance.now()) => {
     this.#mainLoopAnimationId = window?.requestAnimationFrame( this.#loop )
 
     const lastTick = this.#lastTick
@@ -32,14 +32,14 @@ export default class Game {
     const nextTick = lastTick + tickLength
     let numTicks = 0
 
-    if (tFrame > nextTick) {
-      const timeSinceTick = tFrame - lastTick
+    if (timestamp > nextTick) {
+      const timeSinceTick = timestamp - lastTick
       numTicks = Math.floor( timeSinceTick / tickLength )
     }
 
     for (var i = 0;  i < numTicks;  i++) {
       this.#lastTick += tickLength
-      this.updateLogic( this.#lastTick )
+      this.updateLogic( 1 - Math.floor( (timestamp - this.#lastTick) / 1000 ) )
     }
 
     this.render()
@@ -57,10 +57,10 @@ export default class Game {
   }
 
 
-  updateLogic = tFrame => {
+  updateLogic = delta => {
     const entities = this.level.getEntities()
 
-    entities.forEach( e => e.tick( tFrame ) )
+    entities.forEach( e => e.tick( delta ) )
   }
 
 

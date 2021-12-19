@@ -40,22 +40,27 @@ export default class Painter {
 
 
   drawLevel( level:TiledLevel, { mode = Mode.CENTER, tileSize = 32 }:DrawLevelOptions = {} ) {
-    this.clear()
-
     const ctx = this.#ctx
 
-    const additionalX = mode === Mode.CENTER ? (ctx.canvas.width - level.width) / 2 : 0
-    const additionalY = mode === Mode.CENTER ? (ctx.canvas.height - level.height) / 2 : 0
+    this.clear()
+
+    ctx.save()
+
+    if (mode === Mode.CENTER) {
+      ctx.translate( (ctx.canvas.width - level.width) / 2, (ctx.canvas.height - level.height) / 2 )
+    }
 
     level.forEach( (cell, x, y) => {
-      cell.forEach( drawableItem => {
-        if (!drawableItem) return
+      cell.forEach( tile => {
+        if (!tile) return
 
-        drawableItem?.draw( ctx, additionalX + x * tileSize, additionalY + y * tileSize, tileSize, tileSize )
+        tile?.draw( ctx, x * tileSize, y * tileSize, tile.w * tileSize, tile.h * tileSize )
       } )
     } )
 
-    level.entities.forEach( e => e.draw( ctx, additionalX + e.x * tileSize, additionalY + e.y * tileSize, tileSize, tileSize ) )
+    level.entities.forEach( e => e.draw( ctx, e.x * tileSize, e.y * tileSize, tileSize, tileSize ) )
+
+    ctx.restore()
   }
 
 
