@@ -4,33 +4,34 @@ import level1 from "./levels/1"
 import Keys from "./Keys"
 import Level from "./Level"
 import Entity from "./Entity"
+import getWindow from "../../../core/functions/getWindow"
 
 export default class Game {
-  #painter:Painter
   #mainLoopAnimationId:number
   #framesIntervalId:number
 
+  #painter = new Painter()
   #keys = new Keys()
   #lastTick = performance.now()
   #lastRender = this.#lastTick
   #tickLength = 50
 
-  setActiveEntity:(entity:Entity) => void
+  activeEntity:Entity
   level:Level
 
 
-  constructor( canvas:HTMLCanvasElement, setActiveEntity:(entity:Entity) => void ) {
-    this.#painter = new Painter(canvas)
-
-    this.setActiveEntity = setActiveEntity
-
+  constructor() {
     this.startLevel()
     this.startLoop()
   }
 
+  setCanvas = (canvas:HTMLCanvasElement, layer = 0) => {
+    this.#painter.setCanvas( canvas, layer )
+  }
 
-  #loop = (timestamp = performance.now()) => {
-    this.#mainLoopAnimationId = window?.requestAnimationFrame( this.#loop )
+
+  #loop = (timestamp = 0) => {
+    this.#mainLoopAnimationId = getWindow()?.requestAnimationFrame( this.#loop )
 
     const lastTick = this.#lastTick
     const tickLength = this.#tickLength
@@ -59,19 +60,19 @@ export default class Game {
   }
 
 
-  setHugForEntity = (entity:Entity) => {
-    this.setActiveEntity( entity )
+  setActiveEntity = (entity:Entity) => {
+    this.activeEntity = entity
   }
 
 
   startLoop = () => {
-    this.#mainLoopAnimationId = window?.requestAnimationFrame( this.#loop )
+    this.#mainLoopAnimationId = getWindow()?.requestAnimationFrame( this.#loop )
   }
 
 
   stopLoop = () => {
-    window?.cancelAnimationFrame( this.#mainLoopAnimationId )
-    window?.clearInterval( this.#framesIntervalId )
+    getWindow()?.cancelAnimationFrame( this.#mainLoopAnimationId )
+    getWindow()?.clearInterval( this.#framesIntervalId )
   }
 
 

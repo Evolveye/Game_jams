@@ -1,33 +1,55 @@
 import Entity from "./Entity"
 
 export type ThingInInventory = {
-  entity: Entity
+  entities: Entity[]
   name: string
-  count?: number
+}
+
+export class InventoryItem {
+  name:string
+  #entities:Entity[] = []
+
+
+  get count() {
+    return this.#entities.length
+  }
+
+
+  constructor( name ) {
+    this.name = name
+  }
+
+
+  push( entities:Entity[] ) {
+    this.#entities.push( ...entities )
+  }
+
+
+  pop( count ) {
+    return this.#entities.splice( -count )
+  }
 }
 
 export default class Inventory {
-  #data:Record<string, ThingInInventory> = {}
+  #data:Record<string, InventoryItem> = {}
 
   add( ...things:ThingInInventory[] ) {
     const data = this.#data
 
-    things.forEach( ({ entity, name, count = 1 }) => {
+    things.forEach( ({ entities, name }) => {
       if (!(name in data)) {
-        data[ name ] = {
-          count: 0,
-          name,
-          entity,
-        }
+        data[ name ] = new InventoryItem(name)
       }
 
-      const thing = data[ name ]
-
-      thing.count += count
-
-      if (thing.count < 0) thing.count = 0
+      data[ name ].push( entities )
     } )
   }
+
+
+  remove = (name:string, count:number = 1) => {
+    return this.#data[ name ].pop( count )
+  }
+
 
   getData = () => Object.values( this.#data )
 }

@@ -1,34 +1,56 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useReducer, useRef, useState } from "react"
 
-export default function Trigger({ interval = 50, increment = 1, min = 0, max, onFinish, onProgress, children }) {
+const Action = {
+  INCREMENT: `increment`,
+  DECREMENT: `decrement`,
+  RESET: `reset`,
+}
+
+export default function Trigger({ type = `growing`, interval = 50, increment = 1, min = 0, max, onFinish, onProgress, children }) {
+  const reducer = (state, action) => {
+    switch (action) {
+      case `increment`: return state + increment
+      case `decrement`: return state - increment
+      case `reset`: return min
+    }
+  }
+
   const [ active, setActive ] = useState( null )
-  const [ value, setValue ] = useState( min )
+  const [ action, setAction ] = useState( `increment` )
+  const [ value, dispatch ] = useReducer( reducer, min )
   const intervalIdRef = useRef( null )
   const finish = useCallback( value => {
     clearInterval( intervalIdRef.current )
 
     onFinish?.( value )
 
-    setValue( min )
+    dispatch( `reset` )
   }, [ intervalIdRef.current ] )
 
 
   useEffect( () => {
     if (active === null) return
-
-    onProgress?.( value )
-
     if (!active) return finish?.( value )
 
-    intervalIdRef.current = setInterval( () => setValue( v => v + increment ), interval )
-  }, [ active ] )
+    intervalIdRef.current = setInterval( () => dispatch( action ), interval )
+
+    return () => clearInterval( intervalIdRef.current )
+  }, [ active, action ] )
 
   useEffect( () => {
+    onProgress?.( value )
+
     if (value >= max) {
-      setValue( min )
-      finish?.( value )
+      if (type === `growing`) {
+        dispatch( Action.RESET )
+        finish( value )
+      } else {
+        setAction( Action.DECREMENT )
+      }
+    } else if (value <= min) {
+      setAction( Action.INCREMENT )
     }
-  }, [ value ] )
+  }, [ value, type ] )
 
 
   return (

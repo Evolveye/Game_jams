@@ -1,3 +1,5 @@
+import getWindow from "../../../core/functions/getWindow"
+
 export type KeyBindValue = { code:string, result:string }
 export type SimplifiedKeyBinds = Record<string, (KeyBindValue | string)[]>
 export type KeyBinds = Record<string, KeyBindValue[]>
@@ -88,5 +90,5 @@ export default class Keys {
   }
 }
 
-window?.addEventListener( `keydown`, Keys.onKeyDown )
-window?.addEventListener( `keyup`, Keys.onKeyUp )
+getWindow()?.addEventListener( `keydown`, Keys.onKeyDown )
+getWindow()?.addEventListener( `keyup`, Keys.onKeyUp )

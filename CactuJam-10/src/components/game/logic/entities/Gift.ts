@@ -6,7 +6,7 @@ export type PathConfig = {
 }
 
 export default class Gift extends Entity {
-  constructor( x:number, y:number, { size }:PathConfig = {} ) {
+  constructor( x:number, y:number, { size = 0.5 }:PathConfig = {} ) {
     super( x, y, { size, spriteSrc:giftSrc } )
   }
 

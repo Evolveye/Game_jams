@@ -1,45 +1,23 @@
 import React, { useEffect, useRef, useState } from "react"
+import Trigger from "../components/Trigger"
 import composePage from "../core/functions/composePage"
 import MainLayout from "../core/layouts/main"
 
-function Trigger({ onFinish, onProgress, children }) {
-  const [ active, setActive ] = useState( null )
-  const [ value, setValue ] = useState( 1 )
-  const intervalIdRef = useRef( null )
+function Stach() {
+  const [ width, setWidth ] = useState( 0 )
 
-
-  useEffect( () => {
-    if (active === null) return
-
-    onProgress( value )
-
-    if (!active) {
-      clearInterval( intervalIdRef.current )
-
-      onFinish( value )
-
-      setValue( 1 )
-      return
-    }
-
-    intervalIdRef.current = setInterval( () => {
-      setValue( v => v + 2 )
-    }, 100 )
-  }, [ active ] )
-
+  const onProgress = v => setWidth( v )
+  const onFinish = v => {}
 
   return (
-    <button
-      onPointerDown={() => setActive( true )}
-      onPointerUp={() => setActive( false )}
-      onPointerOut={() => setActive( false )}
-    >
-      {children}
-    </button>
+    <>
+      <Trigger type="staś" max={100} onProgress={onProgress} onFinish={onFinish} increment={4}>Trzymaj</Trigger>
+      <div style={{ height:10, width, backgroundColor:`red` }} />
+    </>
   )
 }
 
 export default composePage({
-  component: Trigger,
+  component: Stach,
   layout: MainLayout,
 })

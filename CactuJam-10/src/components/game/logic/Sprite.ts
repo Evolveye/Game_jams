@@ -9,6 +9,8 @@ export default class Sprite {
 
 
   constructor( src:string, framesPerRow = 1, framesPerColumn = 1, framesCount = framesPerRow * framesPerColumn ) {
+    if (typeof Image === `undefined`) return
+
     this.#spreadsheet = new Image()
     this.#spreadsheet.src = src
 

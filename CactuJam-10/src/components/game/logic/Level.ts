@@ -3,7 +3,7 @@ import MovingEntity from "./MovingEntity"
 import Entity from "./Entity"
 import Game from "./Game"
 
-export type SymbolDefinitions = Record<string, (x:number, y:number) => (Entity|MovingEntity)>
+export type SymbolDefinitions = Record<string, (x:number, y:number) => (Entity|MovingEntity|Entity[])>
 export type Board = (string | string[])[][]
 export type LevelConfig = {
   symbolDefs: SymbolDefinitions
@@ -38,24 +38,24 @@ export default class Level {
     this.#script = script
 
     this.#data = boardLike.map( (row, y) => {
-      if (row.length > this.#width) this.#width = row.length
 
-      return row.map( (symbolOrStack, x) => {
-        const symbolsStack = Array.isArray( symbolOrStack ) ? symbolOrStack : [ symbolOrStack ]
-        const cellData = symbolsStack.map( symbol => {
-          const item = symbol in symbolDefs ? symbolDefs[ symbol ]( x, y ) : null
+      const normalizedRow = row.reduce<( string | string[])[]>( (arr, strOrStack) => {
+        if (typeof strOrStack === `string`) return [ ...arr, ...strOrStack.split( `` ) ]
+        else return [ ...arr, strOrStack ]
+      }, [] )
 
-          if (typeof item?.setExistingWorld === `function`) item?.setExistingWorld( this )
+      if (normalizedRow.length > this.#width) this.#width = normalizedRow.length
 
-          if (item instanceof MovingEntity) {
-            this.entities.push( item )
-            return undefined
-          }
+      return normalizedRow.map( (strOrStack, x) => {
+        const symbolsStack = Array.isArray( strOrStack ) ? strOrStack : [ strOrStack ]
+        const cellData = symbolsStack.flatMap( symbols => symbols.split( `` ).map( symbol => {
+          const entityOrArr = symbol in symbolDefs ? symbolDefs[ symbol ]( x, y ) : null
+          const entitiesArr = Array.isArray( entityOrArr ) ? entityOrArr : [ entityOrArr ]
 
-          return item
-        } ).filter( item => item !== undefined )
+          return entitiesArr.map( e => this.#configureEntity( e ) )
+        } ) ).flat().filter( item => item !== undefined )
 
-        return new LevelCell(cellData)
+        return new LevelCell(x, y, cellData)
       } )
     } )
 
@@ -70,6 +70,18 @@ export default class Level {
   }
 
 
+  #configureEntity = (entity:Entity) => {
+    if (typeof entity?.setExistingWorld === `function`) entity?.setExistingWorld( this )
+
+    if (entity instanceof MovingEntity) {
+      this.entities.push( entity )
+      return undefined
+    }
+
+    return entity
+  }
+
+
   runScript = () => this.#script( this )
 
 
@@ -80,8 +92,17 @@ export default class Level {
   // }
 
 
-  getCell( tileX:number, tileY:number ) {
-    return this.#data[ tileY ]?.[ tileX ]
+  getCell( tileX:number, tileY:number, isStrict = false ) {
+    const cell = this.#data[ tileY ]?.[ tileX ]
+
+    if (cell || isStrict) return cell
+    if (!this.#data[ tileY ]) this.#data[ tileY ] = []
+
+    const newCell = new LevelCell(tileX, tileY, [])
+
+    this.#data[ tileY ][ tileX ] = newCell
+
+    return newCell
   }
 
 
@@ -105,5 +126,15 @@ export default class Level {
 
   takeFromTop( tileX, tileY ) {
     return this.#data[ tileY ]?.[ tileX ]?.take() ?? null
+  }
+
+
+  spawn = (entity:Entity) => {
+    const { x, y } = entity.getTilePos()
+
+    this.#configureEntity( entity )
+    this.getCell( x, y ).put( entity )
+
+    return entity
   }
 }

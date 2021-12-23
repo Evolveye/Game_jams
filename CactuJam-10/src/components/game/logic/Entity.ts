@@ -25,7 +25,7 @@ export default class Entity {
   h:number
 
 
-  constructor( x:number, y:number, { labels, size = 1, keyBinds, spriteSrc, framesPerRow, framesPerColumn, framesCount }:EntityConfig ) {
+  constructor( x:number, y:number, { labels, size = 1, keyBinds, spriteSrc, framesPerRow, framesPerColumn, framesCount }:EntityConfig = {} ) {
     this.labels = labels
     this.keys = new Keys(keyBinds)
     this.#sprite = !spriteSrc ? null : new Sprite( spriteSrc, framesPerRow, framesPerColumn, framesCount )
@@ -49,10 +49,10 @@ export default class Entity {
 
 
   getWorld = () => this.#world
-  getTilePos = () => {
+  getTilePos = (x = this.x, y = this.y) => {
     return {
-      x: Math.floor( this.x + this.w / 2 ),
-      y: Math.floor( this.y + this.h / 2 ),
+      x: Math.floor( x + this.w / 2 ),
+      y: Math.floor( y + this.h / 2 ),
     }
   }
   getThingImOn = () => {
