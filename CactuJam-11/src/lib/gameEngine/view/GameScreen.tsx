@@ -19,6 +19,14 @@ export default function GameScreen<TGame extends Game<any>>({ className, renderP
     gameRef.current = getGame( preGameUIRef.current )
     gameRef.current.on( `status update`, () => updateView( b => !b ) )
     updateView( b => !b )
+
+
+    ;(window as Window & typeof globalThis & {game: TGame}).game = gameRef.current
+
+    return () => {
+      gameRef.current?.disable()
+      gameRef.current = undefined
+    }
   }, [ preGameUIRef.current ] )
 
   return (

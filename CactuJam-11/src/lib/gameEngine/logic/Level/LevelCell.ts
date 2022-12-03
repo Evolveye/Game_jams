@@ -11,7 +11,7 @@ export default class LevelCell {
     this.tiles = tiles
   }
 
-  draw = (ctx:CanvasRenderingContext2D) => {
-    this.tiles.forEach( tile => tile.draw( ctx ) )
+  draw = (ctx:CanvasRenderingContext2D, tileSize:number) => {
+    this.tiles.forEach( tile => tile.draw( ctx, tileSize ) )
   }
 }

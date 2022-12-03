@@ -1,5 +1,6 @@
 import Animation from "../Sprite/Animation"
 import Sprite from "../Sprite"
+import LevelBeingTemplate from "./LevelBeing"
 
 export class LevelTile {
   templateId: string
@@ -7,7 +8,7 @@ export class LevelTile {
   y: number
   height: number
   animation: Animation
-  groundworkAnimation: null | Animation = null
+  groundworkAnimation: Animation
 
   constructor( templateId:string, x:number, y:number, height:number, sprite:Sprite, groundworkSprite:Sprite ) {
     this.templateId = templateId
@@ -15,25 +16,26 @@ export class LevelTile {
     this.y = y
     this.height = height
     this.animation = sprite.getAnimation()
+    this.groundworkAnimation = groundworkSprite.getAnimation()
   }
 
-  draw = (ctx:CanvasRenderingContext2D) => {
-    this.animation.draw( ctx, this.x, this.y )
+  draw = (ctx:CanvasRenderingContext2D, size:number) => {
+    const { x, y } = this
+
+    this.animation.draw( ctx, x * size, y * size, size, size )
   }
 }
 
-export class LevelTileTemplate {
-  id: string
-  sprite: Sprite
+export class LevelTileTemplate extends LevelBeingTemplate {
   groundworkSprite: Sprite
 
   constructor( id:string, sprite:Sprite, groundworkSprite:Sprite ) {
-    this.id = id
-    this.sprite = sprite
+    super( id, sprite )
+
     this.groundworkSprite = groundworkSprite
   }
 
-  getTile = (x:number, y:number, height:number) => {
+  createTile = (x:number, y:number, height:number) => {
     return new LevelTile( this.id, x, y, height, this.sprite, this.groundworkSprite )
   }
 }

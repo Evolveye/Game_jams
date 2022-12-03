@@ -2,7 +2,6 @@ import cn from "@lib/theming/createClassName"
 import { createStylesHook } from "@fet/theming"
 import Button from "@fet/controls/Button"
 import Text from "@fet/Text"
-import GameStatus from "./logic/Status"
 import { useGameContext } from "./GameContext"
 
 export function StartScreen() {
@@ -12,7 +11,7 @@ export function StartScreen() {
   return (
     <section className={cn( classes.screen )}>
       <Text as="h1" body="Rozpocznij grę" />
-      <Button onClick={() => game.changeStatus( GameStatus.STARTED )} body="Start" />
+      <Button onClick={() => game.start()} body="Start" />
     </section>
   )
 }

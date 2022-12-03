@@ -3,13 +3,17 @@ export type Event = (typeof events)[number]
 
 export default abstract class Game<TStatus extends string> {
   #eventsHandlers = events.reduce( (obj, eventName) => ({ ...obj, [ eventName ]:[] }), {} ) as Record<Event, ((...data:any[]) => void)[]>
+  #loopId: number = -1
 
+  paused: boolean = false
   preGameUI: HTMLElement
   state: TStatus
 
   constructor( preGameUI:HTMLElement, initialState:TStatus ) {
     this.state = initialState
     this.preGameUI = preGameUI
+
+    queueMicrotask( () => this.onResize() )
   }
 
   getCtxFromCanvas = (selector:string) => {
@@ -26,13 +30,52 @@ export default abstract class Game<TStatus extends string> {
 
   changeStatus = (newStatus:TStatus) => {
     this.state = newStatus
-    this.#eventsHandlers[ `status update` ].forEach( fn => fn( newStatus ) )
+    this.triggerEvent( `status update`, newStatus )
+  }
+
+  startLoop = () => {
+    this.#loopId = setInterval( () => {
+      if (this.paused) return
+
+      requestAnimationFrame( () => this.draw() )
+      this.calculate()
+    }, 1000 ) as any as number
+  }
+
+  stopLoop = () => {
+    clearInterval( this.#loopId )
+  }
+
+  pauseLoop = () => {
+    this.paused = true
+  }
+
+  resumeLoop = () => {
+    this.paused = false
   }
 
   on = (eventName:Event, handler:() => void) => {
     this.#eventsHandlers[ eventName ].push( handler )
   }
 
+  triggerEvent = (eventname:Event, ...data) => {
+    this.#eventsHandlers[ eventname ].forEach( fn => fn( ...data ) )
+  }
+
+  setEvents = () => {
+    window.addEventListener( `resize`, this.#onResize )
+  }
+
+  disable = () => {
+    window.removeEventListener( `resize`, this.#onResize )
+    this.stopLoop()
+  }
+
+  #onResize = () => {
+    this.onResize()
+  }
+
   abstract draw()
   abstract calculate()
+  abstract onResize()
 }
