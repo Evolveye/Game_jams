@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode } from "react"
-import { Game } from "."
+import { Game } from ".."
 
 export type GameContextValue = Game<any>
 

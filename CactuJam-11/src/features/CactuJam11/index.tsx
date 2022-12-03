@@ -1,4 +1,4 @@
-import GameScreen from "@lib/gameEngine/GameScreen"
+import { GameScreen } from "@lib/gameEngine"
 import { createStylesHook } from "@fet/theming"
 import GameStatus from "./logic/Status"
 import CactuJam11Game from "./logic"

@@ -1,5 +1,5 @@
 import { MutableRefObject, ReactNode, useEffect, useRef, useState } from "react"
-import { Game } from "."
+import Game from "../logic/Game"
 
 export type GameScreenProps<TGame extends Game<any>> = {
   className?: string
