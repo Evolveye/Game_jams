@@ -19,8 +19,10 @@
     "eslint": "^7.32.0",
     "eslint-config-eye": "^1.2.6",
     "gatsby": "^5.2.0",
+    "gatsby-plugin-alias-imports": "^1.0.5",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-jss": "^10.9.2"
   },
   "devDependencies": {
     "@types/node": "^18.11.9",

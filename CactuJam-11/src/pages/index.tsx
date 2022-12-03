@@ -1,10 +1,11 @@
-import * as React from "react"
-import CactuJam11 from "@fet/CactuJam11"
+import ThemeProvider from "@lib/theming/ThemeProvider"
+import { themeConfig } from "@fet/theming"
+import GameSection from "../sections/gameSection"
 
-export default function IndexPage()  {
+export default function IndexPage() {
   return (
-    <main>
-      <CactuJam11 />
-    </main>
+    <ThemeProvider themeConfig={themeConfig}>
+      <GameSection />
+    </ThemeProvider>
   )
 }
