@@ -64,19 +64,39 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     const { height } = this.ctx.canvas
     const { data, tileSize } = level
 
-
     if (!data) return
-    // if (ticks > 300) return
 
+    if (this.keys.isActiveOnce( `w` )) {
+      level.getEntities( e => e.templateId === `p` ).forEach( e => {
+        e.y -= 1
+        if (e.y % 2 == 0) e.x += 1
+      } )
+    } else if (this.keys.isActiveOnce( `a` )) {
+      level.getEntities( e => e.templateId === `p` ).forEach( e => {
+        e.y -= 1
+        if (e.y % 2 == -1) e.x -= 1
+      } )
+    } else if (this.keys.isActiveOnce( `s` )) {
+      level.getEntities( e => e.templateId === `p` ).forEach( e => {
+        e.y += 1
+        if (e.y % 2 == -1) e.x -= 1
+      } )
+    } else if (this.keys.isActiveOnce( `d` )) {
+      level.getEntities( e => e.templateId === `p` ).forEach( e => {
+        e.y += 1
+        if (e.y % 2 == 0) e.x += 1
+      } )
+    }
 
-    if (ticks % ticksToNewRow) return
+    if (ticks % ticksToNewRow == 0) {
+      const correctedTileSize = tileSize / 2 - 10
 
-    const correctedTileSize = tileSize / 2 - 10
+      this.distance++
+      this.spawnRow()
 
-    this.distance++
-    this.spawnRow()
+      if (data.length > (height + translate.offset.y * 2) / correctedTileSize) data.splice( -4 )
+    }
 
-    if (data.length > (height + translate.offset.y * 2) / correctedTileSize) data.splice( -4 )
 
     // if (data.length > 50) for (let i = 6;  i > 0;  --i) data.pop()
 

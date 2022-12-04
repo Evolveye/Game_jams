@@ -133,6 +133,10 @@ export default class Level<TGame extends Game<any> = Game<any>> {
     return cell && cell.x == entity.x && cell.y == entity.y ? cell : null
   }
 
+  getEntities = (predicate:(entity:Entity) => boolean) => {
+    return this.entities.filter( predicate )
+  }
+
   draw = (ctx:CanvasRenderingContext2D, camera:Camera) => {
     const { data, tileSize } = this
 

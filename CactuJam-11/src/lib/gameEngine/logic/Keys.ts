@@ -36,13 +36,13 @@ export default class Keys {
   }
 
   static isActive( key:string ) {
-    return this.#keys[ key ].active
+    return this.#keys[ key ]?.active ?? false
   }
 
   static isActiveOnce( key:string, object:any ) {
     const keyData = this.#keys[ key ]
 
-    if (keyData.readers.includes( object )) return false
+    if (!keyData || keyData.readers.includes( object )) return false
     if (keyData.active) keyData.readers.push( object )
 
     return keyData.active
