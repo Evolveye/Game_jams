@@ -20,6 +20,7 @@ export default class Keys {
       } )
 
       window.addEventListener( `keyup`, ({ key }) => {
+        Keys.#assertKeyData( key )
         this.#keys[ key ].readers = []
         this.#keys[ key ].active = false
       } )

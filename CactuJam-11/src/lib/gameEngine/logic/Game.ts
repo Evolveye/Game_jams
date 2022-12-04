@@ -5,6 +5,7 @@ export default abstract class Game<TStatus extends string> {
   #eventsHandlers = events.reduce( (obj, eventName) => ({ ...obj, [ eventName ]:[] }), {} ) as Record<Event, ((...data:any[]) => void)[]>
   #loopId: number = -1
 
+  ticks = 0
   paused: boolean = false
   preGameUI: HTMLElement
   state: TStatus
@@ -39,7 +40,8 @@ export default abstract class Game<TStatus extends string> {
 
       requestAnimationFrame( () => this.draw() )
       this.calculate()
-    }, 1000 ) as any as number
+      this.ticks++
+    }, 1000 / 60 ) as any as number
   }
 
   stopLoop = () => {

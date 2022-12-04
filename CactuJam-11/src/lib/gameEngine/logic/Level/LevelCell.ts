@@ -1,4 +1,4 @@
-import { LevelTile } from "./Tile"
+import { DrawVariant, LevelTile, Neighbours } from "./Tile"
 
 export default class LevelCell {
   x: number
@@ -11,7 +11,19 @@ export default class LevelCell {
     this.tiles = tiles
   }
 
-  draw = (ctx:CanvasRenderingContext2D, tileSize:number) => {
-    this.tiles.forEach( tile => tile.draw( ctx, tileSize ) )
+  draw = (ctx:CanvasRenderingContext2D, x:number, y:number, tileSize:number, variant:DrawVariant) => {
+    this.tiles.forEach( tile => tile.draw( ctx, x, y, tileSize, variant ) )
+  }
+
+  getLayer( layer:number, fallbackFromTop = false ): LevelTile | null {
+    const tile = this.tiles[ layer ]
+
+    if (!tile && fallbackFromTop) return this.tiles[ this.tiles.length - 1 ]
+
+    return tile
+  }
+
+  updateNeighbours = (neighbours:Neighbours) => {
+    this.tiles.forEach( tile => tile.directionise( neighbours ) )
   }
 }

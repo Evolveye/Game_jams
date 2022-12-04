@@ -21,12 +21,12 @@ export default function CactuJam11() {
       }
       renderGameUI={
         game => {
-          console.log( game )
+          // console.log( game )
 
           return (
             <section>
               <GameContextProvider game={game}>
-                {game.state === GameStatus.NOT_STARTED && <screens.StartScreen />}
+                {/* {game.state === GameStatus.NOT_STARTED && <screens.StartScreen />} */}
               </GameContextProvider>
             </section>
           )

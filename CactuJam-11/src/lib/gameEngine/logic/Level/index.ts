@@ -4,6 +4,7 @@ import LevelCell from "./LevelCell"
 import LevelBeingTemplate from "./LevelBeing"
 import Entity, { EntityTemplate } from "./Entity"
 
+export type Camera = {x: number; y: number}
 export type LevelDefTiles = ((string[] | string)[] | string)[]
 export type LevelDefNormalizedTiles = (null | string[])[][]
 
@@ -15,6 +16,7 @@ export type LevelDef<TGame extends Game<any> = Game<any>> = {
 export type LevelConfig<TGame extends Game<any> = Game<any>> = {
   definition: LevelDef<TGame>
   tileSize: number
+  variant: `normal` | `isometric`
 }
 
 export default class Level<TGame extends Game<any> = Game<any>> {
@@ -38,11 +40,13 @@ export default class Level<TGame extends Game<any> = Game<any>> {
   init = (game:TGame) => {
     const { definition, tileSize } = this.config
     const normalizedTiles = this.normalizeDefinitionTiles( definition.tiles )
-    this.data = this.parseDefinitionTiles( normalizedTiles )
-    this.tileSize = tileSize
 
+    this.data = this.parseDefinitionTiles( normalizedTiles )
+    this.directioniseTiles()
+    this.tileSize = tileSize
     this.height = this.data.length
     this.width = this.data.reduce( (max, row) => row.length > max ? row.length : max, 0 )
+
 
     definition.script?.( this, game )
   }
@@ -68,7 +72,7 @@ export default class Level<TGame extends Game<any> = Game<any>> {
       const tiles:LevelTile[] = []
       let entityInCell = false
 
-      if (cell) for (const templateId of cell) {
+      if (cell) cell.forEach( (templateId, i) => {
         if (entityInCell) throw new Error( `Only one entityt can be in cell. It have to be last item` )
 
         const template = templates[ templateId ]
@@ -77,14 +81,29 @@ export default class Level<TGame extends Game<any> = Game<any>> {
           entityInCell = true
 
           this.entities.push( template.createEntity( x, y, 1 ) )
-
-          continue
         } else if (template instanceof LevelTileTemplate) {
-          tiles.push( template.createTile( x, y, 1 ) )
+          tiles.push( template.createTile( x, y, tiles.length, i ) )
         }
-      }
+      } )
 
       return new LevelCell( x, y, tiles )
+    } ) )
+  }
+
+  directioniseTiles() {
+    this.data?.forEach( (row, y) => row.forEach( (cell:LevelCell, x) => {
+      const neighbours = {
+        n:  this.getCell( x + 0, y - 1 ),
+        ne: this.getCell( x + 1, y - 1 ),
+        e:  this.getCell( x + 1, y + 0 ),
+        se: this.getCell( x + 1, y + 1 ),
+        s:  this.getCell( x + 0, y + 1 ),
+        sw: this.getCell( x - 1, y + 1 ),
+        w:  this.getCell( x - 1, y + 0 ),
+        nw: this.getCell( x - 1, y - 1 ),
+      }
+
+      cell.updateNeighbours( neighbours )
     } ) )
   }
 
@@ -92,16 +111,30 @@ export default class Level<TGame extends Game<any> = Game<any>> {
     if (template instanceof EntityTemplate) {
       this.entities.push( template.createEntity( x, y, 1 ) )
     } else if (template instanceof LevelTileTemplate) {
-      this.getCell( x, y )?.tiles.push( template.createTile( x, y, 1 ) )
+      const tiles = this.getCell( x, y )?.tiles
+
+      if (tiles) tiles.push( template.createTile( x, y, tiles.length, 1 ) )
     }
   }
 
   getCell = (x:number, y:number) => {
-    return this.data?.[ y ]?.[ x ]
+    return this.data?.[ y ]?.[ x ] ?? null
   }
 
-  draw = (ctx:CanvasRenderingContext2D) => {
-    this.data?.forEach( row => [ ...row ].reverse().forEach( cell => cell.draw( ctx, this.tileSize ) ) )
+  draw = (ctx:CanvasRenderingContext2D, camera:Camera) => {
+    const { data, tileSize } = this
+
+    if (!data) return
+
+    const cameraBorder = -camera.x / tileSize - 2// - 10// ctx.canvas.width / 2
+
+    data.forEach( (row, y) => {
+      ctx.save()
+      if ((data.length - y) % 2) ctx.translate( this.tileSize / 2, 0 )
+      // ;[ ...row ].reverse().forEach( (cell, x) => cell.draw( ctx, y, x, this.tileSize, this.config.variant ) )
+      ;[ ...row ].reverse().forEach( (cell, x) => cell.tiles[ 0 ]?.x > cameraBorder && cell.draw( ctx, y, x, this.tileSize, this.config.variant ) )
+      ctx.restore()
+    } )
     this.entities.forEach( entity => entity.draw( ctx, this.tileSize ) )
   }
 }
