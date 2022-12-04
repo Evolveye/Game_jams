@@ -1,6 +1,7 @@
 import LevelCell from "@lib/gameEngine/logic/Level/LevelCell"
 import Level from "@lib/gameEngine/logic/Level"
 import { Game, Keys } from "@lib/gameEngine"
+import { getDateparts } from "@lib/core/functions/formatDate"
 import { level01 } from "./level/01"
 import { templates } from "./level"
 import GameStatus, { type GameStatus as GameStatusType } from "./Status"
@@ -29,11 +30,18 @@ export default class CactuJam11Game extends Game<GameStatusType> {
   // maxCeilsCount = 20
 
   settings = CactuJam11Game.defaultSettings
+  ui: {
+    date: HTMLElement
+  }
 
   constructor( preGameUI:HTMLElement ) {
     super( preGameUI, GameStatus.NOT_STARTED )
 
     this.ctx = this.getCtxFromCanvas( `[data-canvas-main]` )
+    this.ui = {
+      date: this.getUI( `[data-stats-date]` ),
+    }
+
     this.start()
   }
 
@@ -128,6 +136,7 @@ export default class CactuJam11Game extends Game<GameStatusType> {
       this.settings.probabilityOfBadTile = 0.08
     }
 
+    this.updateUI()
 
     // if (data.length > 50) for (let i = 6;  i > 0;  --i) data.pop()
 
@@ -152,6 +161,12 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     //     }
     //   } else data.pop()
     // }
+  }
+
+  updateUI = () => {
+    const dateParts = getDateparts( 1000 * 60 * 60 * 24 * this.distance )
+
+    this.ui.date.innerHTML = `${dateParts.day} ${dateParts.month} N` + `${Number( dateParts.year ) - 1970}`.padStart( 3, `0` )
   }
 
   start = () => {

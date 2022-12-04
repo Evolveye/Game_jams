@@ -15,6 +15,10 @@ export default function CactuJam11() {
       renderPreGameUI={
         preGameUIRef => (
           <section ref={preGameUIRef}>
+            <ul className={classes.stats}>
+              <li>Data wyprawy: <output data-stats-date /></li>
+            </ul>
+
             <canvas data-canvas-main="" className={classes.canvas} />
           </section>
         )
@@ -36,11 +40,19 @@ export default function CactuJam11() {
   )
 }
 
-const useStlyes = createStylesHook({
+const useStlyes = createStylesHook( ({ atoms }) => ({
   cactuJam11: {
     position: `relative`,
     height: `100%`,
     fontFamily: `monospace`,
+  },
+
+  stats: {
+    display: `flex`,
+    gap: atoms.spacing.main,
+    margin: 0,
+    padding: atoms.spacing.main,
+    listStyle: `none`,
   },
 
   canvas: {
@@ -48,4 +60,4 @@ const useStlyes = createStylesHook({
     width: `100%`,
     height: `100%`,
   },
-})
+}) )

@@ -17,6 +17,14 @@ export default abstract class Game<TStatus extends string> {
     queueMicrotask( () => this.onResize() )
   }
 
+  getUI = (selector:string) => {
+    const element:null | HTMLElement = this.preGameUI.querySelector( selector )
+
+    if (!element) throw new Error( `No UI element (${selector})found in pre-game HTML` )
+
+    return element
+  }
+
   getCtxFromCanvas = (selector:string) => {
     const canvas:null | HTMLCanvasElement = this.preGameUI.querySelector( selector )
 
