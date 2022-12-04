@@ -27,6 +27,7 @@ export default class Level<TGame extends Game<any> = Game<any>> {
   entities: Entity[] = []
   tileSize: number = -1
   config: LevelConfig<TGame>
+  prunedRows = 0
 
   constructor( templates:Record<string, LevelBeingTemplate> | LevelBeingTemplate[], config:LevelConfig<TGame> ) {
     this.templates = (Array.isArray( templates ) ? templates : Object.values( templates )).reduce( (obj, t) => {
@@ -50,6 +51,11 @@ export default class Level<TGame extends Game<any> = Game<any>> {
 
 
     definition.script?.( this, game )
+  }
+
+  prune = (count:number) => {
+    this.data?.splice( -count )
+    this.prunedRows += count
   }
 
   normalizeDefinitionTiles( tiles:LevelDefTiles ): LevelDefNormalizedTiles {
@@ -123,18 +129,46 @@ export default class Level<TGame extends Game<any> = Game<any>> {
   }
 
   getEntityCell = (entity:Entity) => {
-    const { data } = this
+    const { data, prunedRows } = this
 
-    if (!data) return
+    if (!data) return null
 
     const offsetX = entity.y - entity.y % 2
-    const cell = this.getCell( entity.x + offsetX, data.length - 1 + entity.y )
+    const cell = this.getCell( entity.x + offsetX, data.length - 1 + prunedRows + entity.y )
 
-    return cell && cell.x == entity.x && cell.y == entity.y ? cell : null
+    // console.log({
+    //   dataCellX: entity.x + offsetX,
+    //   dataCellY: data.length - 1 + prunedRows + entity.y,
+    //   dataLen: data.length,
+    //   cellY: cell?.y,
+    //   cellX: cell?.x,
+    //   cell: cell,
+    //   offsetX,
+    //   entityX: entity.x,
+    //   entityY: entity.y,
+    // })
+
+    return cell // && cell.x - cell.x % 2 == entity.x && cell.y == entity.y ? cell : null
   }
 
   getEntities = (predicate:(entity:Entity) => boolean) => {
     return this.entities.filter( predicate )
+  }
+
+  getEntitiesOnWrongTile = () => {
+    return this.entities.filter( e => {
+      const cell = this.getEntityCell( e )
+      const canStandOn = e.canStandOn.includes( cell?.tiles[ cell.tiles.length - 1 ]?.templateId ?? null )
+
+      // if (!canStandOn) console.log( e.canStandOn, canStandOn, e, cell )
+
+      return !canStandOn
+    } )
+  }
+
+  removeEntity = (entity:Entity) => {
+    const entityIndex = this.entities.indexOf( entity )
+    if (entityIndex !== -1) this.entities.splice( entityIndex, 1 )
   }
 
   draw = (ctx:CanvasRenderingContext2D, camera:Camera) => {

@@ -88,13 +88,24 @@ export default class CactuJam11Game extends Game<GameStatusType> {
       } )
     }
 
+    let playerHasBeenRemoved = false
+    level.getEntitiesOnWrongTile().forEach( e => {
+      if (e.templateId === `p`) playerHasBeenRemoved = true
+
+      level.removeEntity( e )
+    } )
+
+    if (playerHasBeenRemoved && level.getEntities( e => e.templateId === `p` ).length === 0) {
+      this.stopLoop()
+    }
+
     if (ticks % ticksToNewRow == 0) {
       const correctedTileSize = tileSize / 2 - 10
 
       this.distance++
       this.spawnRow()
 
-      if (data.length > (height + translate.offset.y * 2) / correctedTileSize) data.splice( -4 )
+      if (data.length > (height + translate.offset.y * 2) / correctedTileSize) level.prune( 4 )
     }
 
 

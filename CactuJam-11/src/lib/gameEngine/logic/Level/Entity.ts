@@ -12,7 +12,7 @@ export default class Entity {
   y: number
   scale: number
   animation: Animation
-  canStandOn: string[]
+  canStandOn: (string | null)[]
 
   constructor( templateId:string, x:number, y:number, scale:number, sprite:Sprite, { canStandOn = [] }:EntityConfig = {} ) {
     this.templateId = templateId
