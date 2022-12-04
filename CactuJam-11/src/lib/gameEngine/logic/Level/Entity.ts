@@ -24,7 +24,14 @@ export default class Entity {
   }
 
   draw = (ctx:CanvasRenderingContext2D, tileSize:number) => {
-    this.animation.draw( ctx, this.x * tileSize, this.y * tileSize, tileSize * this.scale, tileSize * this.scale )
+    const { x, y, scale } = this
+    // this.animation.draw( ctx, this.x * tileSize, this.y * tileSize, tileSize * this.scale, tileSize * this.scale )
+
+    this.animation.draw( ctx,
+      x * tileSize,
+      y * (tileSize / 2 - 10) - /* layer */ 1 * (tileSize / 2 - 10), // - (this.config.translation?.y ?? 0),
+      tileSize, tileSize,
+    )
   }
 }
 

@@ -10,7 +10,7 @@ export type LevelDefNormalizedTiles = (null | string[])[][]
 
 export type LevelDef<TGame extends Game<any> = Game<any>> = {
   tiles: LevelDefTiles
-  script: (level:Level<TGame>, game:TGame) => void
+  script?: (level:Level<TGame>, game:TGame) => void
 }
 
 export type LevelConfig<TGame extends Game<any> = Game<any>> = {
@@ -41,6 +41,7 @@ export default class Level<TGame extends Game<any> = Game<any>> {
     const { definition, tileSize } = this.config
     const normalizedTiles = this.normalizeDefinitionTiles( definition.tiles )
 
+    this.entities = []
     this.data = this.parseDefinitionTiles( normalizedTiles )
     this.directioniseTiles()
     this.tileSize = tileSize
@@ -121,6 +122,17 @@ export default class Level<TGame extends Game<any> = Game<any>> {
     return this.data?.[ y ]?.[ x ] ?? null
   }
 
+  getEntityCell = (entity:Entity) => {
+    const { data } = this
+
+    if (!data) return
+
+    const offsetX = entity.y - entity.y % 2
+    const cell = this.getCell( entity.x + offsetX, data.length - 1 + entity.y )
+
+    return cell && cell.x == entity.x && cell.y == entity.y ? cell : null
+  }
+
   draw = (ctx:CanvasRenderingContext2D, camera:Camera) => {
     const { data, tileSize } = this
 
@@ -130,11 +142,21 @@ export default class Level<TGame extends Game<any> = Game<any>> {
 
     data.forEach( (row, y) => {
       ctx.save()
-      if ((data.length - y) % 2) ctx.translate( this.tileSize / 2, 0 )
-      // ;[ ...row ].reverse().forEach( (cell, x) => cell.draw( ctx, y, x, this.tileSize, this.config.variant ) )
-      ;[ ...row ].reverse().forEach( (cell, x) => cell.tiles[ 0 ]?.x > cameraBorder && cell.draw( ctx, y, x, this.tileSize, this.config.variant ) )
+      if ((data.length - y) % 2) ctx.translate( tileSize / 2, 0 )
+      // ;[ ...row ].reverse().forEach( (cell, x) => cell.draw( ctx, y, x, tileSize, this.config.variant ) )
+      ;[ ...row ].reverse().forEach( (cell, x) => cell.tiles[ 0 ]?.x > cameraBorder && cell.draw( ctx, y, x, tileSize, this.config.variant ) )
       ctx.restore()
     } )
-    this.entities.forEach( entity => entity.draw( ctx, this.tileSize ) )
+
+    this.entities.forEach( entity => {
+      ctx.save()
+      let translateX = tileSize * 0.5
+
+      if (entity.y % 2) translateX *= 2
+
+      ctx.translate( translateX, 0 )
+      entity.draw( ctx, tileSize )
+      ctx.restore()
+    } )
   }
 }

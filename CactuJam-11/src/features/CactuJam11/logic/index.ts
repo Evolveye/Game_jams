@@ -33,7 +33,7 @@ export default class CactuJam11Game extends Game<GameStatusType> {
   draw = () => {
     const { ctx, level, ticksToNewRow, ticks, translate } = this
 
-    // if (ticks > 200) return
+    // if (ticks > 300) return
     if (!level) return
 
     const { width, height } = ctx.canvas
@@ -47,19 +47,17 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     translate.y = (ticks / ticksToNewRow) * (level.tileSize / 2 - 10)
 
     ctx.translate(
-      // -level.tileSize * 10,
-      translate.x,
-      // 0, // + ticks * level.tileSize / (1000 / 60),
-      // (width  - level.width  * level.tileSize) / 2, // - level.tileSize * 20,
-      // level.tileSize * 10,
-      translate.y - translate.offset.y,
+      // translate.x,
+      translate.x - 250,
+      // translate.y - translate.offset.y,
+      translate.y - translate.offset.y + 500,
     )
     level.draw( ctx, translate )
     ctx.restore()
   }
 
   calculate = () => {
-    const { ticks, level, startCeilsCount, minCeilsCount, maxCeilsCount, distance, translate, ticksToNewRow } = this
+    const { ticks, level, translate, ticksToNewRow } = this
 
     if (!level) return
 
@@ -68,44 +66,21 @@ export default class CactuJam11Game extends Game<GameStatusType> {
 
 
     if (!data) return
-    // if (ticks > 200) return
+    // if (ticks > 300) return
 
-    const firstCell = data[ 0 ]?.[ 0 ].tiles[ 0 ]
-    const correctedTileSize = tileSize / 2 - 10
 
-    // const y1 = firstCell?.y * correctedTileSize
-    // const y2 = -translate.y
-    // if (y1 < y2) return
     if (ticks % ticksToNewRow) return
 
-    // console.log( data.length, height / (tileSize / 2) )
-    // console.log( -translate.x / tileSize + 10 )
-
-    // console.log( firstCell?.x, ticks * 3 / level.tileSize, distance )
-    // if (!data) return
+    const correctedTileSize = tileSize / 2 - 10
 
     this.distance++
-
-    // if (distance > 50) return
-
-    const rows = 10
-    const padding = Math.floor( Math.random() * 3 )
-
-    data.unshift( Array.from(
-      { length:startCeilsCount + rows },
-      (_, i) => new LevelCell(
-        i,
-        distance,
-        [ templates[ Math.random() > 0.2 ? `grassBlock` : `roadBlock` ].createTile( i + padding + distance, -distance, 0, 1 ) ],
-      ),
-    ) )
+    this.spawnRow()
 
     if (data.length > (height + translate.offset.y * 2) / correctedTileSize) data.splice( -4 )
 
     // if (data.length > 50) for (let i = 6;  i > 0;  --i) data.pop()
 
     // this.startCeilsCount += Math.random() > 0.5 ? 1 : -1
-
 
     // if (this.startCeilsCount > maxCeilsCount) this.startCeilsCount = maxCeilsCount
     // else if (this.startCeilsCount < minCeilsCount) this.startCeilsCount = minCeilsCount
@@ -132,8 +107,15 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     this.level = level01
     this.level.init( this )
     this.translate.offset.y = this.level.tileSize * 2
+    this.spawnRow()
     this.changeStatus( GameStatus.STARTED )
     this.startLoop()
+
+    const levelData = this.level.data
+    if (!levelData) return
+    const cell = levelData[ levelData.length - 1 ][ Math.floor( levelData[ 0 ].length / 2 ) ]
+
+    this.level.entities.push( templates.player.createEntity( cell.x, cell.y, 1 ) )
   }
 
   onResize = () => {
@@ -143,5 +125,23 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     canvas.height = window.innerHeight
 
     this.ctx.imageSmoothingEnabled = false
+  }
+
+  //
+
+  spawnRow = () => {
+    const { startCeilsCount, distance, level } = this
+    const rows = 10
+    const padding = Math.floor( Math.random() * 3 )
+    // console.log( padding )
+
+    level?.data?.unshift( Array.from(
+      { length:padding + startCeilsCount + rows },
+      (_, i) => new LevelCell(
+        i + distance,
+        -distance,
+        i < padding ? [] : [ templates[ Math.random() > 0.2 ? `grassBlock` : `roadBlock` ].createTile( i + distance, -distance, 0, 1 ) ],
+      ),
+    ) )
   }
 }

@@ -8,6 +8,7 @@ import spriteGroundworkSandLeft from "../../img/groundwork-sand-left.png"
 import spriteGroundworkSandBottom from "../../img/groundwork-sand-bottom.png"
 import spriteGrass from "../../img/grass.png"
 import spriteGrassBlock from "../../img/grass-block.png"
+import spriteClip from "../../img/clip.png"
 
 const sprites = {
   player: new Sprite( spritePlayer ),
@@ -17,11 +18,12 @@ const sprites = {
   groundworkSandLeft: new Sprite( spriteGroundworkSandLeft ),
   groundworkSandBottom: new Sprite( spriteGroundworkSandBottom ),
   roadBlock: new Sprite( spriteRoadBlock ),
+  clip: new Sprite( spriteClip ),
 }
 
 export const templates = {
   // Entities
-  player: new EntityTemplate( `p`, sprites.player, {
+  player: new EntityTemplate( `p`, sprites.clip, {
     canStandOn: [ `_` ],
   } ),
 
