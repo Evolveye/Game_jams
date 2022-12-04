@@ -155,11 +155,12 @@ export default class Level<TGame extends Game<any> = Game<any>> {
     return this.entities.filter( predicate )
   }
 
-  getEntitiesOnWrongTile = () => {
+  getEntitiesOnWrongTile = (predicate?:(entity:Entity) => boolean) => {
     return this.entities.filter( e => {
       const cell = this.getEntityCell( e )
-      const canStandOn = e.canStandOn.includes( cell?.tiles[ cell.tiles.length - 1 ]?.templateId ?? null )
+      let canStandOn = e.canStandOn.includes( cell?.tiles[ cell.tiles.length - 1 ]?.templateId ?? null )
 
+      if (canStandOn && predicate) canStandOn = predicate( e )
       // if (!canStandOn) console.log( e.canStandOn, canStandOn, e, cell )
 
       return !canStandOn

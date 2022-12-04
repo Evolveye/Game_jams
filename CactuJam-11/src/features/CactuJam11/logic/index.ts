@@ -6,22 +6,29 @@ import { templates } from "./level"
 import GameStatus, { type GameStatus as GameStatusType } from "./Status"
 
 export default class CactuJam11Game extends Game<GameStatusType> {
+  static defaultSettings = {
+    ticksToNewRow: Math.floor( 1000 / 30 ),
+    mapBaseWidth: 10,
+    probabilityOfBadTile: 0.005,
+    translate: {
+      x: 0,
+      y: 0,
+      offset: {
+        x: 0,
+        y: 0,
+      },
+    },
+  }
+
   distance = 0
   ctx: CanvasRenderingContext2D
   keys = new Keys()
   level: null | Level<CactuJam11Game> = null
   startCeilsCount = 10
-  minCeilsCount = 5
-  maxCeilsCount = 20
-  ticksToNewRow = Math.floor( 1000 / 30 )
-  translate = {
-    x: 0,
-    y: 0,
-    offset: {
-      x: 0,
-      y: 0,
-    },
-  }
+  // minCeilsCount = 5
+  // maxCeilsCount = 20
+
+  settings = CactuJam11Game.defaultSettings
 
   constructor( preGameUI:HTMLElement ) {
     super( preGameUI, GameStatus.NOT_STARTED )
@@ -31,11 +38,12 @@ export default class CactuJam11Game extends Game<GameStatusType> {
   }
 
   draw = () => {
-    const { ctx, level, ticksToNewRow, ticks, translate } = this
+    const { ctx, level, settings, ticks  } = this
 
     // if (ticks > 300) return
     if (!level) return
 
+    const { ticksToNewRow, translate } = settings
     const { width, height } = ctx.canvas
 
     ctx.clearRect( 0, 0, width, height )
@@ -43,26 +51,27 @@ export default class CactuJam11Game extends Game<GameStatusType> {
 
     if (!level.data) return
 
-    translate.x = width / 2 - (ticks / ticksToNewRow) * (level.tileSize)
+    translate.x = -(ticks / ticksToNewRow) * (level.tileSize) + width
     translate.y = (ticks / ticksToNewRow) * (level.tileSize / 2 - 10)
 
     ctx.translate(
-      // translate.x,
-      translate.x - 250,
-      // translate.y - translate.offset.y,
-      translate.y - translate.offset.y + 500,
+      translate.x,
+      // translate.x - 250,
+      translate.y - translate.offset.y,
+      // translate.y - translate.offset.y + 500,
     )
     level.draw( ctx, translate )
     ctx.restore()
   }
 
   calculate = () => {
-    const { ticks, level, translate, ticksToNewRow } = this
+    const { ticks, level, distance, ctx, settings } = this
 
     if (!level) return
 
-    const { height } = this.ctx.canvas
+    const { width, height } = ctx.canvas
     const { data, tileSize } = level
+    const { translate, ticksToNewRow } = settings
 
     if (!data) return
 
@@ -89,7 +98,8 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     }
 
     let playerHasBeenRemoved = false
-    level.getEntitiesOnWrongTile().forEach( e => {
+    const outOfScreenBase = -translate.x / tileSize - 2
+    level.getEntitiesOnWrongTile( e => e.x > outOfScreenBase ).forEach( e => {
       if (e.templateId === `p`) playerHasBeenRemoved = true
 
       level.removeEntity( e )
@@ -106,6 +116,16 @@ export default class CactuJam11Game extends Game<GameStatusType> {
       this.spawnRow()
 
       if (data.length > (height + translate.offset.y * 2) / correctedTileSize) level.prune( 4 )
+    }
+
+    if (distance === 10) {
+      this.settings.probabilityOfBadTile = 0.01
+    } else if (distance === 20) {
+      this.settings.probabilityOfBadTile = 0.02
+    } else if (distance === 50) {
+      this.settings.probabilityOfBadTile = 0.05
+    } else if (distance === 100) {
+      this.settings.probabilityOfBadTile = 0.08
     }
 
 
@@ -137,8 +157,10 @@ export default class CactuJam11Game extends Game<GameStatusType> {
   start = () => {
     this.level = level01
     this.level.init( this )
-    this.translate.offset.y = this.level.tileSize * 2
+    this.settings = CactuJam11Game.defaultSettings
+    this.settings.translate.offset.y = this.level.tileSize * 1
     this.spawnRow()
+
     this.changeStatus( GameStatus.STARTED )
     this.startLoop()
 
@@ -161,18 +183,21 @@ export default class CactuJam11Game extends Game<GameStatusType> {
   //
 
   spawnRow = () => {
-    const { startCeilsCount, distance, level } = this
-    const rows = 10
+    const { startCeilsCount, distance, level, settings } = this
+    const baseWidth = settings.mapBaseWidth
     const padding = Math.floor( Math.random() * 3 )
     // console.log( padding )
 
     level?.data?.unshift( Array.from(
-      { length:padding + startCeilsCount + rows },
-      (_, i) => new LevelCell(
-        i + distance,
-        -distance,
-        i < padding ? [] : [ templates[ Math.random() > 0.2 ? `grassBlock` : `roadBlock` ].createTile( i + distance, -distance, 0, 1 ) ],
-      ),
+      { length:padding + startCeilsCount + baseWidth },
+      (_, i) => {
+        const x = i + distance
+        const y = -distance
+        const shouldBeBadTile = Math.random() > settings.probabilityOfBadTile
+        const tiles = i < padding ? [] : [ templates[ shouldBeBadTile ? `grassBlock` : `roadBlock` ].createTile( i + distance, -distance, 0, 1 ) ]
+
+        return new LevelCell( x, y, tiles )
+      },
     ) )
   }
 }
