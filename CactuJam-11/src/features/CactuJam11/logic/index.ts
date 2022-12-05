@@ -1,16 +1,47 @@
 import LevelCell from "@lib/gameEngine/logic/Level/LevelCell"
 import Level from "@lib/gameEngine/logic/Level"
 import { Game, Keys } from "@lib/gameEngine"
+import select from "@lib/core/functions/select"
 import { getDateparts } from "@lib/core/functions/formatDate"
 import { level01 } from "./level/01"
 import { templates } from "./level"
 import GameStatus, { type GameStatus as GameStatusType } from "./Status"
+
+export const Season = {
+  SPRING: `spring`,
+  SUMMER: `summer`,
+  AUTUMN: `autumn`,
+  WINTER: `winter`,
+}
 
 export default class CactuJam11Game extends Game<GameStatusType> {
   static defaultSettings = {
     ticksToNewRow: Math.floor( 1000 / 30 ),
     mapBaseWidth: 10,
     probabilityOfBadTile: 0.005,
+    currentSeason: Season.SUMMER,
+    seasonSpritesTemplates: {
+      spring: {
+        good: [ templates.grassBlock, templates.grassBlock, templates.grassBlock, templates.grassBlock, templates.grassBlock, templates.grassFlowersBlock ],
+        bad: [ templates.waterBlock ],
+        badUp: [ templates.grassBlock, templates.grassFlowersBlock ],
+      },
+      summer: {
+        good: [ templates.grassBlock ],
+        bad: [ templates.waterBlock ],
+        badUp: [ templates.sunflower, templates.grassBlock, templates.grassFlowersBlock ],
+      },
+      autumn: {
+        good: [ templates.grassAutumn1Block, templates.grassAutumn1Block, templates.grassAutumn1Block, templates.grassAutumn2Block, templates.grassAutumn3Block ],
+        bad: [ templates.waterBlock ],
+        badUp: [ templates.grassAutumn1Block, templates.grassAutumn2Block, templates.grassAutumn3Block ],
+      },
+      winter: {
+        good: [ templates.snowBlock ],
+        bad: [ templates.iceBlock ],
+        badUp: [ templates.iceSpikes, templates.snowBlock ],
+      },
+    },
     translate: {
       x: 0,
       y: 0,
@@ -26,12 +57,11 @@ export default class CactuJam11Game extends Game<GameStatusType> {
   keys = new Keys()
   level: null | Level<CactuJam11Game> = null
   startCeilsCount = 10
-  // minCeilsCount = 5
-  // maxCeilsCount = 20
 
   settings = CactuJam11Game.defaultSettings
   ui: {
     date: HTMLElement
+    season: HTMLElement
   }
 
   constructor( preGameUI:HTMLElement ) {
@@ -40,15 +70,15 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     this.ctx = this.getCtxFromCanvas( `[data-canvas-main]` )
     this.ui = {
       date: this.getUI( `[data-stats-date]` ),
+      season: this.getUI( `[data-stats-season]` ),
     }
 
     this.start()
   }
 
   draw = () => {
-    const { ctx, level, settings, ticks  } = this
+    const { ctx, level, settings } = this
 
-    // if (ticks > 300) return
     if (!level) return
 
     const { ticksToNewRow, translate } = settings
@@ -59,13 +89,13 @@ export default class CactuJam11Game extends Game<GameStatusType> {
 
     if (!level.data) return
 
-    translate.x = -(ticks / ticksToNewRow) * (level.tileSize) + width
-    translate.y = (ticks / ticksToNewRow) * (level.tileSize / 2 - 10)
+    translate.x += -(1 / ticksToNewRow) * (level.tileSize)
+    translate.y +=  (1 / ticksToNewRow) * (level.tileSize / 2 - 10)
 
     ctx.translate(
       translate.x,
-      // translate.x - 250,
       translate.y - translate.offset.y,
+      // translate.x - 250,
       // translate.y - translate.offset.y + 500,
     )
     level.draw( ctx, translate )
@@ -77,28 +107,28 @@ export default class CactuJam11Game extends Game<GameStatusType> {
 
     if (!level) return
 
-    const { width, height } = ctx.canvas
+    const { height } = ctx.canvas
     const { data, tileSize } = level
     const { translate, ticksToNewRow } = settings
 
     if (!data) return
 
-    if (this.keys.isActiveOnce( `w` )) {
+    if (this.keys.isActiveOnce( `w` ) || this.keys.isActiveOnce( `ArrowUp` )) {
       level.getEntities( e => e.templateId === `p` ).forEach( e => {
         e.y -= 1
         if (e.y % 2 == 0) e.x += 1
       } )
-    } else if (this.keys.isActiveOnce( `a` )) {
+    } else if (this.keys.isActiveOnce( `a` ) || this.keys.isActiveOnce( `ArrowLeft` )) {
       level.getEntities( e => e.templateId === `p` ).forEach( e => {
         e.y -= 1
         if (e.y % 2 == -1) e.x -= 1
       } )
-    } else if (this.keys.isActiveOnce( `s` )) {
+    } else if (this.keys.isActiveOnce( `s` ) || this.keys.isActiveOnce( `ArrowDown` )) {
       level.getEntities( e => e.templateId === `p` ).forEach( e => {
         e.y += 1
         if (e.y % 2 == -1) e.x -= 1
       } )
-    } else if (this.keys.isActiveOnce( `d` )) {
+    } else if (this.keys.isActiveOnce( `d` ) || this.keys.isActiveOnce( `ArrowRight` )) {
       level.getEntities( e => e.templateId === `p` ).forEach( e => {
         e.y += 1
         if (e.y % 2 == 0) e.x += 1
@@ -118,22 +148,47 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     }
 
     if (ticks % ticksToNewRow == 0) {
+      const dayOfYear = distance % 365
       const correctedTileSize = tileSize / 2 - 10
+
+      if (distance <= 100) {
+        if (distance === 10) {
+          this.settings.probabilityOfBadTile = 0.01
+        } else if (distance === 20) {
+          this.settings.probabilityOfBadTile = 0.02
+        } else if (distance === 50) {
+          this.settings.probabilityOfBadTile = 0.04
+        } else if (distance === 100) {
+          this.settings.probabilityOfBadTile = 0.06
+        }
+      } else if (distance % 75 === 0) {
+        this.settings.probabilityOfBadTile += 0.015
+        this.settings.ticksToNewRow -= 1
+
+        console.log( `SPEEED!`, {
+          probabilityOfBadTile: this.settings.probabilityOfBadTile,
+          ticksToNewRow: this.settings.ticksToNewRow,
+        } )
+      }
+
+      if (dayOfYear === 60) {
+        console.log( `SPRING TIME!`, { dayOfYear } )
+        settings.currentSeason = Season.SPRING
+      } else if (dayOfYear === 152) {
+        console.log( `SUMMER TIME!`, { dayOfYear } )
+        settings.currentSeason = Season.SUMMER
+      } else if (dayOfYear === 244) {
+        console.log( `AUTUMN TIME!`, { dayOfYear } )
+        settings.currentSeason = Season.AUTUMN
+      } else if (dayOfYear === 335) {
+        console.log( `WINTER TIME!`, { dayOfYear } )
+        settings.currentSeason = Season.WINTER
+      }
 
       this.distance++
       this.spawnRow()
 
       if (data.length > (height + translate.offset.y * 2) / correctedTileSize) level.prune( 4 )
-    }
-
-    if (distance === 10) {
-      this.settings.probabilityOfBadTile = 0.01
-    } else if (distance === 20) {
-      this.settings.probabilityOfBadTile = 0.02
-    } else if (distance === 50) {
-      this.settings.probabilityOfBadTile = 0.05
-    } else if (distance === 100) {
-      this.settings.probabilityOfBadTile = 0.08
     }
 
     this.updateUI()
@@ -167,12 +222,20 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     const dateParts = getDateparts( 1000 * 60 * 60 * 24 * this.distance )
 
     this.ui.date.innerHTML = `${dateParts.day} ${dateParts.month} N` + `${Number( dateParts.year ) - 1970}`.padStart( 3, `0` )
+    this.ui.season.innerHTML = select( this.settings.currentSeason, {
+      spring: `Wiosna`,
+      summer: `Lato`,
+      autumn: `Jesień`,
+      winter: `Zima`,
+      default: ``,
+    } )
   }
 
   start = () => {
     this.level = level01
     this.level.init( this )
     this.settings = CactuJam11Game.defaultSettings
+    this.settings.translate.x = this.ctx.canvas.width
     this.settings.translate.offset.y = this.level.tileSize * 1
     this.spawnRow()
 
@@ -201,15 +264,30 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     const { startCeilsCount, distance, level, settings } = this
     const baseWidth = settings.mapBaseWidth
     const padding = Math.floor( Math.random() * 3 )
+    const seasonTemplates = settings.seasonSpritesTemplates[ settings.currentSeason ]
     // console.log( padding )
+
+    const randomArrItem = (arr:any[]) => arr[ Math.floor( Math.random() * arr.length ) ]
+    const getBadTileProbability = (mult:number = 1) => Math.random() < settings.probabilityOfBadTile * mult
+    const getTiles = (x:number, y:number) => {
+      const template = getBadTileProbability() ? randomArrItem( seasonTemplates.bad ) : randomArrItem( seasonTemplates.good )
+      const tiles = [ template.createTile( x, y, 0, 1 ) ]
+
+      if (distance > 100) {
+        if (getBadTileProbability( settings.currentSeason === `winter` ? 0.75 : 0.25 )) {
+          tiles.push( randomArrItem( seasonTemplates.badUp ).createTile( x, y, 1, 1 ) )
+        }
+      }
+
+      return tiles
+    }
 
     level?.data?.unshift( Array.from(
       { length:padding + startCeilsCount + baseWidth },
       (_, i) => {
         const x = i + distance
         const y = -distance
-        const shouldBeBadTile = Math.random() > settings.probabilityOfBadTile
-        const tiles = i < padding ? [] : [ templates[ shouldBeBadTile ? `grassBlock` : `roadBlock` ].createTile( i + distance, -distance, 0, 1 ) ]
+        const tiles = i < padding ? [] : getTiles( x, y )
 
         return new LevelCell( x, y, tiles )
       },

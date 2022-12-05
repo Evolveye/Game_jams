@@ -17,6 +17,7 @@ export default function CactuJam11() {
           <section ref={preGameUIRef}>
             <ul className={classes.stats}>
               <li>Data wyprawy: <output data-stats-date /></li>
+              <li>Pora roku: <output data-stats-season /></li>
             </ul>
 
             <canvas data-canvas-main="" className={classes.canvas} />
@@ -48,7 +49,9 @@ const useStlyes = createStylesHook( ({ atoms }) => ({
   },
 
   stats: {
+    position: `absolute`,
     display: `flex`,
+    flexDirection: `column`,
     gap: atoms.spacing.main,
     margin: 0,
     padding: atoms.spacing.main,
