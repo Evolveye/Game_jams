@@ -6,7 +6,7 @@ import { getDateparts } from "@lib/core/functions/formatDate"
 import wavTheme from "../wav/theme.wav"
 import wavJump from "../wav/jump.wav"
 import wavGameOver from "../wav/gameOver.wav"
-import { level01 } from "./level/01"
+import { getLevel01 } from "./level/01"
 import { templates } from "./level"
 import GameStatus, { type GameStatus as GameStatusType } from "./Status"
 
@@ -18,11 +18,12 @@ export const Season = {
 }
 
 export default class CactuJam11Game extends Game<GameStatusType> {
+  static storageScoreKey = `cactujam-11-score`
   static defaultSettings = {
     ticksToNewRow: Math.floor( 1000 / 30 ),
     mapBaseWidth: 10,
     probabilityOfBadTile: 0.005,
-    currentSeason: Season.SUMMER,
+    currentSeason: Season.WINTER,
     seasonSpritesTemplates: {
       spring: {
         good: [ templates.grassBlock, templates.grassBlock, templates.grassBlock, templates.grassBlock, templates.grassBlock, templates.grassFlowersBlock ],
@@ -63,21 +64,26 @@ export default class CactuJam11Game extends Game<GameStatusType> {
 
   settings = CactuJam11Game.defaultSettings
   ui: {
+    stats: HTMLElement
     date: HTMLElement
     season: HTMLElement
+    score: HTMLElement
   }
   sounds = {
     theme: new Audio( wavTheme ),
     gameOver: new Audio( wavGameOver ),
   }
+  score = 0
 
   constructor( preGameUI:HTMLElement ) {
     super( preGameUI, GameStatus.NOT_STARTED )
 
     this.ctx = this.getCtxFromCanvas( `[data-canvas-main]` )
     this.ui = {
+      stats: this.getUI( `[data-stats]` ),
       date: this.getUI( `[data-stats-date]` ),
       season: this.getUI( `[data-stats-season]` ),
+      score: this.getUI( `[data-stats-score]` ),
     }
 
     this.on( `status update`, this.onStatus )
@@ -199,12 +205,12 @@ export default class CactuJam11Game extends Game<GameStatusType> {
       }
 
       this.distance++
+      this.score += Math.ceil( distance / 356 ) * 10
       this.spawnRow()
+      this.updateUI()
 
-      if (data.length > (height + translate.offset.y * 2) / correctedTileSize) level.prune( 4 )
+      if (data.length > (height + translate.offset.y * 4) / correctedTileSize) level.prune( 4 )
     }
-
-    this.updateUI()
 
     // if (data.length > 50) for (let i = 6;  i > 0;  --i) data.pop()
 
@@ -233,8 +239,9 @@ export default class CactuJam11Game extends Game<GameStatusType> {
 
   updateUI = () => {
     const dateParts = getDateparts( 1000 * 60 * 60 * 24 * this.distance )
+    const year = Number( dateParts.year ) - 1970
 
-    this.ui.date.innerHTML = `${dateParts.day} ${dateParts.month} N` + `${Number( dateParts.year ) - 1970}`.padStart( 3, `0` )
+    this.ui.date.innerHTML = `${dateParts.day} ${dateParts.month} ` + `${year}`.padStart( 4, `0` )
     this.ui.season.innerHTML = select( this.settings.currentSeason, {
       spring: `Wiosna`,
       summer: `Lato`,
@@ -242,14 +249,23 @@ export default class CactuJam11Game extends Game<GameStatusType> {
       winter: `Zima`,
       default: ``,
     } )
+
+    this.ui.score.innerHTML = `${this.score} ` + (year > 0 ? `<strong>x${year + 1}</strong>` : ``)
+    // this.ui.score.innerHTML = `${this.score} ` + `<strong>x2</strong>`
   }
 
   start = () => {
-    this.level = level01
+    this.level = getLevel01()
     this.level.init( this )
-    this.settings = CactuJam11Game.defaultSettings
+    this.settings = {
+      ...CactuJam11Game.defaultSettings,
+      translate: {
+        ...CactuJam11Game.defaultSettings.translate,
+        offset: { ...CactuJam11Game.defaultSettings.translate.offset },
+      },
+    }
     this.settings.translate.x = this.ctx.canvas.width
-    this.settings.translate.offset.y = this.level.tileSize * 1
+    this.settings.translate.offset.y = this.level.tileSize
     this.spawnRow()
 
     this.changeStatus( GameStatus.STARTED )
@@ -263,6 +279,8 @@ export default class CactuJam11Game extends Game<GameStatusType> {
 
     this.sounds.theme.play()
     this.sounds.theme.loop = true
+
+    this.ui.stats.style.display = `flex`
   }
 
   onResize = () => {
@@ -275,6 +293,7 @@ export default class CactuJam11Game extends Game<GameStatusType> {
   }
 
   onStatus = (status:GameStatusType) => {
+    const { score, distance } = this
     console.log( status )
 
     if (status === GameStatus.GAME_OVER) {
@@ -282,6 +301,25 @@ export default class CactuJam11Game extends Game<GameStatusType> {
       this.sounds.gameOver.play()
       this.sounds.theme.currentTime = 0
       this.sounds.theme.pause()
+
+      let savedScore = JSON.parse( localStorage.getItem( CactuJam11Game.storageScoreKey ) ?? `null` )
+
+      savedScore ||= {
+        maxScore: score,
+        maxDays: distance,
+        lastScore: score,
+        lastDays: distance,
+      }
+
+      savedScore.lastScore = score
+      savedScore.lastDays = distance
+
+      if (savedScore.maxScore < score) savedScore.maxScore = score
+      if (savedScore.maxDays < distance) savedScore.maxDays = distance
+
+      console.log({ savedScore, maxScore:savedScore.maxScore, score, isSmaller:savedScore.maxScore < score })
+
+      localStorage.setItem( CactuJam11Game.storageScoreKey, JSON.stringify( savedScore ) )
     }
   }
 

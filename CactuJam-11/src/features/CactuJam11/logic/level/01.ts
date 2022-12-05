@@ -2,7 +2,7 @@ import Level from "@lib/gameEngine/logic/Level"
 import CactuJam11Game from ".."
 import { templates } from "."
 
-export const level01 = new Level<CactuJam11Game>( templates, { tileSize: 64, variant: `isometric`, definition: {
+export const getLevel01 = () => new Level<CactuJam11Game>( templates, { tileSize: 64, variant: `isometric`, definition: {
   tiles: [],
   // tiles: [
   //   // // /* - - - 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 */

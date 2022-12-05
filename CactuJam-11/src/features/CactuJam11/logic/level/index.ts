@@ -45,5 +45,5 @@ export const templates = {
   snowBlock: new LevelTileTemplate( `_W`, sprites.snowBlock ),
   iceSpikes: new LevelTileTemplate( `IS`, sprites.iceSpikes ),
   waterBlock: new LevelTileTemplate( `W`, sprites.waterBlock, { translation:{ y:-10 } } ),
-  iceBlock: new LevelTileTemplate( `I`, sprites.waterBlock ),
+  iceBlock: new LevelTileTemplate( `I`, sprites.iceBlock ),
 }

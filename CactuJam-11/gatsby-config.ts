@@ -5,6 +5,7 @@ import type { GatsbyConfig } from "gatsby"
 dotenv.config()
 
 const config:GatsbyConfig = {
+  pathPrefix: `/_/cactujam/11/`,
   siteMetadata: {
     title: `CodeCactu website`,
     siteUrl: `https://www.yourdomain.tld`,
