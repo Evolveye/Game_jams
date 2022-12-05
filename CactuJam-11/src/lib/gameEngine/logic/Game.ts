@@ -64,7 +64,7 @@ export default abstract class Game<TStatus extends string> {
     this.paused = false
   }
 
-  on = (eventName:Event, handler:() => void) => {
+  on = (eventName:Event, handler:(...data:any[]) => void) => {
     this.#eventsHandlers[ eventName ].push( handler )
   }
 

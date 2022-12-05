@@ -31,7 +31,7 @@ export default function CactuJam11() {
           return (
             <section>
               <GameContextProvider game={game}>
-                {/* {game.state === GameStatus.NOT_STARTED && <screens.StartScreen />} */}
+                {game.state === GameStatus.NOT_STARTED && <screens.StartScreen />}
               </GameContextProvider>
             </section>
           )

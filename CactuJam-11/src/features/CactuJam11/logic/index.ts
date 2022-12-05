@@ -3,6 +3,9 @@ import Level from "@lib/gameEngine/logic/Level"
 import { Game, Keys } from "@lib/gameEngine"
 import select from "@lib/core/functions/select"
 import { getDateparts } from "@lib/core/functions/formatDate"
+import wavTheme from "../wav/theme.wav"
+import wavJump from "../wav/jump.wav"
+import wavGameOver from "../wav/gameOver.wav"
 import { level01 } from "./level/01"
 import { templates } from "./level"
 import GameStatus, { type GameStatus as GameStatusType } from "./Status"
@@ -63,6 +66,10 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     date: HTMLElement
     season: HTMLElement
   }
+  sounds = {
+    theme: new Audio( wavTheme ),
+    gameOver: new Audio( wavGameOver ),
+  }
 
   constructor( preGameUI:HTMLElement ) {
     super( preGameUI, GameStatus.NOT_STARTED )
@@ -73,7 +80,7 @@ export default class CactuJam11Game extends Game<GameStatusType> {
       season: this.getUI( `[data-stats-season]` ),
     }
 
-    this.start()
+    this.on( `status update`, this.onStatus )
   }
 
   draw = () => {
@@ -113,22 +120,28 @@ export default class CactuJam11Game extends Game<GameStatusType> {
 
     if (!data) return
 
+    const playJumpAudio = () => new Audio( wavJump ).play()
+
     if (this.keys.isActiveOnce( `w` ) || this.keys.isActiveOnce( `ArrowUp` )) {
+      playJumpAudio()
       level.getEntities( e => e.templateId === `p` ).forEach( e => {
         e.y -= 1
         if (e.y % 2 == 0) e.x += 1
       } )
     } else if (this.keys.isActiveOnce( `a` ) || this.keys.isActiveOnce( `ArrowLeft` )) {
+      playJumpAudio()
       level.getEntities( e => e.templateId === `p` ).forEach( e => {
         e.y -= 1
         if (e.y % 2 == -1) e.x -= 1
       } )
     } else if (this.keys.isActiveOnce( `s` ) || this.keys.isActiveOnce( `ArrowDown` )) {
+      playJumpAudio()
       level.getEntities( e => e.templateId === `p` ).forEach( e => {
         e.y += 1
         if (e.y % 2 == -1) e.x -= 1
       } )
     } else if (this.keys.isActiveOnce( `d` ) || this.keys.isActiveOnce( `ArrowRight` )) {
+      playJumpAudio()
       level.getEntities( e => e.templateId === `p` ).forEach( e => {
         e.y += 1
         if (e.y % 2 == 0) e.x += 1
@@ -144,7 +157,7 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     } )
 
     if (playerHasBeenRemoved && level.getEntities( e => e.templateId === `p` ).length === 0) {
-      this.stopLoop()
+      return this.changeStatus( GameStatus.GAME_OVER )
     }
 
     if (ticks % ticksToNewRow == 0) {
@@ -163,7 +176,7 @@ export default class CactuJam11Game extends Game<GameStatusType> {
         }
       } else if (distance % 75 === 0) {
         this.settings.probabilityOfBadTile += 0.015
-        this.settings.ticksToNewRow -= 1
+        this.settings.ticksToNewRow -= 2
 
         console.log( `SPEEED!`, {
           probabilityOfBadTile: this.settings.probabilityOfBadTile,
@@ -247,6 +260,9 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     const cell = levelData[ levelData.length - 1 ][ Math.floor( levelData[ 0 ].length / 2 ) ]
 
     this.level.entities.push( templates.player.createEntity( cell.x, cell.y, 1 ) )
+
+    this.sounds.theme.play()
+    this.sounds.theme.loop = true
   }
 
   onResize = () => {
@@ -256,6 +272,17 @@ export default class CactuJam11Game extends Game<GameStatusType> {
     canvas.height = window.innerHeight
 
     this.ctx.imageSmoothingEnabled = false
+  }
+
+  onStatus = (status:GameStatusType) => {
+    console.log( status )
+
+    if (status === GameStatus.GAME_OVER) {
+      this.stopLoop()
+      this.sounds.gameOver.play()
+      this.sounds.theme.currentTime = 0
+      this.sounds.theme.pause()
+    }
   }
 
   //
