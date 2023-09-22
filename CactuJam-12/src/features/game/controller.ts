@@ -81,6 +81,8 @@ export default abstract class Game<T extends HTMLElement = HTMLDivElement> {
 
     this.ctxs.set( name, ctx )
     this.#setupCanvas( ctx.canvas )
+
+    return ctx
   }
 
   abstract draw(): void

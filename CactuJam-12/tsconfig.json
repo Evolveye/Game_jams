@@ -15,7 +15,9 @@
     "jsx": "preserve",
     "incremental": true,
     "paths": {
-      "@fet/*": ["./src/*"]
+      "@fet/*": ["./src/features/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@src/*": ["./src/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
