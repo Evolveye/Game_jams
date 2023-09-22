@@ -1,12 +1,59 @@
-import { GameColors, Line, Point, Rect, SemanticColor, SemanticPosition } from "./types"
+import { GameColors, HorizontallLine, Point, Rect, SemanticColor, VerticalLine, isHorizontalLine, isPoint, isRect, isVerticalLine } from "./types"
+import Tile from "./Tile"
 
-export type LevelData = (Point | Line | Rect)[][]
+export type LevelData = (Point | VerticalLine | HorizontallLine | Rect)[]
 
 export default class Level {
+  levelDimensions = {
+    x: 200,
+    y: 150,
+  }
   colors: GameColors
+  levelData: Tile[][] = []
+  cellSize = 5
 
   constructor( colors:GameColors ) {
     this.colors = colors
+    this.processLevelData( levelData )
+  }
+
+
+  processLevelData( levelData:LevelData ) {
+    this.levelData = Array.from( { length:this.levelDimensions.y }, () => [] as Tile[] )
+
+    levelData.forEach( item => {
+      if (isRect( item )) {
+        this.setRect( item.x, item.y, item.w, item.h, () => new Tile( this.getColor( item.color ) ) )
+      } else if (isHorizontalLine( item )) {
+        this.setHorizontalLine( item.x, item.y, item.w, () => new Tile( this.getColor( item.color ) ) )
+      } else if (isVerticalLine( item )) {
+        this.setVerticalLine( item.x, item.y, item.h, () => new Tile( this.getColor( item.color ) ) )
+      } else if (isPoint( item )) {
+        this.setCell( item.x, item.y, new Tile( this.getColor( item.color ) ) )
+      }
+    } )
+  }
+
+  draw( ctx:CanvasRenderingContext2D ) {
+    const { levelData, cellSize, levelDimensions } = this
+    const { width, height, center } = this.getCtxDimensions( ctx )
+
+    ctx.clearRect( 0, 0, width, height )
+
+    ctx.save()
+    ctx.translate( center.x - levelDimensions.x * cellSize / 2, 0 )
+    levelData.forEach( (row, y) => row.forEach( (cell, x) => {
+      ctx.fillStyle = cell.color
+      ctx.fillRect( x * cellSize, y * cellSize, cellSize, cellSize )
+    } ) )
+    ctx.restore()
+  }
+
+
+  getColor( semanticColor:SemanticColor = `land` ) {
+    if (semanticColor === `land`) return this.colors.safe
+    else if (semanticColor === `land-50`) return `${this.colors.safe}aa`
+    return this.colors.safe
   }
 
   getCtxDimensions( ctx:CanvasRenderingContext2D ) {
@@ -19,52 +66,55 @@ export default class Level {
       },
     }
   }
-  draw( ctx:CanvasRenderingContext2D ) {
-    const { width, height } = this.getCtxDimensions( ctx )
-    const getPos = (num:SemanticPosition) => num === `width` ? width : num === `height` ? height : num
-    const setColor = (semanticColor:SemanticColor = `land`, type:`fill` | `stroke` = `fill`) => {
-      let color = ``
 
-      if (semanticColor === `land`) {
-        color = this.colors.safe
-      } else if (semanticColor === `land-50`) {
-        color = `${this.colors.safe}aa`
-      }
+  setCell( x:number, y:number, data:Tile ) {
+    const fixedY = y < 0 ? -y - 1 : this.levelData.length - y
+    const row = this.levelData[ fixedY ]
+    if (!row) return
 
-      if (type == `fill`) ctx.fillStyle = color
-      else if (type == `stroke`) ctx.strokeStyle = color
+    const fixedX = x < 0 ? row.length - x : x
+    row[ fixedX ] = data
+  }
+
+  setHorizontalLine( x:number, y:number, width:number, dataCreator:(x:number, y:number) => Tile ) {
+    const fixedY = y < 0 ? -y - 1 : this.levelData.length - y
+    const row = this.levelData[ fixedY ]
+
+    if (!row) return
+
+    const fixedWidth = width < 0 ? this.levelDimensions.x - width : width
+    const fixedX = x < 0 ? row.length - x : x
+
+    for (let i = 0;  i < fixedWidth;  ++i) row[ fixedX + i ] = dataCreator( x, y )
+  }
+
+  setVerticalLine( x:number, y:number, height:number, dataCreator:(x:number, y:number) => Tile ) {
+    const fixedY = y < 0 ? -y - 1 : this.levelDimensions.y - y
+    const fixedX = x < 0 ? this.levelDimensions.x - x : x
+
+    for (let i = 0;  i < height;  ++i) {
+      const row = this.levelData[ fixedY + i ]
+      row[ fixedX ] = dataCreator( x, y )
     }
+  }
 
-    ctx.clearRect( 0, 0, width, height )
+  setRect( x:number, y:number, width:number, height:number, dataCreator:(x:number, y:number) => Tile ) {
+    const fixedY = y < 0 ? -y - 1 : this.levelDimensions.y - y
+    const fixedX = x < 0 ? this.levelDimensions.x - x : x
+    const fixedWidth = width < 0 ? this.levelDimensions.x - width : width
 
-    levelData.forEach( chunk => chunk.forEach( item => {
-      ctx.beginPath()
+    for (let i = 0;  i < height;  ++i) {
+      const row = this.levelData[ fixedY + i ]
 
-      if (`from` in item) {
-        setColor( item.color, `stroke` )
-        ctx.lineWidth = 2
-        ctx.moveTo( getPos( item.from.x ), height - getPos( item.from.y ) )
-        ctx.lineTo( getPos( item.to.x ), height - getPos( item.to.y ) )
-        ctx.stroke()
-      } else if (`w` in item) {
-        setColor( item.color, `fill` )
-        ctx.fillRect( getPos( item.x ), height - getPos( item.y ), getPos( item.w ), getPos( item.h ) )
-      } else if (`x` in item) {
-        setColor( item.color, `stroke` )
-        ctx.arc( getPos( item.x ), height - getPos( item.y ), 5, 0, Math.PI * 2 )
-        ctx.fill()
-      }
-    } ) )
+      for (let j = 0;  j < fixedWidth;  ++j) row[ fixedX + j ] = dataCreator( x, y )
+    }
   }
 }
 
 const levelData:LevelData = [
-  [
-    { x:300, y:400 },
-    { x:900, y:600 },
-  ],
-  [
-    { color:`land`, from:{ x:0, y:100 }, to:{ x:`width`, y:100 } },
-    { color:`land-50`, x:0, y:100, w:`width`, h:100 },
-  ],
+  { x:-1, y:-1 },
+  { x:30, y:40 },
+  { x:90, y:60 },
+  { color:`land`,  x:0, y:11, w:-1 },
+  { color:`land-50`, x:0, y:10, w:-1, h:10 },
 ]
