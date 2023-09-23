@@ -3,10 +3,12 @@ export type GameColors = {
   danger: string
 }
 
-export type SemanticColor = `land` | `land-50`
+export type SemanticColor = `land` | `land-50` | `danger`
 
 export const isPoint = (item:{}): item is Point => `x` in item && `y` in item
+export const isPlayer = (item:{}): item is Point => isPoint( item ) && !!item.isPlayer
 export type Point = {
+  isPlayer?: boolean
   color?: SemanticColor
   x: number
   y: number

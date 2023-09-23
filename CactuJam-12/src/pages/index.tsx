@@ -8,7 +8,7 @@ export default function HomePage() {
   const [ handleUi ] = useGame( div => new CactuJam12Game( div, {
     colors: {
       safe: atoms.colors.a,
-      danger: atoms.colors.a,
+      danger: atoms.colors.b,
     },
   } ) )
 

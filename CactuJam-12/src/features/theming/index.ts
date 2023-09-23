@@ -8,7 +8,7 @@ export const { createStylesHook, useTheme, themeConfig } = createTheming({
       },
 
       a: `#a5f46a`,
-      // a: `#ff0000`,
+      b: `#ff0000`,
     },
   }),
 })

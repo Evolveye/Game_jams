@@ -51,9 +51,11 @@ export default abstract class Game<T extends HTMLElement = HTMLDivElement> {
 
   startLoop() {
     const loop = () => requestAnimationFrame( () => {
+      this.logic()
       this.draw()
 
-      this.#loopId = window.setTimeout( loop, 1000 )
+      // this.#loopId = window.setTimeout( loop, 1000 )
+      this.#loopId = window.setTimeout( loop, 1000 / 60 )
     } )
 
     loop()
@@ -97,7 +99,10 @@ export function useGame<
 
   const handleRef = (ref:Ele) => {
     if (ref) controllerRef.current = handler( ref )
-    else controllerRef.current?.disable()
+    else {
+      controllerRef.current?.disable()
+      controllerRef.current = null
+    }
   }
 
   return [ handleRef, controllerRef.current ]

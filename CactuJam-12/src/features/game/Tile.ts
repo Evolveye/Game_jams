@@ -1,9 +1,9 @@
-import { GameColors } from "./types"
-
 export default class Tile {
   color: string
+  movable = false
 
-  constructor( color:string ) {
+  constructor( color:string, movable:boolean = false ) {
     this.color = color
+    this.movable = movable
   }
 }

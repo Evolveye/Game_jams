@@ -1,12 +1,15 @@
 import { GameColors } from "./types"
 import Level from "./level"
 import Game from "./controller"
+import KeysController from "./KeysController"
 
 export type GameConfig = {
   colors: GameColors
 }
 
 export default class CactuJam12Game extends Game {
+  keys = new KeysController()
+
   level: null | Level = null
   ctx: CanvasRenderingContext2D
   colors: GameColors
@@ -33,6 +36,13 @@ export default class CactuJam12Game extends Game {
   }
 
   logic() {
-    throw new Error( `Method not implemented.` )
+    const { keys, level } = this
+
+    if (!level) return
+
+    if (keys.isPressedOnce( `w` )) level.movePlayerBy( 0, 1 )
+    if (keys.isPressedOnce( `s` )) level.movePlayerBy( 0, -1 )
+    if (keys.isPressedOnce( `a` )) level.movePlayerBy( -1, 0 )
+    if (keys.isPressedOnce( `d` )) level.movePlayerBy( 1, 0 )
   }
 }
