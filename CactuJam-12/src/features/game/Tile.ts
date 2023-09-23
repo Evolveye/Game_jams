@@ -1,9 +1,11 @@
-export default class Tile {
-  color: string
-  movable = false
+import { TagHolder } from "./types"
 
-  constructor( color:string, movable:boolean = false ) {
+export default class Tile implements TagHolder {
+  color: string
+  tags = new Set<string>()
+
+  constructor( color:string, tags:string[] = [] ) {
     this.color = color
-    this.movable = movable
+    tags.forEach( t => this.tags.add( t ) )
   }
 }

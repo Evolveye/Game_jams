@@ -50,8 +50,8 @@ export default abstract class Game<T extends HTMLElement = HTMLDivElement> {
   }
 
   startLoop() {
-    const loop = () => requestAnimationFrame( () => {
-      this.logic()
+    const loop = () => requestAnimationFrame( async() => {
+      await this.logic()
       this.draw()
 
       // this.#loopId = window.setTimeout( loop, 1000 )
