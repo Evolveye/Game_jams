@@ -27,6 +27,7 @@ export default class CactuJam12Game extends Game {
     knownTiles: 0,
     closedAreas: 0,
     stage: 0,
+    destroyedAreas: 0,
     expincomeGood: false,
     tooBigAreaInfo: false,
     borderReached: false,
@@ -71,24 +72,51 @@ export default class CactuJam12Game extends Game {
 
     level.logic( this.ctx )
 
+    if (ticks % 4 === 0) {
+      level.entities.filter( e => e.tags.includes( `danger` ) ).forEach( e => {
+        const newEnemyPos = level.moveEnemyBy( e.x, e.y, 0, -1 )
+
+        if (newEnemyPos && `collidingCell` in newEnemyPos) {
+          const topTags = newEnemyPos.collidingCell?.getTop()?.tags
+
+          if (topTags?.has( `deep land` )) {
+            const result = level.destroyFilledLand( e.x, e.y - 1 )
+
+            if (result) {
+              level.removeEntity( e.x, e.y )
+              uiData.knownTiles -= result
+              uiData.destroyedAreas++
+              this.updateUi()
+
+              if (uiData.knownTiles < 0) uiData.knownTiles = 0
+            }
+          }
+        }
+      } )
+    }
+
     if (uiData.stage === 2) {
-      if (!this.enemyTimerId) this.enemyTimerId = window.setTimeout( () => {
-        const randInt = (min:number, max:number) => Math.floor( Math.random() * (max - min) ) + min
+      if (!this.enemyTimerId && !level.entities.length) {
+        const spawnEnemy = () => {
+          const randInt = (min:number, max:number) => Math.floor( Math.random() * (max - min) ) + min
 
-        const x = randInt( 0, level.levelDimensions.x )
-        const y = randInt( 100, 400 )
-        const currentCell = level.getCell( x, y )
-        const topTags = currentCell?.getTop()?.tags
+          const x = randInt( 0, level.levelDimensions.x )
+          const y = randInt( 100, 400 )
+          const currentCell = level.getCell( x, y )
+          const topTags = currentCell?.getTop()?.tags
 
-        if (topTags?.has( `deep land` )) {
-          const result = level.destroyFilledLand( x, y )
-          console.log( result )
-        } else {
-          level.createTile( x, y, `danger` )
+          if (topTags?.has( `deep land` )) {
+            return
+          } else {
+            level.createTile( x, y, `danger` )
+          }
         }
 
-        this.enemyTimerId = null
-      }, 3000 )
+        this.enemyTimerId = window.setTimeout( () => {
+          spawnEnemy()
+          this.enemyTimerId = null
+        }, 5000 )
+      }
     }
 
     // if (keys.isPressedOnce( `w` )) newPlayerPos = level.movePlayerBy( 0, 1 )

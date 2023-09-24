@@ -82,6 +82,13 @@ export default function CactuJam12Game() {
                       <dd>{gameData.stage}</dd>
                     </>
                   }
+
+                  {
+                    !!gameData.destroyedAreas && <>
+                      <dt>Straconych obszarów</dt>
+                      <dd>{gameData.destroyedAreas}</dd>
+                    </>
+                  }
                 </dl>
               </>
             )
