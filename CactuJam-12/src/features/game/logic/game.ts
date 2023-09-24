@@ -136,7 +136,7 @@ export default class CactuJam12Game extends Game {
       }
     }
 
-    // level.logic( this.ctx )
+    level.logic( this.ctx )
 
     // if (!(ticks % 60)) console.log( newPlayerPos ?? playerTileInfo )
   }

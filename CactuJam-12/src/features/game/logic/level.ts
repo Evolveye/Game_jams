@@ -16,7 +16,7 @@ type FillerCollectedCells = {
 export default class Level {
   levelDimensions = {
     x: 200,
-    y: 200,
+    y: 300,
   }
   colors: GameColors
   levelData: Cell[][] = []
@@ -28,6 +28,7 @@ export default class Level {
     this.colors = colors
     this.processLevelData( levelData )
   }
+
 
 
   processLevelData( levelData:LevelData ) {
@@ -80,18 +81,27 @@ export default class Level {
     const { levelDimensions, drawOffset } = this
 
     const cellSize = width / levelDimensions.x
-    const playerCenterDiff = (player.y - drawOffset.y) * cellSize - center.y
+    const playerCenterDiff = (player.y - drawOffset.y) - center.y / cellSize
     const visibleScreenCellHeight = Math.floor( height / cellSize )
 
-    const isBottomVisible = drawOffset.y <= 0
-    const isTopVisible = drawOffset.y >= levelDimensions.y - visibleScreenCellHeight
+    const bottomVisibilityOffset = drawOffset.y
+    const topVisibilityOffset = levelDimensions.y - visibleScreenCellHeight - drawOffset.y
 
-    if (!isBottomVisible) {
+    // if (Math.abs( playerCenterDiff ) > visibleScreenCellHeight / 2) {
+    //   console.log( `Not implemented!` )
+    //   // if (topVisibilityOffset > 0 || bottomVisibilityOffset > 0) {
+
+    //   //   drawOffset.y -= playerCenterDiff
+    //   // }
+    // } else {
+    if (bottomVisibilityOffset > 0) {
       if (playerCenterDiff < -25) this.drawOffset.y--
-    } if (!isTopVisible) {
+    } if (topVisibilityOffset > 0) {
       if (playerCenterDiff > 25) this.drawOffset.y++
     }
+    // }
   }
+
 
 
   createTile( x:number, y:number, type:TileType ) {
@@ -240,10 +250,11 @@ export default class Level {
       return isOk || null
     }
 
-    for (let x = initialX;  x < row.length;  ++x) {
+    for (let x = initialX;  x < this.levelDimensions.x;  ++x) {
       if (collectedCells.length > areaLimit) return false
 
       const result = filler( x, initialY )
+
       if (result === null) return false
       if (!result) break
     }
