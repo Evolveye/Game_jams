@@ -153,9 +153,9 @@ const useStyles = createStylesHook( ({ atoms }) => ({
   canvas: {
     position: `absolute`,
     left: atoms.sizes.border.width,
-    top: atoms.sizes.border.width,
-    width: `calc( 100% - ${atoms.sizes.border.width}px )`,
-    height: `calc( 100% - ${atoms.sizes.border.width}px )`,
+    top: 0,
+    width: `calc( 100% - ${atoms.sizes.border.width * 2}px )`,
+    height: `100%`,
   },
 
   avatar: {

@@ -14,6 +14,7 @@ type PickBools<T extends Record<string, Primitive>> = {
 
 export default class CactuJam12Game extends Game {
   keys = new KeysController()
+  ticks = 0
 
   level: null | Level = null
   ctx: CanvasRenderingContext2D
@@ -49,7 +50,8 @@ export default class CactuJam12Game extends Game {
   }
 
   logic() {
-    const { keys, level } = this
+    const { keys, level, ticks } = this
+    this.ticks++
 
     if (!level) return
 
@@ -133,6 +135,10 @@ export default class CactuJam12Game extends Game {
         }
       }
     }
+
+    level.logic( this.ctx )
+
+    if (!(ticks % 60)) console.log( newPlayerPos ?? playerTileInfo )
   }
 
   updateUiFlag( key:PickBools<typeof this.uiData>, state = true ) {

@@ -16,12 +16,13 @@ type FillerCollectedCells = {
 export default class Level {
   levelDimensions = {
     x: 200,
-    y: 150,
+    y: 300,
   }
   colors: GameColors
   levelData: Cell[][] = []
   cellSize = 5
   lastPlayerPos = { x:-1, y:-1 }
+  drawOffset = { x:0, y:0 }
 
   constructor( colors:GameColors ) {
     this.colors = colors
@@ -53,13 +54,22 @@ export default class Level {
   }
 
   draw( ctx:CanvasRenderingContext2D ) {
-    const { levelData, cellSize, levelDimensions } = this
+    const { levelData, levelDimensions, drawOffset:drawoffset } = this
     const { width, height, center } = this.getCtxDimensions( ctx )
+    const cellSize = width / levelDimensions.x
 
     ctx.clearRect( 0, 0, width, height )
 
+    // console.log(
+    //   height - (levelDimensions.y - drawoffset.y) * cellSize,
+    //   { height, levelY:levelDimensions.y, offsetY:drawoffset.y, cellSize, levelYCells:height / cellSize },
+    // )
+
     ctx.save()
-    ctx.translate( center.x - levelDimensions.x * cellSize / 2, 0 )
+    ctx.translate(
+      center.x - (levelDimensions.x + drawoffset.x) * cellSize / 2,
+      height - (levelDimensions.y - drawoffset.y) * cellSize,
+    )
     levelData.forEach( (row, y) => row.forEach( (cell, x) => cell.items.forEach( item => {
       if (!item) return
 
@@ -69,7 +79,37 @@ export default class Level {
     ctx.restore()
   }
 
-  logic() {
+  logic( ctx:CanvasRenderingContext2D ) {
+    const { width, height, center } = this.getCtxDimensions( ctx )
+    const player = this.getPlayerTile()
+    const { levelDimensions, drawOffset } = this
+
+    const cellSize = width / levelDimensions.x
+    const playerCenterDiff = (player.y - drawOffset.y) * cellSize - center.y
+    const visibleScreenCellHeight = Math.floor( height / cellSize )
+
+    const isBottomVisible = drawOffset.y <= 0
+    const isTopVisible = drawOffset.y >= levelDimensions.y - visibleScreenCellHeight
+    // const isTopVisible =
+    // const isOutsidePaddingDown = player.y > (visibleScreenHeight)
+
+    console.log( { isTopVisible }, this.drawOffset )
+
+    if (!isBottomVisible) {
+      if (playerCenterDiff < -25) this.drawOffset.y--
+    } if (!isTopVisible) {
+      if (playerCenterDiff > 25) this.drawOffset.y++
+    }
+    // if (playerCenterDiff > 25) this.drawOffset.y++
+    // else if (playerCenterDiff < -25) this.drawOffset.y--
+    // }
+    // if (player.y * cellSize > center.y + this.drawoffset.y) {
+    //   if (playerCenterDiff > 25) this.drawoffset.y++
+    // }
+    // else if (height / 2 / cellSize < player.y) {
+    // // else if (player.y * cellSize < center.y + this.drawoffset.y) {
+    //   if (playerCenterDiff < 25) this.drawoffset.y--
+    // }
   }
 
 
@@ -320,6 +360,8 @@ export default class Level {
 
 const levelData:LevelData = [
   { tag:`player`, x:90, y:12 },
-  { tag:`land`,  x:0, y:11, w:-1 },
-  { tag:`deep land`, x:0, y:10, w:-1, h:10 },
+  // { tag:`land`,  x:0, y:11, w:-1 },
+  // { tag:`deep land`, x:0, y:10, w:-1, h:10 },
+  { tag:`deep land`, x:0, y:-1, w:-1, h:1 },
+  { tag:`deep land`, x:0, y:1, w:-1, h:1 },
 ]
