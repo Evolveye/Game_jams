@@ -1,6 +1,6 @@
 import { Primitive } from "@lib/theming/types"
-import { GameColors, Point } from "./types"
-import Level from "./level"
+import { GameColors } from "./types"
+import Level, { PlayerMoverReturnType } from "./level"
 import Game from "./controller"
 import KeysController from "./KeysController"
 
@@ -21,7 +21,14 @@ export default class CactuJam12Game extends Game {
   colors: GameColors
 
   uiData = {
+    experience: 0,
+    speed: 9,
+    knownAreas: 0,
+    knownTiles: 0,
     closedAreas: 0,
+    expincomeGood: false,
+    tooBigAreaInfo: false,
+    borderReached: false,
     usedW: false,
     usedS: false,
     usedA: false,
@@ -50,13 +57,30 @@ export default class CactuJam12Game extends Game {
   }
 
   logic() {
-    const { keys, level } = this
-    // this.ticks++
+    const { level, ticks, uiData } = this
+    this.ticks++
+
+    const initialSpeedTick = 9
+    const speedTick = initialSpeedTick - uiData.speed < 0 ? 0 : initialSpeedTick - uiData.speed
+
+    if (!speedTick || ticks % speedTick === 0) this.logicBySpeed()
+    level?.logic( this.ctx )
+
+    // if (keys.isPressedOnce( `w` )) newPlayerPos = level.movePlayerBy( 0, 1 )
+    // if (!newPlayerPos && keys.isPressedOnce( `s` )) newPlayerPos = level.movePlayerBy( 0, -1 )
+    // if (!newPlayerPos && keys.isPressedOnce( `a` )) newPlayerPos = level.movePlayerBy( -1, 0 )
+    // if (!newPlayerPos && keys.isPressedOnce( `d` )) newPlayerPos = level.movePlayerBy( 1, 0 )
+
+    // if (!(ticks % 60)) console.log( newPlayerPos ?? playerTileInfo )
+  }
+
+  logicBySpeed() {
+    const { keys, level, uiData } = this
 
     if (!level) return
 
     const playerTileInfo = level.getPlayerTile()
-    let newPlayerPos:undefined | Point = undefined
+    let newPlayerPos:PlayerMoverReturnType = undefined
 
     if (keys.isPressed( `w`, `up` )) {
       this.updateUiFlag( `usedW` )
@@ -78,16 +102,27 @@ export default class CactuJam12Game extends Game {
       newPlayerPos = level.movePlayerBy( 1, 0 )
     }
 
-    // if (keys.isPressedOnce( `w` )) newPlayerPos = level.movePlayerBy( 0, 1 )
-    // if (!newPlayerPos && keys.isPressedOnce( `s` )) newPlayerPos = level.movePlayerBy( 0, -1 )
-    // if (!newPlayerPos && keys.isPressedOnce( `a` )) newPlayerPos = level.movePlayerBy( -1, 0 )
-    // if (!newPlayerPos && keys.isPressedOnce( `d` )) newPlayerPos = level.movePlayerBy( 1, 0 )
+    if (newPlayerPos && `collidingCell` in newPlayerPos) {
+      const topTags = newPlayerPos.collidingCell?.getTop()?.tags
 
-    if (newPlayerPos) {
+      if (topTags?.has( `border` )) uiData.borderReached = true
+
+      this.updateUi()
+    } else if (newPlayerPos && `swapedCell` in newPlayerPos) {
+      const swapedCellTop = newPlayerPos.swapedCell?.getTop()
+      const isNewPosKnown = swapedCellTop && swapedCellTop.tags.has( `trail` )
+        || swapedCellTop?.tags.has( `land` )
+        || swapedCellTop?.tags.has( `deep land` )
+
+      if (!isNewPosKnown) {
+        uiData.knownTiles++
+        this.updateUi()
+      }
+
       level.createTile( playerTileInfo.x, playerTileInfo.y, `trail` )
       const ngbrs = level.getCellNeighbours( newPlayerPos.x, newPlayerPos.y )
 
-      if (Object.values( ngbrs ).filter( Boolean ).length > 1) {
+      if (!isNewPosKnown && Object.values( ngbrs ).filter( Boolean ).length > 1) {
         const checkData = [
           { x:-1, y:1 },
           { x:0, y:1 },
@@ -106,8 +141,10 @@ export default class CactuJam12Game extends Game {
 
           if (!row || row[ newPlayerPos.x + x ]?.getTop()) continue
 
-          for (let i = newPlayerPos.x + x;  i < row.length;  ++i) {
-            if (row[ i ]?.getTop()?.tags.has( `trail` )) {
+          for (let i = newPlayerPos.x + x;  i < level.levelDimensions.x;  ++i) {
+            const topTags = level.getCell( i, newPlayerPos.y + y )?.getTop()?.tags
+
+            if (topTags?.has( `trail` ) || topTags?.has( `player` )) {
               if (prevTailX != i - 1) tailsCount++
               prevTailX = i
             }
@@ -116,7 +153,9 @@ export default class CactuJam12Game extends Game {
           if (tailsCount === 0) continue
 
           for (let i = 0;  i < newPlayerPos.x + x;  ++i) {
-            if (row[ i ]?.getTop()?.tags.has( `trail` )) {
+            const topTags = level.getCell( i, newPlayerPos.y + y )?.getTop()?.tags
+
+            if (topTags?.has( `trail` ) || topTags?.has( `player` )) {
               if (prevTailX != i - 1) tailsCount++
               prevTailX = i
             }
@@ -125,20 +164,51 @@ export default class CactuJam12Game extends Game {
           if (tailsCount > 0) {
             const result = level.fillAreaWithLand( newPlayerPos.x + x, newPlayerPos.y + y )
 
-            if (result) {
-              console.log( `done`, { x:newPlayerPos.x + x, y:newPlayerPos.y + y } )
-              this.uiData.closedAreas++
-              this.updateUi()
+            if (!result) {
+              uiData.tooBigAreaInfo = true
+            } else {
+              const startExp = uiData.experience
+
+              uiData.knownAreas += result
+              uiData.closedAreas++
+
+              for (let i = 600;  i < result;  i += 600) {
+                uiData.expincomeGood = true
+                uiData.experience++
+              }
+
+              if (uiData.closedAreas === 1) {
+                uiData.speed++
+                uiData.experience++
+              } else if (uiData.closedAreas === 5) {
+                uiData.experience++
+              } else if (uiData.closedAreas === 10) {
+                uiData.speed++
+                uiData.experience++
+              } else if (uiData.closedAreas === 20) {
+                uiData.experience++
+              } else if (uiData.closedAreas === 40) {
+                uiData.speed++
+                uiData.experience++
+              }
+
+              if (uiData.experience - startExp > 3) uiData.speed += Math.floor( (uiData.experience - startExp) / 3 )
+
+              if (startExp <= 7 && uiData.experience >= 7) {
+                level.removeTagged( `border-1` )
+                uiData.experience++
+              }
+
+              if (startExp <= 2 && uiData.experience >= 2) level.removeTagged( `border-1` )
+
               break
             }
+
+            this.updateUi()
           }
         }
       }
     }
-
-    level.logic( this.ctx )
-
-    // if (!(ticks % 60)) console.log( newPlayerPos ?? playerTileInfo )
   }
 
   updateUiFlag( key:PickBools<typeof this.uiData>, state = true ) {

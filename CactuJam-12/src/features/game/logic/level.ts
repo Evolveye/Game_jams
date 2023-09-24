@@ -13,10 +13,21 @@ type FillerCollectedCells = {
   createTile: CellCreator
 }
 
+type MovePlayerConfig = {
+  withTeleportation?: boolean
+  swapeableTags?: string[]
+}
+
+export type PlayerMoverReturnType = void | {collidingCell: null | Cell} | {
+  x: number
+  y: number
+  swapedCell: null | Cell
+}
+
 export default class Level {
   levelDimensions = {
     x: 200,
-    y: 300,
+    y: 600,
   }
   colors: GameColors
   levelData: Cell[][] = []
@@ -35,7 +46,7 @@ export default class Level {
     this.levelData = Array.from( { length:this.levelDimensions.y }, () => [] as Cell[] )
 
     levelData.forEach( item => {
-      const getItemTile = () => new Tile( this.getColor( item.color ), [ item.tag ] )
+      const getItemTile = () => new Tile( this.getColor( item.color ), item.tags )
 
       if (isRect( item )) {
         this.setRect( item.x, item.y, item.w, item.h, getItemTile )
@@ -58,6 +69,7 @@ export default class Level {
     const { levelData, levelDimensions, drawOffset:drawoffset } = this
     const { width, height, center } = this.getCtxDimensions( ctx )
     const cellSize = width / levelDimensions.x
+    const visibleScreenCellHeight = Math.floor( height / cellSize )
 
     ctx.clearRect( 0, 0, width, height )
 
@@ -66,12 +78,26 @@ export default class Level {
       center.x - (levelDimensions.x + drawoffset.x) * cellSize / 2,
       height - (levelDimensions.y - drawoffset.y) * cellSize,
     )
-    levelData.forEach( (row, y) => row.forEach( (cell, x) => cell.items.forEach( item => {
-      if (!item) return
 
-      ctx.fillStyle = item.color
-      ctx.fillRect( x * cellSize, y * cellSize, cellSize, cellSize )
-    } ) ) )
+    const slicedY = levelDimensions.y - drawoffset.y - visibleScreenCellHeight
+    levelData.slice( slicedY, levelDimensions.y - drawoffset.y )
+      .forEach( (row, insliceY) => row.forEach( (cell, x) => cell.items.forEach( item => {
+        if (!item) return
+
+        const y = slicedY + insliceY
+
+        if (item.tags.has( `border` )) {
+          const shift = cellSize / 4
+
+          ctx.fillStyle = `${this.colors.safe}aa`
+          ctx.fillRect( x * cellSize - shift, y * cellSize - shift, cellSize, cellSize )
+          ctx.fillStyle = `${this.colors.danger}aa`
+          ctx.fillRect( x * cellSize + shift, y * cellSize + shift, cellSize, cellSize )
+        } else {
+          ctx.fillStyle = item.color
+          ctx.fillRect( x * cellSize, y * cellSize, cellSize, cellSize )
+        }
+      } ) ) )
     ctx.restore()
   }
 
@@ -138,14 +164,14 @@ export default class Level {
     return playerTileInfo
   }
 
-  movePlayerBy( x:number, y:number, withTeleportation = false ) {
+  movePlayerBy( x:number, y:number, { withTeleportation = false, swapeableTags = [ `trail`, `land`, `deep land` ] }:MovePlayerConfig = {} ): PlayerMoverReturnType {
     const { tile:playerTile } = this.getPlayerTile()
 
     if (!playerTile) return
 
-    const moved = this.moveTileBy( this.lastPlayerPos.x, this.lastPlayerPos.y, x, y, withTeleportation )
+    const swapedCell = this.moveTileBy( this.lastPlayerPos.x, this.lastPlayerPos.y, x, y, { withTeleportation, swapeableTags } )
 
-    if (!moved) return
+    if (!swapedCell) return { collidingCell:this.getCell( this.lastPlayerPos.x + x, this.lastPlayerPos.y + y ) }
 
     this.lastPlayerPos.x += x
     this.lastPlayerPos.y += y
@@ -156,10 +182,13 @@ export default class Level {
     if (this.lastPlayerPos.y < 0) this.lastPlayerPos.y = this.levelDimensions.y + this.lastPlayerPos.y
     else this.lastPlayerPos.y %= this.levelDimensions.y
 
-    return this.lastPlayerPos
+    return {
+      ...this.lastPlayerPos,
+      swapedCell,
+    }
   }
 
-  moveTileBy( tileX:number, tileY:number, moveX:number, moveY:number, withTeleportation = false ) {
+  moveTileBy( tileX:number, tileY:number, moveX:number, moveY:number, { withTeleportation = false, swapeableTags = [] }:MovePlayerConfig = {} ) {
     const cell = this.getCell( tileX, tileY, withTeleportation )
 
     if (!cell) return false
@@ -168,10 +197,17 @@ export default class Level {
 
     if (!targetCell) return false
 
+    const topTags = targetCell.getTop()?.tags
+
+    if (topTags && swapeableTags.length && !swapeableTags.some( t => topTags?.has( t ) )) return false
+
+    const targetClone = new Cell()
+    targetClone.clone( targetCell )
+
     targetCell.clone( cell )
     cell.clear()
 
-    return true
+    return targetClone
   }
 
   getColor( semanticColor:SemanticColor = `land` ) {
@@ -179,7 +215,7 @@ export default class Level {
     else if (semanticColor === `deep land`) return `${this.colors.safe}aa`
     else if (semanticColor === `trail`) return `${this.colors.safe}77`
     else if (semanticColor === `danger`) return `${this.colors.danger}aa`
-    return this.colors.safe
+    return semanticColor
   }
 
   getCtxDimensions( ctx:CanvasRenderingContext2D ) {
@@ -223,7 +259,7 @@ export default class Level {
     if (!row || row[ initialX ]?.tags.has( filteringId )) return true
     if (collectedCells.length > areaLimit) return false
     if (initialY > this.levelData.length || initialY < 0) return false
-    if (topTile && !ignoreTags.some( ([ t ]) => topTile.tags.has( t ) )) return true
+    if (topTile && ignoreTags.length && ignoreTags.some( ([ t ]) => topTile.tags.has( t ) )) return false
 
     const filler = (x:number, y:number) => {
       const cell = this.getCell( x, y )
@@ -287,12 +323,24 @@ export default class Level {
       cell?.tags.delete( id )
     } )
 
-    return true
+    return cellsToFill.length
   }
 
   fillAreaWithLand( x:number, y:number ) {
     const id = Date.now()
-    return this.fillArea( `${id}`, x, y, () => new Tile( this.getColor( `deep land` ) ), [], 2000 )
+    return this.fillArea( `${id}`, x, y, () => new Tile( this.getColor( `deep land` ), [ `deep land` ] ), [ [ `border`, null ] ], 2000 )
+  }
+
+  removeTagged( tag:string ) {
+    for (let y = 0;  y < this.levelData.length;  ++y) {
+      for (let x = 0;  x < this.levelData[ y ].length;  ++x) {
+        const cell = this.levelData[ y ][ x ]
+
+        if (!cell?.getTop()?.tags.has( tag )) continue
+
+        cell.clear()
+      }
+    }
   }
 
   getRow( y:number, withTeleportation = false ) {
@@ -317,6 +365,16 @@ export default class Level {
     if (!row[ fixedX ]) row[ fixedX ] = new Cell()
 
     return row[ fixedX ]
+  }
+
+  setCell( x:number, y:number ) {
+    const row = this.getRow( y )
+
+    if (!row) return
+
+    const fixedX = x < 0 ? row.length - x : x
+
+    row[ fixedX ] = new Cell()
   }
 
   setCellItem( x:number, y:number, data:Tile ) {
@@ -376,10 +434,12 @@ export default class Level {
 }
 
 const levelData:LevelData = [
-  { tag:`player`, x:90, y:12 },
-  // { tag:`land`,  x:0, y:11, w:-1 },
-  // { tag:`deep land`, x:0, y:10, w:-1, h:10 },
-  // { tag:`deep land`, x:0, y:-1, w:-1, h:1 },
-  { tag:`deep land`, x:0, y:0, w:-1, h:1 },
-  { tag:`deep land`, x:0, y:-1, w:-1, h:1 },
+  { tags:[ `deep land` ], x:0, y:-1, w:-1, h:1 },
+
+  { tags:[ `border`, `border-2` ], x:0, y:450, w:-1, h:2 },
+
+  { tags:[ `border`, `border-1` ], x:0, y:150, w:-1, h:2 },
+
+  { tags:[ `player` ], x:90, y:10 },
+  { tags:[ `deep land` ], x:0, y:0, w:-1, h:10 },
 ]

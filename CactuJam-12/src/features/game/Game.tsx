@@ -26,6 +26,7 @@ export default function CactuJam12Game() {
     },
   } ) )
 
+  const anyStat = gameData.knownAreas || gameData.knownTiles || gameData.closedAreas
   const isMoveControlsUsed = gameData.usedW || gameData.usedS || gameData.usedA || gameData.usedD
   const allMoveControlsUsed = gameData.usedW && gameData.usedS && gameData.usedA && gameData.usedD
 
@@ -34,14 +35,46 @@ export default function CactuJam12Game() {
       <section className={cn( classes.column, `is-positive` )}>
         <Image className={cn( classes.avatar, classes.frame )} src="#" alt="Player's avatar" />
 
-        <div style={{ minHeight:200 }}>
+        <div style={{ minHeight:250 }}>
           {
-            !gameData.closedAreas ? <h3>Statystyki?</h3> : (
+            !anyStat ? <h3>Statystyki?</h3> : (
               <>
                 <h3>Statystyki</h3>
                 <dl className={classes.stats}>
-                  <dt>Zbadanych terenów</dt>
-                  <dd>{gameData.closedAreas}</dd>
+                  {
+                    !!gameData.closedAreas && <>
+                      <dt>Zamkniętych obszarów</dt>
+                      <dd>{gameData.closedAreas}</dd>
+                    </>
+                  }
+
+                  {
+                    !!gameData.knownAreas && <>
+                      <dt>Zbadanych terenów</dt>
+                      <dd>{gameData.knownAreas}</dd>
+                    </>
+                  }
+
+                  {
+                    !!gameData.knownTiles && <>
+                      <dt>Zwiedzonych pól</dt>
+                      <dd>{gameData.knownTiles}</dd>
+                    </>
+                  }
+
+                  {
+                    !!gameData.experience && <>
+                      <dt>Doświadczenie</dt>
+                      <dd>{gameData.experience}</dd>
+                    </>
+                  }
+
+                  {
+                    !!gameData.speed && <>
+                      <dt>Prędkość podróży</dt>
+                      <dd>{gameData.speed}</dd>
+                    </>
+                  }
                 </dl>
               </>
             )
@@ -50,9 +83,9 @@ export default function CactuJam12Game() {
 
         <div style={{ minHeight:200 }}>
           {
-            !isMoveControlsUsed ? <h3>Sterowanie?</h3> : (
+            !isMoveControlsUsed ? <h3>Informacje?</h3> : (
               <>
-                <h3>Sterowanie</h3>
+                <h3>Informacje</h3>
                 <dl className={classes.stats}>
                   {
                     allMoveControlsUsed ? (
@@ -83,6 +116,27 @@ export default function CactuJam12Game() {
                     ]
                   }
                 </dl>
+
+                <ol className={classes.stats}>
+                  {
+                    gameData.tooBigAreaInfo && <li>
+                      Zdaje się, że zbyt wielkie obszary nie mogą zostać zbadane.
+                    </li>
+                  }
+
+                  {
+                    gameData.tooBigAreaInfo && gameData.expincomeGood && <li>
+                      Natomiast w pewnych granicach rozsądku co do rozmiaru badanego obszaru, mogę się sporo nauczyć.
+                    </li>
+                  }
+
+                  {
+                    gameData.borderReached && <li>
+                      Dalej nie chcę wypływać bez zdobycia większje liczby doświadczenia
+                    </li>
+                  }
+                </ol>
+
               </>
             )
           }
@@ -172,9 +226,14 @@ const useStyles = createStylesHook( ({ atoms }) => ({
   },
 
   stats: {
-    display: `grid`,
-    gridTemplateColumns: `1fr 1fr`,
-    gap: atoms.spacing.main,
+    padding: 0,
+
+    "dl&": {
+      display: `grid`,
+      gridTemplateColumns: `1fr 1fr`,
+      alignItems: `center`,
+      gap: atoms.spacing.main,
+    },
 
     "& > dt": {
       textAlign: `right`,
@@ -183,6 +242,12 @@ const useStyles = createStylesHook( ({ atoms }) => ({
     "& > dd": {
       textAlign: `left`,
       margin: 0,
+    },
+
+    "& > li": {
+      textAlign: `left`,
+      listStyle: `none`,
+      margin: atoms.spacing.main,
     },
   },
 }) )
