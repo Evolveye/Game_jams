@@ -50,8 +50,8 @@ export default class CactuJam12Game extends Game {
   }
 
   logic() {
-    const { keys, level, ticks } = this
-    this.ticks++
+    const { keys, level } = this
+    // this.ticks++
 
     if (!level) return
 
@@ -104,7 +104,7 @@ export default class CactuJam12Game extends Game {
           let tailsCount = 0
           let prevTailX = Infinity
 
-          if (row[ newPlayerPos.x + x ]?.getTop()) continue
+          if (!row || row[ newPlayerPos.x + x ]?.getTop()) continue
 
           for (let i = newPlayerPos.x + x;  i < row.length;  ++i) {
             if (row[ i ]?.getTop()?.tags.has( `trail` )) {
@@ -136,9 +136,9 @@ export default class CactuJam12Game extends Game {
       }
     }
 
-    level.logic( this.ctx )
+    // level.logic( this.ctx )
 
-    if (!(ticks % 60)) console.log( newPlayerPos ?? playerTileInfo )
+    // if (!(ticks % 60)) console.log( newPlayerPos ?? playerTileInfo )
   }
 
   updateUiFlag( key:PickBools<typeof this.uiData>, state = true ) {

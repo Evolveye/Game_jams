@@ -16,7 +16,7 @@ type FillerCollectedCells = {
 export default class Level {
   levelDimensions = {
     x: 200,
-    y: 300,
+    y: 200,
   }
   colors: GameColors
   levelData: Cell[][] = []
@@ -60,11 +60,6 @@ export default class Level {
 
     ctx.clearRect( 0, 0, width, height )
 
-    // console.log(
-    //   height - (levelDimensions.y - drawoffset.y) * cellSize,
-    //   { height, levelY:levelDimensions.y, offsetY:drawoffset.y, cellSize, levelYCells:height / cellSize },
-    // )
-
     ctx.save()
     ctx.translate(
       center.x - (levelDimensions.x + drawoffset.x) * cellSize / 2,
@@ -90,26 +85,12 @@ export default class Level {
 
     const isBottomVisible = drawOffset.y <= 0
     const isTopVisible = drawOffset.y >= levelDimensions.y - visibleScreenCellHeight
-    // const isTopVisible =
-    // const isOutsidePaddingDown = player.y > (visibleScreenHeight)
-
-    console.log( { isTopVisible }, this.drawOffset )
 
     if (!isBottomVisible) {
       if (playerCenterDiff < -25) this.drawOffset.y--
     } if (!isTopVisible) {
       if (playerCenterDiff > 25) this.drawOffset.y++
     }
-    // if (playerCenterDiff > 25) this.drawOffset.y++
-    // else if (playerCenterDiff < -25) this.drawOffset.y--
-    // }
-    // if (player.y * cellSize > center.y + this.drawoffset.y) {
-    //   if (playerCenterDiff > 25) this.drawoffset.y++
-    // }
-    // else if (height / 2 / cellSize < player.y) {
-    // // else if (player.y * cellSize < center.y + this.drawoffset.y) {
-    //   if (playerCenterDiff < 25) this.drawoffset.y--
-    // }
   }
 
 
@@ -124,6 +105,8 @@ export default class Level {
     }
 
     if (!playerTileInfo.tile?.tags.has( `player` )) {
+      console.log( `player losted` )
+
       for (let y = 0;  y < this.levelData.length;  ++y) {
         for (let x = 0;  x < this.levelData[ y ].length;  ++x) {
           const tile = this.levelData[ y ][ x ]?.getTop()
@@ -150,9 +133,18 @@ export default class Level {
 
     if (!playerTile) return
 
-    this.moveTileBy( this.lastPlayerPos.x, this.lastPlayerPos.y, x, y )
+    const moved = this.moveTileBy( this.lastPlayerPos.x, this.lastPlayerPos.y, x, y )
+
+    if (!moved) return
+
     this.lastPlayerPos.x += x
     this.lastPlayerPos.y += y
+
+    if (this.lastPlayerPos.x < 0) this.lastPlayerPos.x = this.levelDimensions.x + this.lastPlayerPos.x
+    else this.lastPlayerPos.x %= this.levelDimensions.x
+
+    if (this.lastPlayerPos.y < 0) this.lastPlayerPos.y = this.levelDimensions.y + this.lastPlayerPos.y
+    else this.lastPlayerPos.y %= this.levelDimensions.y
 
     return this.lastPlayerPos
   }
@@ -160,10 +152,16 @@ export default class Level {
   moveTileBy( tileX:number, tileY:number, moveX:number, moveY:number ) {
     const cell = this.getCell( tileX, tileY )
 
-    if (!cell) return
+    if (!cell) return false
 
-    this.getCell( tileX + moveX, tileY + moveY )?.clone( cell )
+    const targetCell = this.getCell( tileX + moveX, tileY + moveY )
+
+    if (!targetCell) return false
+
+    targetCell.clone( cell )
     cell.clear()
+
+    return true
   }
 
   getColor( semanticColor:SemanticColor = `land` ) {
@@ -191,17 +189,17 @@ export default class Level {
     const rowBelow = this.getRow( y - 1 )
 
     const ngbrs:Record<string, null | Tile> = {
-      north: rowAbove[ x ]?.getTop(),
-      east: row[ x + 1 ]?.getTop(),
-      south: rowBelow[ x ]?.getTop(),
-      west: row[ x - 1 ]?.getTop(),
+      north: rowAbove?.[ x ]?.getTop()  ?? null,
+      east: row?.[ x + 1 ]?.getTop()    ?? null,
+      south: rowBelow?.[ x ]?.getTop()  ?? null,
+      west: row?.[ x - 1 ]?.getTop()    ?? null,
     }
 
     if (includeDiagonal) {
-      ngbrs.northEast = rowAbove[ x + 1 ]?.getTop()
-      ngbrs.southEast = rowBelow[ x + 1 ]?.getTop()
-      ngbrs.southWest = rowBelow[ x - 1 ]?.getTop()
-      ngbrs.northWest = rowAbove[ x - 1 ]?.getTop()
+      ngbrs.northEast = rowAbove?.[ x + 1 ]?.getTop() ?? null
+      ngbrs.southEast = rowBelow?.[ x + 1 ]?.getTop() ?? null
+      ngbrs.southWest = rowBelow?.[ x - 1 ]?.getTop() ?? null
+      ngbrs.northWest = rowAbove?.[ x - 1 ]?.getTop() ?? null
     }
 
     return ngbrs
@@ -212,7 +210,7 @@ export default class Level {
     const row = this.getRow( initialY )
     const filteringId = `filling-${id}`
 
-    if (row[ initialX ]?.tags.has( filteringId )) return true
+    if (!row || row[ initialX ]?.tags.has( filteringId )) return true
     if (collectedCells.length > areaLimit) return false
     if (initialY > this.levelData.length || initialY < 0) return false
     if (topTile && !ignoreTags.some( ([ t ]) => topTile.tags.has( t ) )) return true
@@ -287,16 +285,18 @@ export default class Level {
   }
 
   getRow( y:number ) {
-    const fixedY = y < 0 ? -y - 1 : this.levelData.length - y
+    const moduledY = y % this.levelDimensions.y
+    const fixedY = moduledY < 0 ? -moduledY - 1 : this.levelData.length - 1 - moduledY
     return this.levelData[ fixedY ] ?? []
   }
 
   getCell( x:number, y:number ) {
     const row = this.getRow( y )
 
-    if (!row) return
+    if (!row) return null
 
-    const fixedX = x < 0 ? row.length - x : x
+    const moduledX = x % this.levelDimensions.x
+    const fixedX = moduledX < 0 ? this.levelDimensions.x + moduledX : moduledX
 
     if (!row[ fixedX ]) row[ fixedX ] = new Cell()
 
@@ -304,8 +304,7 @@ export default class Level {
   }
 
   setCellItem( x:number, y:number, data:Tile ) {
-    const fixedY = y < 0 ? -y - 1 : this.levelData.length - y
-    const row = this.levelData[ fixedY ]
+    const row = this.getRow( y )
 
     if (!row) return
 
@@ -332,24 +331,26 @@ export default class Level {
   }
 
   setVerticalLine( x:number, y:number, height:number, dataCreator:CellCreator ) {
-    const fixedY = y < 0 ? -y - 1 : this.levelDimensions.y - y
     const fixedX = x < 0 ? this.levelDimensions.x - x : x
 
     for (let i = 0;  i < height;  ++i) {
-      const row = this.levelData[ fixedY + i ]
+      const row = this.getRow( y + i )
+
+      if (!row) continue
       if (!row[ fixedX ]) row[ fixedX ] = new Cell()
+
       row[ fixedX ].push( dataCreator( x, y ) )
     }
   }
 
   setRect( x:number, y:number, width:number, height:number, dataCreator:CellCreator ) {
-    const fixedY = y < 0 ? -y - 1 : this.levelDimensions.y - y
     const fixedX = x < 0 ? this.levelDimensions.x - x : x
     const fixedWidth = width < 0 ? this.levelDimensions.x - width : width
 
     for (let i = 0;  i < height;  ++i) {
-      const row = this.levelData[ fixedY + i ]
+      const row = this.getRow( y + i )
 
+      if (!row) continue
       for (let j = 0;  j < fixedWidth;  ++j) {
         if (!row[ fixedX + j ]) row[ fixedX + j ] = new Cell()
         row[ fixedX + j ].push( dataCreator( x, y ) )
@@ -362,6 +363,7 @@ const levelData:LevelData = [
   { tag:`player`, x:90, y:12 },
   // { tag:`land`,  x:0, y:11, w:-1 },
   // { tag:`deep land`, x:0, y:10, w:-1, h:10 },
+  // { tag:`deep land`, x:0, y:-1, w:-1, h:1 },
+  { tag:`deep land`, x:0, y:0, w:-1, h:1 },
   { tag:`deep land`, x:0, y:-1, w:-1, h:1 },
-  { tag:`deep land`, x:0, y:1, w:-1, h:1 },
 ]
