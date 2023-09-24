@@ -138,12 +138,12 @@ export default class Level {
     return playerTileInfo
   }
 
-  movePlayerBy( x:number, y:number ) {
+  movePlayerBy( x:number, y:number, withTeleportation = false ) {
     const { tile:playerTile } = this.getPlayerTile()
 
     if (!playerTile) return
 
-    const moved = this.moveTileBy( this.lastPlayerPos.x, this.lastPlayerPos.y, x, y )
+    const moved = this.moveTileBy( this.lastPlayerPos.x, this.lastPlayerPos.y, x, y, withTeleportation )
 
     if (!moved) return
 
@@ -159,12 +159,12 @@ export default class Level {
     return this.lastPlayerPos
   }
 
-  moveTileBy( tileX:number, tileY:number, moveX:number, moveY:number ) {
-    const cell = this.getCell( tileX, tileY )
+  moveTileBy( tileX:number, tileY:number, moveX:number, moveY:number, withTeleportation = false ) {
+    const cell = this.getCell( tileX, tileY, withTeleportation )
 
     if (!cell) return false
 
-    const targetCell = this.getCell( tileX + moveX, tileY + moveY )
+    const targetCell = this.getCell( tileX + moveX, tileY + moveY, withTeleportation )
 
     if (!targetCell) return false
 
@@ -295,14 +295,19 @@ export default class Level {
     return this.fillArea( `${id}`, x, y, () => new Tile( this.getColor( `deep land` ) ), [], 2000 )
   }
 
-  getRow( y:number ) {
+  getRow( y:number, withTeleportation = false ) {
+    if (!withTeleportation && (y < 0 || y >= this.levelDimensions.y)) return null
+
     const moduledY = y % this.levelDimensions.y
     const fixedY = moduledY < 0 ? -moduledY - 1 : this.levelData.length - 1 - moduledY
+
     return this.levelData[ fixedY ] ?? []
   }
 
-  getCell( x:number, y:number ) {
-    const row = this.getRow( y )
+  getCell( x:number, y:number, withTeleportation = false ) {
+    if (!withTeleportation && (x < 0 || x >= this.levelDimensions.x)) return null
+
+    const row = this.getRow( y, withTeleportation )
 
     if (!row) return null
 
