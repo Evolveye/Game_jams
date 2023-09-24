@@ -39,6 +39,9 @@ export default class KeysController {
       win.addEventListener( `keydown`, ({ code }) => {
         let keyCode = code
         if (code.startsWith( `Key` )) keyCode = code.slice( 3 )
+        else if (code.startsWith( `Arrow` )) keyCode = code.slice( 5 )
+
+        keyCode = keyCode.toLowerCase()
 
         const keyInfo = this.keysMap.get( keyCode )
 
@@ -49,6 +52,9 @@ export default class KeysController {
       win.addEventListener( `keyup`, ({ code }) => {
         let keyCode = code
         if (code.startsWith( `Key` )) keyCode = code.slice( 3 )
+        else if (code.startsWith( `Arrow` )) keyCode = code.slice( 5 )
+
+        keyCode = keyCode.toLowerCase()
 
         const keyInfo = this.keysMap.get( keyCode )
 
@@ -58,13 +64,23 @@ export default class KeysController {
     }
   }
 
-  isPressed( keyname:string ) {
-    if (keyname.length === 1) keyname = keyname.toUpperCase()
-    return KeysController.keysMap.get( keyname )?.getPressed() ?? false
+  isPressed( ...keynames:string[] ) {
+    for (let keyname of keynames) {
+      const keyInfo = KeysController.keysMap.get( keyname.toLowerCase() )
+
+      if (keyInfo?.getPressed()) return true
+    }
+
+    return false
   }
 
-  isPressedOnce( keyname:string ) {
-    if (keyname.length === 1) keyname = keyname.toUpperCase()
-    return KeysController.keysMap.get( keyname )?.getOnce() ?? false
+  isPressedOnce( ...keynames:string[] ) {
+    for (let keyname of keynames) {
+      const keyInfo = KeysController.keysMap.get( keyname.toLowerCase() )
+
+      if (keyInfo?.getOnce()) return true
+    }
+
+    return false
   }
 }

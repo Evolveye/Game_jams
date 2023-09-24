@@ -20,7 +20,7 @@ export default class CactuJam12Game extends Game {
   colors: GameColors
 
   uiData = {
-    closedAreas: `12`,
+    closedAreas: 0,
     usedW: false,
     usedS: false,
     usedA: false,
@@ -56,22 +56,22 @@ export default class CactuJam12Game extends Game {
     const playerTileInfo = level.getPlayerTile()
     let newPlayerPos:undefined | Point = undefined
 
-    if (keys.isPressed( `w` )) {
+    if (keys.isPressed( `w`, `up` )) {
       this.updateUiFlag( `usedW` )
       newPlayerPos = level.movePlayerBy( 0, 1 )
     }
 
-    if (!newPlayerPos && keys.isPressed( `s` )) {
+    if (!newPlayerPos && keys.isPressed( `s`, `down` )) {
       this.updateUiFlag( `usedS` )
       newPlayerPos = level.movePlayerBy( 0, -1 )
     }
 
-    if (!newPlayerPos && keys.isPressed( `a` )) {
+    if (!newPlayerPos && keys.isPressed( `a`, `left` )) {
       this.updateUiFlag( `usedA` )
       newPlayerPos = level.movePlayerBy( -1, 0 )
     }
 
-    if (!newPlayerPos && keys.isPressed( `d` )) {
+    if (!newPlayerPos && keys.isPressed( `d`, `right` )) {
       this.updateUiFlag( `usedD` )
       newPlayerPos = level.movePlayerBy( 1, 0 )
     }
@@ -125,6 +125,8 @@ export default class CactuJam12Game extends Game {
 
             if (result) {
               console.log( `done`, { x:newPlayerPos.x + x, y:newPlayerPos.y + y } )
+              this.uiData.closedAreas++
+              this.updateUi()
               break
             }
           }

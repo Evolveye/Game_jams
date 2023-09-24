@@ -16,7 +16,7 @@ const useStyles = createStylesHook( ({ atoms }) => ({
       margin: 0,
       backgroundColor: atoms.colors.background.main,
       fontFamily: `consolas`,
-      fontSize: 14,
+      fontSize: atoms.sizes.font.p,
     },
 
     h3: {

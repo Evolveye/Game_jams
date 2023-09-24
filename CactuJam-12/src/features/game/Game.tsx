@@ -1,7 +1,7 @@
 import React, { memo, forwardRef } from "react"
-import { cn } from "@lib/theming"
+import { CSSProperties, cn } from "@lib/theming"
 import Image from "@lib/components/Image"
-import { createStylesHook } from "@fet/theming"
+import { Theme, createStylesHook } from "@fet/theming"
 import CJ12Game from "./logic/game"
 import { useGame } from "./logic/controller"
 
@@ -34,55 +34,60 @@ export default function CactuJam12Game() {
       <section className={cn( classes.column, `is-positive` )}>
         <Image className={cn( classes.avatar, classes.frame )} src="#" alt="Player's avatar" />
 
-        {
-          !gameData.closedAreas ? <h3>Statystyki?</h3> : (
-            <>
-              <h3>Statystyki</h3>
-              <dl className={classes.stats}>
-                <dt>Zbadanych terenów</dt>
-                <dd>{gameData.closedAreas}</dd>
-              </dl>
-            </>
-          )
-        }
+        <div style={{ minHeight:200 }}>
+          {
+            !gameData.closedAreas ? <h3>Statystyki?</h3> : (
+              <>
+                <h3>Statystyki</h3>
+                <dl className={classes.stats}>
+                  <dt>Zbadanych terenów</dt>
+                  <dd>{gameData.closedAreas}</dd>
+                </dl>
+              </>
+            )
+          }
+        </div>
 
-        {
-          !isMoveControlsUsed ? <h3>Sterowanie?</h3> : (
-            <>
-              <h3>Sterowanie</h3>
-              <dl className={classes.stats}>
-                {
-                  allMoveControlsUsed ? (
-                    <>
-                      <dt>Poruszanie się:</dt>
-                      <dd>Klawisze W, S, A, D</dd>
-                    </>
-                  ) : [
-                    gameData.usedW && <React.Fragment key="KeyW">
-                      <dt>Klawisz W</dt>
-                      <dd>Kierunek północy</dd>
-                    </React.Fragment>,
+        <div style={{ minHeight:200 }}>
+          {
+            !isMoveControlsUsed ? <h3>Sterowanie?</h3> : (
+              <>
+                <h3>Sterowanie</h3>
+                <dl className={classes.stats}>
+                  {
+                    allMoveControlsUsed ? (
+                      <>
+                        <dt>Poruszanie</dt>
+                        <dd>W, S, A, D,<br /> ↑, ↓, ←, →</dd>
+                      </>
+                    ) : [
+                      gameData.usedW && <React.Fragment key="KeyW">
+                        <dt>Klawisze<br />W, ↑</dt>
+                        <dd>Kierunek północy</dd>
+                      </React.Fragment>,
 
-                    gameData.usedS && <React.Fragment key="KeyS">
-                      <dt>Klawisz S</dt>
-                      <dd>Kierunek południowy</dd>
-                    </React.Fragment>,
+                      gameData.usedS && <React.Fragment key="KeyS">
+                        <dt>Klawisze<br />S, ↓</dt>
+                        <dd>Kierunek południowy</dd>
+                      </React.Fragment>,
 
-                    gameData.usedA && <React.Fragment key="KeyA">
-                      <dt>Klawisz A</dt>
-                      <dd>Kierunek zachodni</dd>
-                    </React.Fragment>,
+                      gameData.usedA && <React.Fragment key="KeyA">
+                        <dt>Klawisze<br />A, ←</dt>
+                        <dd>Kierunek zachodni</dd>
+                      </React.Fragment>,
 
-                    gameData.usedD && <React.Fragment key="KeyD">
-                      <dt>Klawisz D</dt>
-                      <dd>Kierunek wschodni</dd>
-                    </React.Fragment>,
-                  ]
-                }
-              </dl>
-            </>
-          )
-        }
+                      gameData.usedD && <React.Fragment key="KeyD">
+                        <dt>Klawisze<br />D, →</dt>
+                        <dd>Kierunek wschodni</dd>
+                      </React.Fragment>,
+                    ]
+                  }
+                </dl>
+              </>
+            )
+          }
+        </div>
+
       </section>
 
       <Canvases ref={handleCanvasesWrapper} />
@@ -94,6 +99,30 @@ export default function CactuJam12Game() {
   )
 }
 
+const getPseudoElementsBorderProps = (atoms:Theme["atoms"], props:CSSProperties) => ({
+  "&::before": {
+    content: `""`,
+    display: `block`,
+    position: `absolute`,
+    inset: 0,
+    borderWidth: 0,
+    borderStyle: `solid`,
+    borderColor: atoms.colors.positive + `aa`,
+    ...props,
+  },
+
+  "&::after": {
+    content: `""`,
+    display: `block`,
+    position: `absolute`,
+    inset: 0,
+    borderWidth: 0,
+    borderStyle: `solid`,
+    borderColor: atoms.colors.negative + `aa`,
+    ...props,
+  },
+})
+
 const useStyles = createStylesHook( ({ atoms }) => ({
   game: {
     display: `grid`,
@@ -102,7 +131,7 @@ const useStyles = createStylesHook( ({ atoms }) => ({
     height: `100dvh`,
   },
   column: {
-    padding: atoms.spacing.main,
+    padding: atoms.spacing.small,
 
     "&.is-positive": {
       color: atoms.colors.positive,
@@ -115,13 +144,18 @@ const useStyles = createStylesHook( ({ atoms }) => ({
 
   canvasesWrapper: {
     position: `relative`,
+
+    ...getPseudoElementsBorderProps( atoms, {
+      borderLeftWidth: atoms.sizes.border.width,
+      borderRightWidth: atoms.sizes.border.width,
+    } ),
   },
   canvas: {
     position: `absolute`,
-    left: 0,
-    top: 0,
-    width: `100%`,
-    height: `100%`,
+    left: atoms.sizes.border.width,
+    top: atoms.sizes.border.width,
+    width: `calc( 100% - ${atoms.sizes.border.width}px )`,
+    height: `calc( 100% - ${atoms.sizes.border.width}px )`,
   },
 
   avatar: {
@@ -132,21 +166,9 @@ const useStyles = createStylesHook( ({ atoms }) => ({
   frame: {
     position: `relative`,
 
-    "&::before": {
-      content: `""`,
-      display: `block`,
-      position: `absolute`,
-      inset: 0,
-      border: `${atoms.sizes.border.width}px solid ${atoms.colors.positive}`,
-    },
-
-    "&::after": {
-      content: `""`,
-      display: `block`,
-      position: `absolute`,
-      inset: 0,
-      border: `${atoms.sizes.border.width}px solid ${atoms.colors.negative}aa`,
-    },
+    ...getPseudoElementsBorderProps( atoms, {
+      borderWidth: atoms.sizes.border.width,
+    } ),
   },
 
   stats: {
