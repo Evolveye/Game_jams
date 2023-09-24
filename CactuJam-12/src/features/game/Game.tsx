@@ -75,6 +75,13 @@ export default function CactuJam12Game() {
                       <dd>{gameData.speed}</dd>
                     </>
                   }
+
+                  {
+                    !!gameData.stage && <>
+                      <dt>Etap gry</dt>
+                      <dd>{gameData.stage}</dd>
+                    </>
+                  }
                 </dl>
               </>
             )

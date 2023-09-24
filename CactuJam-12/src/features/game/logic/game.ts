@@ -26,6 +26,7 @@ export default class CactuJam12Game extends Game {
     knownAreas: 0,
     knownTiles: 0,
     closedAreas: 0,
+    stage: 0,
     expincomeGood: false,
     tooBigAreaInfo: false,
     borderReached: false,
@@ -34,6 +35,8 @@ export default class CactuJam12Game extends Game {
     usedA: false,
     usedD: false,
   }
+
+  enemyTimerId: null | number = null
 
   constructor( div:HTMLDivElement, { colors }:GameConfig ) {
     super( div )
@@ -64,7 +67,29 @@ export default class CactuJam12Game extends Game {
     const speedTick = initialSpeedTick - uiData.speed < 0 ? 0 : initialSpeedTick - uiData.speed
 
     if (!speedTick || ticks % speedTick === 0) this.logicBySpeed()
-    level?.logic( this.ctx )
+    if (!level) return
+
+    level.logic( this.ctx )
+
+    if (uiData.stage === 2) {
+      if (!this.enemyTimerId) this.enemyTimerId = window.setTimeout( () => {
+        const randInt = (min:number, max:number) => Math.floor( Math.random() * (max - min) ) + min
+
+        const x = randInt( 0, level.levelDimensions.x )
+        const y = randInt( 100, 400 )
+        const currentCell = level.getCell( x, y )
+        const topTags = currentCell?.getTop()?.tags
+
+        if (topTags?.has( `deep land` )) {
+          const result = level.destroyFilledLand( x, y )
+          console.log( result )
+        } else {
+          level.createTile( x, y, `danger` )
+        }
+
+        this.enemyTimerId = null
+      }, 3000 )
+    }
 
     // if (keys.isPressedOnce( `w` )) newPlayerPos = level.movePlayerBy( 0, 1 )
     // if (!newPlayerPos && keys.isPressedOnce( `s` )) newPlayerPos = level.movePlayerBy( 0, -1 )
@@ -79,7 +104,7 @@ export default class CactuJam12Game extends Game {
 
     if (!level) return
 
-    const playerTileInfo = level.getPlayerTile()
+    const playerTileInfo = level.getPlayerTileInfo()
     let newPlayerPos:PlayerMoverReturnType = undefined
 
     if (keys.isPressed( `w`, `up` )) {
@@ -194,12 +219,16 @@ export default class CactuJam12Game extends Game {
 
               if (uiData.experience - startExp > 3) uiData.speed += Math.floor( (uiData.experience - startExp) / 3 )
 
-              if (startExp <= 7 && uiData.experience >= 7) {
-                level.removeTagged( `border-1` )
-                uiData.experience++
-              }
+              // if (startExp <= 7 && uiData.experience >= 7) {
+              //   level.removeTagged( `border-1` )
+              //   uiData.experience++
+              //   uiData.stage = 2
+              // }
 
-              if (startExp <= 2 && uiData.experience >= 2) level.removeTagged( `border-1` )
+              if (startExp < 2 && uiData.experience >= 2) {
+                level.removeTagged( `border-1` )
+                uiData.stage = 2
+              }
 
               break
             }

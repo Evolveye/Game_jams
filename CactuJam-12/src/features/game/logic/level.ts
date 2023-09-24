@@ -10,12 +10,17 @@ export type CellCreator = (x:number, y:number) => Tile
 type FillerCollectedCells = {
   x: number
   y: number
-  createTile: CellCreator
+  createTile: undefined | null | CellCreator
 }
 
 type MovePlayerConfig = {
   withTeleportation?: boolean
   swapeableTags?: string[]
+}
+
+type FillTilesInfo = {
+  terminatorTags?: [string, null | CellCreator][]
+  acceptTags?: [string, null | CellCreator][]
 }
 
 export type PlayerMoverReturnType = void | {collidingCell: null | Cell} | {
@@ -33,6 +38,7 @@ export default class Level {
   levelData: Cell[][] = []
   cellSize = 5
   lastPlayerPos = { x:-1, y:-1 }
+  entities: Point[] = []
   drawOffset = { x:0, y:0 }
 
   constructor( colors:GameColors ) {
@@ -103,7 +109,7 @@ export default class Level {
 
   logic( ctx:CanvasRenderingContext2D ) {
     const { width, height, center } = this.getCtxDimensions( ctx )
-    const player = this.getPlayerTile()
+    const player = this.getPlayerTileInfo()
     const { levelDimensions, drawOffset } = this
 
     const cellSize = width / levelDimensions.x
@@ -131,10 +137,11 @@ export default class Level {
 
 
   createTile( x:number, y:number, type:TileType ) {
+    if (type === `danger`) this.entities.push({ x, y })
     this.setCellItem( x, y, new Tile( this.getColor( type ), [ type ] ) )
   }
 
-  getPlayerTile() {
+  getPlayerTileInfo() {
     let playerTileInfo = {
       ...this.lastPlayerPos,
       tile: this.getCell( this.lastPlayerPos.x, this.lastPlayerPos.y )?.getTop(),
@@ -164,8 +171,30 @@ export default class Level {
     return playerTileInfo
   }
 
+  moveEnemyBy( x:number, y:number, { withTeleportation = false, swapeableTags = [ `trail`, `land`, `deep land` ] }:MovePlayerConfig = {} ): PlayerMoverReturnType {
+    const enemyCoords = this.entities.find( e => e.x === x && e.y === y )
+
+    if (!enemyCoords) return
+
+    const swapedCell = this.moveTileBy( enemyCoords.x, enemyCoords.y, x, y, { withTeleportation, swapeableTags } )
+
+    if (!swapedCell) return { collidingCell:this.getCell( enemyCoords.x + x, enemyCoords.y + y ) }
+
+
+    if (enemyCoords.x < 0) enemyCoords.x = this.levelDimensions.x + enemyCoords.x
+    else enemyCoords.x %= this.levelDimensions.x
+
+    if (enemyCoords.y < 0) enemyCoords.y = this.levelDimensions.y + enemyCoords.y
+    else enemyCoords.y %= this.levelDimensions.y
+
+    return {
+      ...enemyCoords,
+      swapedCell,
+    }
+  }
+
   movePlayerBy( x:number, y:number, { withTeleportation = false, swapeableTags = [ `trail`, `land`, `deep land` ] }:MovePlayerConfig = {} ): PlayerMoverReturnType {
-    const { tile:playerTile } = this.getPlayerTile()
+    const { tile:playerTile } = this.getPlayerTileInfo()
 
     if (!playerTile) return
 
@@ -251,7 +280,7 @@ export default class Level {
     return ngbrs
   }
 
-  #collectCellsToFill( id:string, initialX:number, initialY:number, cellCreator:CellCreator, ignoreTags:[string, null | CellCreator][], areaLimit:number, collectedCells:FillerCollectedCells[] = [] ) {
+  #collectCellsToFill( id:string, initialX:number, initialY:number, cellCreator:undefined | CellCreator, { acceptTags, terminatorTags }:FillTilesInfo = {}, areaLimit:number, collectedCells:FillerCollectedCells[] = [] ) {
     const topTile = this.getCell( initialX, initialY )?.getTop()
     const row = this.getRow( initialY )
     const filteringId = `filling-${id}`
@@ -259,7 +288,10 @@ export default class Level {
     if (!row || row[ initialX ]?.tags.has( filteringId )) return true
     if (collectedCells.length > areaLimit) return false
     if (initialY > this.levelData.length || initialY < 0) return false
-    if (topTile && ignoreTags.length && ignoreTags.some( ([ t ]) => topTile.tags.has( t ) )) return false
+    if (topTile) {
+      if (terminatorTags?.length && terminatorTags.some( ([ t ]) => topTile.tags.has( t ) )) return false
+      else if (acceptTags?.length && !acceptTags.some( ([ t ]) => topTile.tags.has( t ) )) return true
+    }
 
     const filler = (x:number, y:number) => {
       const cell = this.getCell( x, y )
@@ -269,7 +301,8 @@ export default class Level {
 
       if (!cell.getTop()) collectedCells.push({ x, y, createTile:cellCreator })
       else {
-        const fillTile = ignoreTags.find( ([ t ]) => cell.tags.has( t ) )?.[ 1 ]
+        const topTags = cell.getTop()?.tags
+        const fillTile = acceptTags?.find( ([ t ]) => topTags?.has( t ) )?.[ 1 ]
 
         if (!fillTile) return false
 
@@ -277,11 +310,11 @@ export default class Level {
       }
 
       cell.tags.add( filteringId )
-      let isOk = this.#collectCellsToFill( id, x, y + 1, cellCreator, ignoreTags, areaLimit, collectedCells )
+      let isOk = this.#collectCellsToFill( id, x, y + 1, cellCreator, { acceptTags, terminatorTags }, areaLimit, collectedCells )
 
       if (!isOk) return null
 
-      isOk = this.#collectCellsToFill( id, x, y - 1, cellCreator, ignoreTags, areaLimit, collectedCells )
+      isOk = this.#collectCellsToFill( id, x, y - 1, cellCreator, { acceptTags, terminatorTags }, areaLimit, collectedCells )
 
       return isOk || null
     }
@@ -307,19 +340,25 @@ export default class Level {
     return collectedCells.length <= areaLimit
   }
 
-  fillArea( id:string, initialX:number, initialY:number, cellCreator:CellCreator, ignoreTags:[string, null | CellCreator][] = [], areaLimit = 1000 ) {
+  fillArea( id:string, initialX:number, initialY:number, cellCreator:undefined | CellCreator, fillTagsInfo:FillTilesInfo = {}, areaLimit = 1000 ) {
     const cellsToFill:FillerCollectedCells[] = []
-    let isOk = this.#collectCellsToFill( id, initialX, initialY, cellCreator, ignoreTags, areaLimit, cellsToFill )
+    let isOk = this.#collectCellsToFill( id, initialX, initialY, cellCreator, fillTagsInfo, areaLimit, cellsToFill )
 
     if (!isOk) {
-      console.log( `Area too big!`, { collectedCells:cellsToFill.length, areaLimit } )
       cellsToFill.forEach( ({ x, y }) => this.getCell( x, y )?.tags.delete( id ) )
       return false
     }
 
     cellsToFill.forEach( ({ x, y, createTile }) => {
       const cell = this.getCell( x, y )
-      cell?.push( createTile( x, y ) )
+      if (cell && createTile) {
+        const newTile = createTile( x, y )
+
+        // console.log( cell.getTop()?.tags, newTile.tags )
+
+        cell.clear()
+        cell.push( newTile )
+      }
       cell?.tags.delete( id )
     } )
 
@@ -328,7 +367,21 @@ export default class Level {
 
   fillAreaWithLand( x:number, y:number ) {
     const id = Date.now()
-    return this.fillArea( `${id}`, x, y, () => new Tile( this.getColor( `deep land` ), [ `deep land` ] ), [ [ `border`, null ] ], 2000 )
+    const fillTilesInfo:FillTilesInfo = {
+      terminatorTags: [ [ `border`, null ] ],
+      acceptTags: [ [ `danger`, () => new Tile( this.getColor( `deep land` ), [ `deep land` ] ) ] ],
+    }
+
+    return this.fillArea( `${id}`, x, y, () => new Tile( this.getColor( `deep land` ), [ `deep land` ] ), fillTilesInfo, 2000 )
+  }
+
+  destroyFilledLand( x:number, y:number ) {
+    const id = Date.now()
+    const fillTilesInfo:FillTilesInfo = {
+      acceptTags: [ [ `deep-land`, null ] ],
+    }
+
+    return this.fillArea( `${id}`, x, y, undefined, fillTilesInfo, 2000 )
   }
 
   removeTagged( tag:string ) {
