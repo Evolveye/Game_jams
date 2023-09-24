@@ -1,4 +1,5 @@
-import { useRef } from "react"
+import { useCallback, useEffect, useReducer, useRef } from "react"
+import { Primitive } from "@lib/theming/types"
 
 export class ElementShape<T extends HTMLElement> {
   element: T
@@ -29,12 +30,15 @@ export class ElementShape<T extends HTMLElement> {
   }
 }
 
-export default abstract class Game<T extends HTMLElement = HTMLDivElement> {
+export default abstract class Game<TEle extends HTMLElement = HTMLElement> {
   #loopId: number = -1
+  #uiUpdater: null | ((data:typeof this.uiData) => void) = null
   ctxs = new Map<string, CanvasRenderingContext2D>()
-  root: T
+  root: TEle
 
-  constructor( root:T ) {
+  abstract uiData: Record<string, Primitive>
+
+  constructor( root:TEle ) {
     this.root = root
   }
 
@@ -50,8 +54,8 @@ export default abstract class Game<T extends HTMLElement = HTMLDivElement> {
   }
 
   startLoop() {
-    const loop = () => requestAnimationFrame( async() => {
-      await this.logic()
+    const loop = () => requestAnimationFrame( () => {
+      this.logic()
       this.draw()
 
       // this.#loopId = window.setTimeout( loop, 1000 )
@@ -63,6 +67,15 @@ export default abstract class Game<T extends HTMLElement = HTMLDivElement> {
 
   stopLoop() {
     window.clearTimeout( this.#loopId )
+  }
+
+  setUIUpdater( updater:(data:typeof this.uiData) => void ) {
+    this.#uiUpdater = updater
+  }
+
+  updateUi() {
+    // console.log( this.uiData )
+    if (this.#uiUpdater) this.#uiUpdater( structuredClone( this.uiData ) )
   }
 
   #setupCanvas( canvas:HTMLCanvasElement ) {
@@ -92,18 +105,29 @@ export default abstract class Game<T extends HTMLElement = HTMLDivElement> {
 }
 
 export function useGame<
-  Ctrl extends Game<HTMLElement>,
+  Ctrl extends Game<any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   Ele extends HTMLElement = HTMLDivElement,
->( handler:(ref:Ele) => Ctrl ): [(ref:Ele) => void, null | Ctrl] {
+>( handler:(ref:Ele) => Ctrl ): [(ref:Ele) => void, Ctrl["uiData"], null | Ctrl] {
   const controllerRef = useRef<null | Ctrl>(null)
+  const [ data, dispatchData ] = useReducer( (_:Ctrl["uiData"], b:Ctrl["uiData"]) => b, {} )
 
-  const handleRef = (ref:Ele) => {
-    if (ref) controllerRef.current = handler( ref )
-    else {
+  useEffect( () => {
+    controllerRef.current
+  }, [] )
+
+  const handleRef = useCallback( (ref:Ele) => {
+    // console.log({ ref })
+    if (ref) {
+      controllerRef.current = handler( ref )
+      controllerRef.current?.setUIUpdater( data => {
+        // console.log( data )
+        dispatchData( data )
+      } )
+    } else {
       controllerRef.current?.disable()
       controllerRef.current = null
     }
-  }
+  }, [] )
 
-  return [ handleRef, controllerRef.current ]
+  return [ handleRef, data, controllerRef.current ]
 }

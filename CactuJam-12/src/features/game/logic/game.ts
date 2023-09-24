@@ -1,3 +1,4 @@
+import { Primitive } from "@lib/theming/types"
 import { GameColors, Point } from "./types"
 import Level from "./level"
 import Game from "./controller"
@@ -7,12 +8,24 @@ export type GameConfig = {
   colors: GameColors
 }
 
+type PickBools<T extends Record<string, Primitive>> = {
+  [K in keyof T]:T[K] extends boolean ? K : never;
+}[keyof T]
+
 export default class CactuJam12Game extends Game {
   keys = new KeysController()
 
   level: null | Level = null
   ctx: CanvasRenderingContext2D
   colors: GameColors
+
+  uiData = {
+    closedAreas: `12`,
+    usedW: false,
+    usedS: false,
+    usedA: false,
+    usedD: false,
+  }
 
   constructor( div:HTMLDivElement, { colors }:GameConfig ) {
     super( div )
@@ -35,7 +48,7 @@ export default class CactuJam12Game extends Game {
     this.level?.draw( this.ctx )
   }
 
-  async logic() {
+  logic() {
     const { keys, level } = this
 
     if (!level) return
@@ -43,10 +56,26 @@ export default class CactuJam12Game extends Game {
     const playerTileInfo = level.getPlayerTile()
     let newPlayerPos:undefined | Point = undefined
 
-    if (keys.isPressed( `w` )) newPlayerPos = level.movePlayerBy( 0, 1 )
-    if (!newPlayerPos && keys.isPressed( `s` )) newPlayerPos = level.movePlayerBy( 0, -1 )
-    if (!newPlayerPos && keys.isPressed( `a` )) newPlayerPos = level.movePlayerBy( -1, 0 )
-    if (!newPlayerPos && keys.isPressed( `d` )) newPlayerPos = level.movePlayerBy( 1, 0 )
+    if (keys.isPressed( `w` )) {
+      this.updateUiFlag( `usedW` )
+      newPlayerPos = level.movePlayerBy( 0, 1 )
+    }
+
+    if (!newPlayerPos && keys.isPressed( `s` )) {
+      this.updateUiFlag( `usedS` )
+      newPlayerPos = level.movePlayerBy( 0, -1 )
+    }
+
+    if (!newPlayerPos && keys.isPressed( `a` )) {
+      this.updateUiFlag( `usedA` )
+      newPlayerPos = level.movePlayerBy( -1, 0 )
+    }
+
+    if (!newPlayerPos && keys.isPressed( `d` )) {
+      this.updateUiFlag( `usedD` )
+      newPlayerPos = level.movePlayerBy( 1, 0 )
+    }
+
     // if (keys.isPressedOnce( `w` )) newPlayerPos = level.movePlayerBy( 0, 1 )
     // if (!newPlayerPos && keys.isPressedOnce( `s` )) newPlayerPos = level.movePlayerBy( 0, -1 )
     // if (!newPlayerPos && keys.isPressedOnce( `a` )) newPlayerPos = level.movePlayerBy( -1, 0 )
@@ -82,7 +111,6 @@ export default class CactuJam12Game extends Game {
             }
           }
 
-          console.log( 1, { tailsCount } )
           if (tailsCount === 0) continue
 
           for (let i = 0;  i < newPlayerPos.x + x;  ++i) {
@@ -92,12 +120,8 @@ export default class CactuJam12Game extends Game {
             }
           }
 
-          console.log( 2, { tailsCount } )
           if (tailsCount > 0) {
-            console.log( `newPlayerPos`, { newPlayerPos, x:newPlayerPos.x + x, y:newPlayerPos.y + y } )
             const result = level.fillAreaWithLand( newPlayerPos.x + x, newPlayerPos.y + y )
-
-            console.log( result )
 
             if (result) {
               console.log( `done`, { x:newPlayerPos.x + x, y:newPlayerPos.y + y } )
@@ -107,5 +131,12 @@ export default class CactuJam12Game extends Game {
         }
       }
     }
+  }
+
+  updateUiFlag( key:PickBools<typeof this.uiData>, state = true ) {
+    if (this.uiData[ key ] === state) return
+
+    this.uiData[ key ] = state
+    this.updateUi()
   }
 }

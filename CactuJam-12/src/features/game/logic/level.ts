@@ -319,10 +319,7 @@ export default class Level {
 }
 
 const levelData:LevelData = [
-  { tag:`land`, x:-1, y:-1 },
-  { tag:`land`, x:30, y:40 },
-  { tag:`land`, x:90, y:60 },
-  { tag:`player`, x:90, y:60 },
+  { tag:`player`, x:90, y:12 },
   { tag:`land`,  x:0, y:11, w:-1 },
   { tag:`deep land`, x:0, y:10, w:-1, h:10 },
 ]
