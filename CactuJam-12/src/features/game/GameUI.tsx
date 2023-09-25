@@ -1,7 +1,7 @@
 import React, { memo, forwardRef } from "react"
-import { CSSProperties, cn } from "@lib/theming"
+import { cn } from "@lib/theming"
 import Image from "@lib/components/Image"
-import { Theme, createStylesHook } from "@fet/theming"
+import useStyles from "./ueStyles"
 import CJ12Game from "./logic/game"
 import { useGame } from "./logic/controller"
 
@@ -17,7 +17,7 @@ const Canvases = memo( forwardRef<HTMLDivElement, Canvasprops>( (props, ref) => 
   )
 } ) )
 
-export default function CactuJam12Game() {
+export default function GameUi() {
   const [ classes, { atoms } ] = useStyles()
   const [ handleCanvasesWrapper, gameData ] = useGame<CJ12Game, HTMLDivElement>( div => new CJ12Game( div, {
     colors: {
@@ -31,7 +31,7 @@ export default function CactuJam12Game() {
   const allMoveControlsUsed = gameData.usedW && gameData.usedS && gameData.usedA && gameData.usedD
 
   return (
-    <article className={classes.game}>
+    <article className={classes.gameUi}>
       <section className={cn( classes.column, `is-positive` )}>
         <Image className={cn( classes.avatar, classes.frame )} src="#" alt="Player's avatar" />
 
@@ -179,102 +179,3 @@ export default function CactuJam12Game() {
     </article>
   )
 }
-
-const getPseudoElementsBorderProps = (atoms:Theme["atoms"], props:CSSProperties) => ({
-  "&::before": {
-    content: `""`,
-    display: `block`,
-    position: `absolute`,
-    inset: 0,
-    borderWidth: 0,
-    borderStyle: `solid`,
-    borderColor: atoms.colors.positive + `aa`,
-    ...props,
-  },
-
-  "&::after": {
-    content: `""`,
-    display: `block`,
-    position: `absolute`,
-    inset: 0,
-    borderWidth: 0,
-    borderStyle: `solid`,
-    borderColor: atoms.colors.negative + `aa`,
-    ...props,
-  },
-})
-
-const useStyles = createStylesHook( ({ atoms }) => ({
-  game: {
-    display: `grid`,
-    gridTemplateColumns: `200px 1fr 200px`,
-    width: `100%`,
-    height: `100dvh`,
-  },
-  column: {
-    padding: atoms.spacing.small,
-
-    "&.is-positive": {
-      color: atoms.colors.positive,
-    },
-
-    "&.is-negative": {
-      color: atoms.colors.positive,
-    },
-  },
-
-  canvasesWrapper: {
-    position: `relative`,
-
-    ...getPseudoElementsBorderProps( atoms, {
-      borderLeftWidth: atoms.sizes.border.width,
-      borderRightWidth: atoms.sizes.border.width,
-    } ),
-  },
-  canvas: {
-    position: `absolute`,
-    left: atoms.sizes.border.width,
-    top: 0,
-    width: `calc( 100% - ${atoms.sizes.border.width * 2}px )`,
-    height: `100%`,
-  },
-
-  avatar: {
-    width: `100%`,
-    aspectRatio: 1,
-  },
-
-  frame: {
-    position: `relative`,
-
-    ...getPseudoElementsBorderProps( atoms, {
-      borderWidth: atoms.sizes.border.width,
-    } ),
-  },
-
-  stats: {
-    padding: 0,
-
-    "dl&": {
-      display: `grid`,
-      gridTemplateColumns: `1fr 1fr`,
-      alignItems: `center`,
-      gap: atoms.spacing.main,
-    },
-
-    "& > dt": {
-      textAlign: `right`,
-    },
-
-    "& > dd": {
-      textAlign: `left`,
-      margin: 0,
-    },
-
-    "& > li": {
-      textAlign: `left`,
-      listStyle: `none`,
-      margin: atoms.spacing.main,
-    },
-  },
-}) )

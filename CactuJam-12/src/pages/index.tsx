@@ -1,5 +1,5 @@
 import { createStylesHook } from "@fet/theming"
-import CactuJam12Game from "@fet/game/Game"
+import CactuJam12Game from "@fet/game"
 
 export default function HomePage() {
   useStyles()
@@ -14,7 +14,7 @@ const useStyles = createStylesHook( ({ atoms }) => ({
 
     body: {
       margin: 0,
-      backgroundColor: atoms.colors.background.main,
+      backgroundColor: atoms.colors.background,
       fontFamily: `consolas`,
       fontSize: atoms.sizes.font.p,
     },

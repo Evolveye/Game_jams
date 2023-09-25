@@ -1,14 +1,16 @@
 import { ThemeFromConfig, createTheming } from "@lib/theming"
 
 export const { createStylesHook, useTheme, themeConfig } = createTheming({
-  atoms: () => ({
+  state: {
+    positiveColor: `#a5f46a`,
+    negativeColor: `#ff0000`,
+    backgroundColor: `#000000`,
+  },
+  atoms: ({ state }) => ({
     colors: {
-      background: {
-        main: `#000`,
-      },
-
-      positive: `#a5f46a`,
-      negative: `#ff0000`,
+      background: state.backgroundColor,
+      positive: state.positiveColor,
+      negative: state.negativeColor,
     },
 
     sizes: {
