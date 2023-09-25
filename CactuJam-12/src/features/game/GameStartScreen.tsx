@@ -33,7 +33,19 @@ export default function GameStartScreen({ className, onStartClick }:GameStartScr
 
   return (
     <section className={cn( classes.gameStartScreen, className )}>
-      <div className={classes.colorsSetters}>
+      <div style={{ textAlign:`center` }}>
+        <h1>Wyprawa w nieznane</h1>
+        <p>Jako przypadkowo wybrany podróżnik, nie masz pojęcia jak kierować statkami.</p>
+        <p>Los jednak chciał, że musisz się tego prędko nauczyć. Z początku nie będzie łatwo, lecz z czasem powinieneś załapać.</p>
+        <p>Kto wie, jakie niebezpieczeństwa na Ciebie czekają...</p>
+
+        <br />
+
+        <h1>Paleta barw</h1>
+        <p>Możesz ustawić własne 3 kolory, z których składać się będzie kolorystyka aplikacji</p>
+      </div>
+
+      <div className={classes.colorsSetters} style={{ textAlign:`center` }}>
         {
           Object.keys( colors ).map( type => (
             <div key={type} className={classes.colorSetter}>
@@ -47,7 +59,7 @@ export default function GameStartScreen({ className, onStartClick }:GameStartScr
         }
       </div>
 
-      <Button variant="clean" body="Start" onClick={onStartClick} />
+      <Button variant="clean" body="Rozpocznij wyprawę" onClick={onStartClick} />
     </section>
   )
 }

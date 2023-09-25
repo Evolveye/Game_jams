@@ -33,9 +33,9 @@ export default function GameUi() {
   return (
     <article className={classes.gameUi}>
       <section className={cn( classes.column, `is-positive` )}>
-        <Image className={cn( classes.avatar, classes.frame )} src="#" alt="Player's avatar" />
+        {/* <Image className={cn( classes.avatar, classes.frame )} src="#" alt="Player's avatar" /> */}
 
-        <div style={{ minHeight:250 }}>
+        <div style={{ minHeight:300 }}>
           {
             !anyStat ? <h3>Statystyki?</h3> : (
               <>
@@ -174,7 +174,7 @@ export default function GameUi() {
       <Canvases ref={handleCanvasesWrapper} />
 
       <section className={cn( classes.column, `is-negative` )}>
-        <Image className={cn( classes.avatar, classes.frame )} src="#" alt="Opponent avatar" />
+        {/* <Image className={cn( classes.avatar, classes.frame )} src="#" alt="Opponent's avatar" /> */}
       </section>
     </article>
   )
