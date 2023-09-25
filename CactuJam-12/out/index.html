@@ -1,0 +1,194 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><meta name="next-head-count" content="2"/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-8eba2abae80223bc.js" defer=""></script><script src="/_next/static/chunks/framework-4556c45dd113b893.js" defer=""></script><script src="/_next/static/chunks/main-9aae6518dda96e80.js" defer=""></script><script src="/_next/static/chunks/pages/_app-cd464192fb668339.js" defer=""></script><script src="/_next/static/chunks/826-fe506c638ce6df99.js" defer=""></script><script src="/_next/static/chunks/pages/index-116d0de948b743c8.js" defer=""></script><script src="/_next/static/tm1vbszarKlzp3R8lmT5f/_buildManifest.js" defer=""></script><script src="/_next/static/tm1vbszarKlzp3R8lmT5f/_ssgManifest.js" defer=""></script><style type="text/css" data-jss-ssr="">@keyframes keyframes-shift-before-0-2-1 {
+  0% {
+    transform: translate( 0, 0 );
+  }
+  5% {
+    transform: translate( 2px, 2px );
+  }
+  10% {
+    transform: translate( 0, 0 );
+  }
+  100% {
+    transform: translate( 0, 0 );
+  }
+}
+@keyframes keyframes-shift-after-0-2-2 {
+  0% {
+    transform: translate( 0, 0 );
+  }
+  5% {
+    transform: translate( -2px, -2px );
+  }
+  10% {
+    transform: translate( 0, 0 );
+  }
+  100% {
+    transform: translate( 0, 0 );
+  }
+}
+  .gameStartScreen-0-2-3 {
+    color: #a5f46a;
+    height: 100dvh;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .colorsSetters-0-2-4 {
+    width: max-content;
+    margin: 0 auto;
+  }
+  .colorSetter-0-2-5 {
+    gap: 20px;
+    display: flex;
+    margin-block: 20px;
+  }
+  .colorBox-0-2-6 {
+    width: 50px;
+    height: 25px;
+  }
+  body .colorBox-0-2-6::before {
+    inset: -5px;
+    animation: 10s infinite ease-in-out;
+    animation-name: keyframes-shift-before-0-2-1;
+    animation-delay: 2s;
+  }
+  body .colorBox-0-2-6::after {
+    inset: -5px;
+    animation: 10s infinite ease-in-out;
+    animation-name: keyframes-shift-after-0-2-2;
+    animation-delay: 2s;
+  }
+  .gameUi-0-2-7 {
+    width: 100%;
+    height: 100dvh;
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+  }
+  .column-0-2-8 {
+    padding: 10px;
+  }
+  .column-0-2-8.is-positive {
+    color: #a5f46a;
+  }
+  .column-0-2-8.is-negative {
+    color: #a5f46a;
+  }
+  .canvasesWrapper-0-2-9 {
+    position: relative;
+  }
+  .canvasesWrapper-0-2-9::before {
+    inset: 0;
+    content: "";
+    display: block;
+    position: absolute;
+    border-color: #a5f46aaa;
+    border-style: solid;
+    border-width: 0;
+    border-left-width: 2px;
+    border-right-width: 2px;
+  }
+  .canvasesWrapper-0-2-9::after {
+    inset: 0;
+    content: "";
+    display: block;
+    position: absolute;
+    border-color: #ff0000aa;
+    border-style: solid;
+    border-width: 0;
+    border-left-width: 2px;
+    border-right-width: 2px;
+  }
+  .canvas-0-2-10 {
+    top: 0;
+    left: 2px;
+    width: calc( 100% - 4px );
+    height: 100%;
+    position: absolute;
+  }
+  .avatar-0-2-11 {
+    width: 100%;
+    aspect-ratio: 1;
+  }
+  .frame-0-2-12 {
+    position: relative;
+  }
+  .frame-0-2-12::before {
+    inset: 0;
+    content: "";
+    display: block;
+    position: absolute;
+    border-color: #a5f46aaa;
+    border-style: solid;
+    border-width: 2px;
+  }
+  .frame-0-2-12::after {
+    inset: 0;
+    content: "";
+    display: block;
+    position: absolute;
+    border-color: #ff0000aa;
+    border-style: solid;
+    border-width: 2px;
+  }
+  .stats-0-2-13 {
+    padding: 0;
+  }
+  dl.stats-0-2-13 {
+    gap: 20px;
+    display: grid;
+    align-items: center;
+    grid-template-columns: 1fr 1fr;
+  }
+  .stats-0-2-13 > dt {
+    text-align: right;
+  }
+  .stats-0-2-13 > dd {
+    margin: 0;
+    text-align: left;
+  }
+  .stats-0-2-13 > li {
+    margin: 20px;
+    list-style: none;
+    text-align: left;
+  }
+  .button-0-2-14 {
+    font: inherit;
+    color: inherit;
+    width: max-content;
+    cursor: pointer;
+    height: 45px;
+    display: flex;
+    padding: 0 35px;
+    text-align: center;
+    align-items: center;
+    line-height: inherit;
+    border-color: transparent;
+    border-width: 0;
+    justify-content: center;
+    text-decoration: none;
+    background-color: transparent;
+  }
+  .isClean-0-2-18 {
+    color: inherit;
+    border: unset;
+    display: block;
+    padding: 0;
+    text-align: inherit;
+    border-radius: 0;
+  }
+  .isWide-0-2-19 {
+    width: unset;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-size: 12px;
+    font-family: consolas;
+    background-color: #000000;
+  }
+  h3 {
+    font-size: 20px;
+  }</style></head><body><div id="__next"><div><section class="gameStartScreen-0-2-3"><div class="colorsSetters-0-2-4"><div class="colorSetter-0-2-5"><input type="number" min="0" max="255" value="165"/><input type="number" min="0" max="255" value="244"/><input type="number" min="0" max="255" value="106"/><div class="frame-0-2-12 colorBox-0-2-6" style="background-color:#a5f46a"></div></div><div class="colorSetter-0-2-5"><input type="number" min="0" max="255" value="255"/><input type="number" min="0" max="255" value="0"/><input type="number" min="0" max="255" value="0"/><div class="frame-0-2-12 colorBox-0-2-6" style="background-color:#ff0000"></div></div><div class="colorSetter-0-2-5"><input type="number" min="0" max="255" value="0"/><input type="number" min="0" max="255" value="0"/><input type="number" min="0" max="255" value="0"/><div class="frame-0-2-12 colorBox-0-2-6" style="background-color:#000000"></div></div></div><button class="button-0-2-14 isClean-0-2-18">Start</button></section></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{}},"page":"/","query":{},"buildId":"tm1vbszarKlzp3R8lmT5f","nextExport":true,"autoExport":true,"isFallback":false,"scriptLoader":[]}</script></body></html>

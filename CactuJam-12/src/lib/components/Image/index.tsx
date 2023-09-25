@@ -48,7 +48,7 @@ export default function Image({ className, id, src, alt, fill, priority, quality
   }
 
   if (fill) return (
-    <NextImage id={id} className={cn( classes.img, className )} loading={loading} fill priority={priority} quality={quality} src={src} alt={alt} />
+    <NextImage id={id} className={cn( classes.img, className )} loading={loading} priority={priority} quality={quality} src={src} alt={alt} />
   )
 
   return (
