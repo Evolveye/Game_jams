@@ -33,6 +33,7 @@ export class ElementShape<T extends HTMLElement> {
 export default abstract class Game<TEle extends HTMLElement = HTMLElement> {
   #loopId: number = -1
   #uiUpdater: null | ((data:typeof this.uiData) => void) = null
+  #paused = false
   ctxs = new Map<string, CanvasRenderingContext2D>()
   root: TEle
 
@@ -55,6 +56,8 @@ export default abstract class Game<TEle extends HTMLElement = HTMLElement> {
 
   startLoop() {
     const loop = () => requestAnimationFrame( () => {
+      if (this.#paused) return
+
       this.logic()
       this.draw()
 
@@ -62,10 +65,12 @@ export default abstract class Game<TEle extends HTMLElement = HTMLElement> {
       this.#loopId = window.setTimeout( loop, 1000 / 60 )
     } )
 
+    this.#paused = false
     loop()
   }
 
   stopLoop() {
+    this.#paused = true
     window.clearTimeout( this.#loopId )
   }
 

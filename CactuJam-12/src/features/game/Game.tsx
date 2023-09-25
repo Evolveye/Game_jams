@@ -89,6 +89,13 @@ export default function CactuJam12Game() {
                       <dd>{gameData.destroyedAreas}</dd>
                     </>
                   }
+
+                  {
+                    !!gameData.visibleScore && <>
+                      <dt>Punkty</dt>
+                      <dd>{gameData.score}</dd>
+                    </>
+                  }
                 </dl>
               </>
             )
@@ -147,6 +154,12 @@ export default function CactuJam12Game() {
                   {
                     gameData.borderReached && <li>
                       Dalej nie chcę wypływać bez zdobycia większje liczby doświadczenia
+                    </li>
+                  }
+
+                  {
+                    gameData.gameOver && <li>
+                      Gra zakończona. Zebrano {gameData.score} punktów
                     </li>
                   }
                 </ol>

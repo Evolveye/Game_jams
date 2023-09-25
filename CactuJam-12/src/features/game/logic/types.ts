@@ -3,7 +3,7 @@ export type GameColors = {
   danger: string
 }
 
-export type SemanticColor = `land` | `deep land` | `trail` | `danger`
+export type SemanticColor = `land` | `player` | `deep land` | `trail` | `danger`
 
 export const isPoint = (item:{}): item is TileShape<Point> => `x` in item && `y` in item
 export const isPlayer = (item:{}): item is TileShape<Point> => isPoint( item ) && item.tags.includes( `player` )

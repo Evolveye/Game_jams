@@ -252,6 +252,7 @@ export default class Level {
 
   getColor( semanticColor:SemanticColor = `land` ) {
     if (semanticColor === `land`) return this.colors.safe
+    else if (semanticColor === `player`) return `${this.colors.safe}`
     else if (semanticColor === `deep land`) return `${this.colors.safe}aa`
     else if (semanticColor === `trail`) return `${this.colors.safe}77`
     else if (semanticColor === `danger`) return `${this.colors.danger}aa`
@@ -501,6 +502,6 @@ const levelData:LevelData = [
 
   { tags:[ `border`, `border-1` ], x:0, y:150, w:-1, h:2 },
 
-  { tags:[ `player` ], x:90, y:10 },
-  { tags:[ `deep land` ], x:0, y:0, w:-1, h:10 },
+  { tags:[ `player` ], color:`player`, x:90, y:10 },
+  { tags:[ `city` ], color:`land`, x:0, y:0, w:-1, h:10 },
 ]

@@ -13,6 +13,8 @@ type PickBools<T extends Record<string, Primitive>> = {
 }[keyof T]
 
 export default class CactuJam12Game extends Game {
+  debug = false
+
   keys = new KeysController()
   ticks = 0
 
@@ -22,12 +24,15 @@ export default class CactuJam12Game extends Game {
 
   uiData = {
     experience: 0,
-    speed: 9,
+    speed: this.debug ? 9 : 1,
     knownAreas: 0,
     knownTiles: 0,
     closedAreas: 0,
     stage: 0,
     destroyedAreas: 0,
+    score: 0,
+    visibleScore: false,
+    gameOver: false,
     expincomeGood: false,
     tooBigAreaInfo: false,
     borderReached: false,
@@ -67,12 +72,15 @@ export default class CactuJam12Game extends Game {
     const initialSpeedTick = 9
     const speedTick = initialSpeedTick - uiData.speed < 0 ? 0 : initialSpeedTick - uiData.speed
 
+    const initialEnemiesSpeedTick = 9
+    const enemySpeedTick = uiData.stage < initialEnemiesSpeedTick ? initialEnemiesSpeedTick - uiData.stage : 1
+
     if (!speedTick || ticks % speedTick === 0) this.logicBySpeed()
     if (!level) return
 
     level.logic( this.ctx )
 
-    if (ticks % 4 === 0) {
+    if (ticks % enemySpeedTick === 0) {
       level.entities.filter( e => e.tags.includes( `danger` ) ).forEach( e => {
         const newEnemyPos = level.moveEnemyBy( e.x, e.y, 0, -1 )
 
@@ -86,27 +94,62 @@ export default class CactuJam12Game extends Game {
               level.removeEntity( e.x, e.y )
               uiData.knownTiles -= result
               uiData.destroyedAreas++
-              this.updateUi()
 
               if (uiData.knownTiles < 0) uiData.knownTiles = 0
+
+              this.updateUi()
             }
+          } else if (topTags?.has( `city` )) {
+            uiData.gameOver = true
+            this.calcScore()
+            this.updateUi()
+            this.stopLoop()
           }
         }
       } )
     }
 
     if (uiData.stage === 2) {
-      if (!this.enemyTimerId && !level.entities.length) {
+      if (!this.enemyTimerId) {
         const spawnEnemy = () => {
           const randInt = (min:number, max:number) => Math.floor( Math.random() * (max - min) ) + min
 
-          const x = randInt( 0, level.levelDimensions.x )
+          const x = randInt( 3, level.levelDimensions.x - 3 )
           const y = randInt( 100, 400 )
           const currentCell = level.getCell( x, y )
           const topTags = currentCell?.getTop()?.tags
 
+          if (!topTags?.has( `deep land` )) {
+            level.createTile( x, y, `danger` )
+          }
+        }
+
+        this.enemyTimerId = window.setTimeout( () => {
+          spawnEnemy()
+          this.enemyTimerId = null
+        }, 7500 )
+      }
+    } else if (uiData.stage === 3) {
+      if (!this.enemyTimerId && !level.entities.length) {
+        const spawnEnemy = () => {
+          const randInt = (min:number, max:number) => Math.floor( Math.random() * (max - min) ) + min
+
+          const x = randInt( 3, level.levelDimensions.x - 3 )
+          const y = randInt( 150, 600 )
+          const currentCell = level.getCell( x, y )
+          const topTags = currentCell?.getTop()?.tags
+
           if (topTags?.has( `deep land` )) {
-            return
+            const result = level.destroyFilledLand( x, y )
+
+            if (result) {
+              uiData.knownTiles -= result
+              uiData.destroyedAreas++
+
+              if (uiData.knownTiles < 0) uiData.knownTiles = 0
+
+              this.updateUi()
+            }
           } else {
             level.createTile( x, y, `danger` )
           }
@@ -115,7 +158,7 @@ export default class CactuJam12Game extends Game {
         this.enemyTimerId = window.setTimeout( () => {
           spawnEnemy()
           this.enemyTimerId = null
-        }, 5000 )
+        }, 3000 )
       }
     }
 
@@ -245,27 +288,49 @@ export default class CactuJam12Game extends Game {
                 uiData.experience++
               }
 
-              if (uiData.experience - startExp > 3) uiData.speed += Math.floor( (uiData.experience - startExp) / 3 )
+              if (uiData.experience - startExp > 2) uiData.speed += Math.floor( (uiData.experience - startExp) / 3 )
 
-              // if (startExp <= 7 && uiData.experience >= 7) {
-              //   level.removeTagged( `border-1` )
-              //   uiData.experience++
-              //   uiData.stage = 2
-              // }
-
-              if (startExp < 2 && uiData.experience >= 2) {
-                level.removeTagged( `border-1` )
-                uiData.stage = 2
+              if (this.debug) {
+                if (startExp < 2 && uiData.experience >= 2) {
+                  level.removeTagged( `border-1` )
+                  uiData.stage = 2
+                  uiData.speed++
+                }
+                if (startExp < 2 && uiData.experience >= 2) {
+                  level.removeTagged( `border-1` )
+                  uiData.stage = 2
+                  uiData.speed++
+                }
+              } else {
+                if (uiData.stage < 2 && startExp <= 7 && uiData.experience >= 7) {
+                  level.removeTagged( `border-1` )
+                  uiData.experience++
+                  uiData.stage = 2
+                  uiData.speed++
+                }
+                if (uiData.stage == 2 && uiData.knownAreas > 14000) {
+                  uiData.visibleScore = true
+                  level.removeTagged( `border-2` )
+                  uiData.experience++
+                  uiData.stage = 3
+                  uiData.speed++
+                }
               }
 
               break
             }
 
+            this.calcScore()
             this.updateUi()
           }
         }
       }
     }
+  }
+
+  calcScore() {
+    const ud = this.uiData
+    ud.score = Math.floor( (ud.closedAreas * 20  +  ud.knownAreas * 1  +  ud.knownTiles * 10  +  ud.experience * 100) * (1 + ud.stage * 0.05) )
   }
 
   updateUiFlag( key:PickBools<typeof this.uiData>, state = true ) {
