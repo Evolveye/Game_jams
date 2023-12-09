@@ -27,20 +27,28 @@ workbox.core.clientsClaim();
  */
 self.__precacheManifest = [
   {
-    "url": "webpack-runtime-74f569486d75b0f52b36.js"
+    "url": "webpack-runtime-22d2d38d5933495386a8.js"
   },
   {
     "url": "framework-affd194119e0602bcebe.js"
   },
   {
-    "url": "app-b4ff04aee10f5c13144a.js"
+    "url": "app-dbd0b7c7be7b2146964c.js"
   },
   {
     "url": "offline-plugin-app-shell-fallback/index.html",
-    "revision": "2a69e232f667469241606ea8ac97be4a"
+    "revision": "2b16555f8b14e143fc6a83a2e2b40b7b"
   },
   {
     "url": "component---cache-caches-gatsby-plugin-offline-app-shell-js-e24185520deeb15bc4cd.js"
+  },
+  {
+    "url": "page-data/offline-plugin-app-shell-fallback/page-data.json",
+    "revision": "f6081b83111aea4128c98944b7fafccc"
+  },
+  {
+    "url": "page-data/app-data.json",
+    "revision": "730106decacfe552379febac3f9877b7"
   },
   {
     "url": "polyfill-1b47e6de9608bfa71844.js"
@@ -130,12 +138,12 @@ const navigationRoute = new NavigationRoute(async ({ event }) => {
   lastNavigationRequest = event.request.url
 
   let { pathname } = new URL(event.request.url)
-  pathname = pathname.replace(new RegExp(`^`), ``)
+  pathname = pathname.replace(new RegExp(`^/Game_jams/CactuJam-9/public`), ``)
 
   // Check for resources + the app bundle
   // The latter may not exist if the SW is updating to a new version
   const resources = await idbKeyval.get(`resources:${pathname}`)
-  if (!resources || !(await caches.match(`/app-b4ff04aee10f5c13144a.js`))) {
+  if (!resources || !(await caches.match(`/Game_jams/CactuJam-9/public/app-dbd0b7c7be7b2146964c.js`))) {
     return await fetch(event.request)
   }
 
@@ -148,7 +156,7 @@ const navigationRoute = new NavigationRoute(async ({ event }) => {
     }
   }
 
-  const offlineShell = `/offline-plugin-app-shell-fallback/index.html`
+  const offlineShell = `/Game_jams/CactuJam-9/public/offline-plugin-app-shell-fallback/index.html`
   const offlineShellWithKey = workbox.precaching.getCacheKeyForURL(offlineShell)
   return await caches.match(offlineShellWithKey)
 })

@@ -1,5 +1,5 @@
 module.exports = {
-  pathPrefix: `/Game_jams/CactuJam-11/public/`,
+  pathPrefix: `/Game_jams/CactuJam-9/public/`,
   siteMetadata: {
     title: "CactuJam 9",
   },
