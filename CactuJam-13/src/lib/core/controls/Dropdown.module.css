@@ -1,0 +1,23 @@
+.optionsWrapper { /* Same as .select, but can be disabled when .select cannot */
+  position: relative;
+}
+
+.dropdownLabel {
+  cursor: pointer;
+}
+
+.dropdown.isHoverable:hover,
+.dropdown:not( .isHoverable ):has( > input:checked ) {
+  z-index: 10;
+}
+
+.dropdown.isHoverable:not( :hover ) > .options,
+.dropdown:not( .isHoverable ) > input:not( :checked ) ~ .options {
+  display: none;
+}
+
+.options {
+  position: absolute;
+  left: 0;
+  top: 100%;
+}

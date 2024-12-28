@@ -1,0 +1,44 @@
+.stretchedRow,
+.row {
+  display: flex;
+}
+.row > * {
+  flex-basis: 0;
+  width: var( --width );
+}
+
+.stretchedRow > * {
+  flex-grow: 1;
+  flex-basis: 0;
+}
+
+.verticallyAlignedColumn {
+  display: flex;
+  flex-direction: column;
+}
+
+.grid {
+  display: grid;
+  grid-template: var( --template );
+}
+
+.isAligningRight {
+  text-align: right;
+}
+.isAligningRight > * {
+  margin-left: auto;
+}
+
+.isAligningLeft {
+  text-align: left;
+}
+.isAligningLeft > * {
+  margin-right: auto;
+}
+
+.isAligningCenter {
+  text-align: center;
+}
+.isAligningCenter > * {
+  margin-inline: auto;
+}

@@ -1,0 +1,32 @@
+.carousel {
+  flex-grow: 1;
+  display: flex;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-snap-stop: always;
+}
+
+.carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel::scrollbar {
+  display: none;
+}
+
+.extraItems {
+  display: flex;
+}
+
+.extraItems > *,
+.itemContainer > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  width: calc( 100% / var( --count ) );
+}
+
+
+.extraItems > * {
+  flex-grow: 1;
+}

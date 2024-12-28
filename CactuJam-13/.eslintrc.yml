@@ -1,0 +1,61 @@
+plugins:
+- "@stylistic"
+extends:
+- next/core-web-vitals
+- next/typescript
+- eye
+rules:
+  "@typescript-eslint/type-annotation-spacing": off
+  "@typescript-eslint/space-infix-ops": off
+  "@typescript-eslint/quotes": off
+  "@typescript-eslint/member-delimiter-style": off
+  "@typescript-eslint/no-empty-object-type": off
+  "@typescript-eslint/keyword-spacing": off
+  "@typescript-eslint/indent": off
+  "@stylistic/keyword-spacing": [ error ]
+  "@stylistic/quotes": [ error, backtick ]
+  "@stylistic/jsx-quotes": [ error, prefer-double ]
+  "@stylistic/object-curly-spacing": [ error, always ]
+  "@stylistic/type-generic-spacing": [ error ]
+  "@stylistic/space-infix-ops": [ error ]
+  "@stylistic/template-tag-spacing": [ error ]
+  "@stylistic/key-spacing":
+    - error
+    - singleLine:
+        beforeColon: false
+        afterColon: false
+      multiLine:
+        beforeColon: false
+        afterColon: true
+  # "@stylistic/type-annotation-spacing":
+  #   - error
+  #   - before: false
+  #     after: false
+  #     overrides:
+  #         parameter:
+  #           before: false
+  #           after: false
+  #         variable:
+  #           before: false
+  #           after: false
+  #         arrow:
+  #           before: true
+  #           after: true
+  #         property:
+  #           before: false
+  #           after: true
+  #         returnType:
+  #           before: false
+  #           after: true
+  "@stylistic/member-delimiter-style":
+    - error
+    - multiline:
+        delimiter: none
+        requireLast: true
+      singleline:
+        delimiter: comma
+        requireLast: false
+  "@stylistic/indent": [ error, 2 ]
+  react-hooks/exhaustive-deps: off
+  jsx-a11y/alt-text: off
+  import/order: off

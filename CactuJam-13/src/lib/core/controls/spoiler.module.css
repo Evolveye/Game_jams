@@ -1,0 +1,32 @@
+@keyframes spoiler-closing {
+  from  { grid-template-rows:1fr }
+  to    { grid-template-rows:0fr }
+}
+
+@keyframes spoiler-opening {
+  from  { grid-template-rows:0fr }
+  to    { grid-template-rows:1fr }
+}
+
+/* :where( details, .as-spoiler ) > summary {
+  list-style-type: none;
+} */
+/* :where( details, .as-spoiler ) > :is( summary::marker, summary::-webkit-details-marker ) {
+  display: none,
+} */
+
+:where( details, .as-spoiler ) > div {
+  display: grid;
+}
+
+:where( details, .as-spoiler ) > div > div {
+  overflow: hidden;
+}
+:where( details, .as-spoiler ) > div.isOpening {
+  animation: 0.2s ease spoiler-opening;
+  animation-fill-mode: forwards;
+}
+:where( details, .as-spoiler ) > div.isClosing {
+  animation: 0.2s ease spoiler-closing;
+  animation-fill-mode: forwards;
+}

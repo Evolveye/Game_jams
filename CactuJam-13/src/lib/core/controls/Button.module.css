@@ -1,0 +1,15 @@
+:where( .button ) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  width: max-content;
+  height: max-content;
+  border: none;
+  background-color: transparent;
+  color: inherit;
+  text-align: center;
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+}

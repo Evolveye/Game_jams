@@ -1,0 +1,13 @@
+
+details > summary,
+.as-spoiler > summary {
+  list-style-type: none;
+}
+
+
+details > summary::marker,
+details > summary::-webkit-details-marker,
+.as-spoiler > summary::marker,
+.as-spoiler > summary::-webkit-details-marker {
+  display: none,
+}

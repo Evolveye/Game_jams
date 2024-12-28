@@ -1,0 +1,23 @@
+@layer lib {
+  :where( button, .as-button ) {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    height: max-content;
+    border: none;
+    background-color: transparent;
+    color: inherit;
+    line-height: inherit;
+    text-align: center;
+    text-decoration: none;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  :where( a, .as-a ) {
+    color: inherit;
+    text-decoration: none;
+    font: inherit;
+  }
+}
