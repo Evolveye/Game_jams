@@ -15,11 +15,9 @@ type RegisteredEvent = {
 
 export default class UiManager<TEle extends HTMLElement> {
   #loopId = -1
-  #loopTimeoutId = -1
   #loopCb: null | LoopCallback = null
   #registeredEvents = new Set<RegisteredEvent>()
   #uiUpdater: null | UiUpdater = null
-  #intervalMs = 0
 
   ctxs = new Map<string, CanvasRenderingContext2D>()
   rootElement: TEle
@@ -60,16 +58,13 @@ export default class UiManager<TEle extends HTMLElement> {
     return ctx
   }
 
-  startLoop( cb:LoopCallback, intervalMs?:number ) {
-    if (intervalMs) this.#intervalMs = intervalMs
-
+  startLoop( cb:LoopCallback ) {
     this.#loopCb = cb
     this.resumeLoop()
   }
 
   pauseLoop() {
     window.cancelAnimationFrame( this.#loopId )
-    window.clearTimeout( this.#loopTimeoutId )
   }
 
   resumeLoop() {
@@ -77,16 +72,16 @@ export default class UiManager<TEle extends HTMLElement> {
 
     if (!loopCb) return
 
-    const loop = (timestamp:number) => {
-      if (this.#intervalMs) {
-        this.#loopTimeoutId = window.setTimeout( () => {
-          this.#loopId = window.requestAnimationFrame( loop )
-        }, this.#intervalMs )
-      } else {
-        this.#loopId = window.requestAnimationFrame( loop )
-      }
+    let previousTimestamp = performance.now()
+    const fpsInterval = 1000 / 60
 
-      loopCb( timestamp )
+    const loop = (timestamp:number) => {
+      this.#loopId = window.requestAnimationFrame( loop )
+
+      const duration = timestamp - previousTimestamp
+      previousTimestamp = timestamp
+
+      loopCb( duration / fpsInterval )
     }
 
     loop( performance.now() )
