@@ -52,12 +52,12 @@ export default class CactuJam13Game implements UiManagerHolder {
     ;(window as any).game = this // eslint-disable-line @typescript-eslint/no-explicit-any
   }
 
-  async setup() {
+  async setup( restart = false ) {
     // console.clear()
     console.log( `Setup` )
     const { ctx, sizes } = this
 
-    this.state = `HOME`
+    this.state = restart ? `GAMEPLAY` : `HOME`
 
     const storedScore = window.localStorage.getItem( `higher-score-record` )
     this.higherScore = storedScore ? Number( storedScore ) : 0
@@ -158,7 +158,7 @@ export default class CactuJam13Game implements UiManagerHolder {
     const player = camera.lookingAt as PlayerEntity
 
     if (!player) return
-    if (Keys.isPressedOnce( `r` )) return this.setup()
+    if (Keys.isPressedOnce( `r` )) return this.setup( true )
     if (Keys.isPressedOnce( `g` ) && player instanceof PlayerEntity) player.toggleFlyMode()
 
     ctx.clearRect( 0, 0, sizes.fullWidth, sizes.height )

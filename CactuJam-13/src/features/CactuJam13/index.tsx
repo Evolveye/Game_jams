@@ -80,13 +80,13 @@ export default function CactuJam13() {
                   <p>Modyfikatory:</p>
 
                   <Row gap="1em">
-                    <Image {...doubleJumpImg} width={20} height={20} alt="Double jump icon" />
-                    {player.powerups.filter( p => p.type === `doubleJump` ).length}
+                    <Image {...widePlatformsImg} width={20} height={20} alt="Wide platforms icon" />
+                    {player.powerups.filter( p => p.type === `widePlatforms` ).length}
                   </Row>
 
                   <Row gap="1em">
-                    <Image {...widePlatformsImg} width={20} height={20} alt="Wide platforms icon" />
-                    {player.powerups.filter( p => p.type === `widePlatforms` ).length}
+                    <Image {...doubleJumpImg} width={20} height={20} alt="Double jump icon" />
+                    {player.powerups.filter( p => p.type === `doubleJump` ).length}
                   </Row>
                 </div>
 
@@ -123,7 +123,7 @@ export default function CactuJam13() {
         <nav className={classes.homeScreenNav}>
           <p>I tak oto, Majowie przygotowali kolejny wypiek składany w ofierze</p>
 
-          <Button onClick={() => game?.setup()}>RESTART</Button>
+          <Button onClick={() => game?.setup( true )}>RESTART</Button>
         </nav>
       </section>
     </article>
