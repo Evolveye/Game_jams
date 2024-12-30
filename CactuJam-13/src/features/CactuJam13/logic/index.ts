@@ -76,7 +76,7 @@ export default class CactuJam13Game implements UiManagerHolder {
 
     sizes.floorsGap = 200
     sizes.wallSize = 10
-    sizes.wallHoleAfterPlatforms = 5
+    sizes.wallHoleAfterPlatforms = 50
     sizes.floorsHole = 1
     sizes.wallHeight = sizes.floorsGap * sizes.wallHoleAfterPlatforms
 
@@ -166,7 +166,8 @@ export default class CactuJam13Game implements UiManagerHolder {
     const drawConfig:EntityDrawConfig = { ctx, camera, translate:{ x:sizes.leftBorderWidth } }
     const terminationPlatform = entities.enemies[ 0 ]
     const terminatorTop = terminationPlatform.y - terminationPlatform.halfHeight
-    const isPressedWidePlatforms = Keys.isPressedOnce( `1` ) && player.getPowerup( `widePlatforms` )
+    const isPressedWidePlatforms = Keys.isPressed( `1` ) && player.getPowerup( `widePlatforms` )
+    if (isPressedWidePlatforms) this.uiManager.updateUi({})
 
     entities.walls = entities.walls.filter( wall => {
       if (wall.y > terminationPlatform.y + terminationPlatform.halfHeight * 2) return false
@@ -180,7 +181,10 @@ export default class CactuJam13Game implements UiManagerHolder {
     entities.platforms = entities.platforms.filter( platform => {
       if (platform.y > terminationPlatform.y + terminationPlatform.halfHeight) return false
       if (platform.y > terminatorTop) platform.x = 2000
-      if (isPressedWidePlatforms) platform.w *= 2
+      if (isPressedWidePlatforms) {
+        platform.w *= 2
+        platform.halfWidth *= 2
+      }
 
       platform.update( gameSpeedMultiplier )
       platform.draw( drawConfig )

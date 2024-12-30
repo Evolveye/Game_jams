@@ -52,6 +52,7 @@ export class PlayerEntity extends MovingEntity {
     const isPressedRight = Keys.isPressed( `right`, `d` )
     const isPressedJump = Keys.isPressed( `space`, `w`, `up` )
     const isPressedDown = Keys.isPressed( `shiftleft`, `s`, `down` )
+    const response:Record<string, string> = {}
 
     const speed = (!this.groundedOn ? PlayerEntity.fastSpeed : PlayerEntity.speed) * gameSpeedMultiplier
     const slowingSpeed = (this.velocity.x < PlayerEntity.fastSlowingTriggerVelocity
@@ -68,7 +69,7 @@ export class PlayerEntity extends MovingEntity {
     if (isPressedJump && this.groundedOn) {
       if (this.flymode) this.y -= 50
       else {
-        const isPressedDoubleJump = Keys.isPressedOnce( `2` ) && this.getPowerup( `doubleJump` )
+        const isPressedDoubleJump = Keys.isPressed( `2` ) && this.getPowerup( `doubleJump` )
         const rand = Math.random()
 
         this.groundedOn = false
@@ -82,7 +83,10 @@ export class PlayerEntity extends MovingEntity {
         )
 
         this.velocity.y = jumpSpeed
-        if (isPressedDoubleJump) this.velocity.y *= 2
+        if (isPressedDoubleJump) {
+          response.powerup = `consumed`
+          this.velocity.y *= 2
+        }
 
         if (rand > 0.5) sounds.jump1.play()
         else sounds.jump2.play()
@@ -141,8 +145,9 @@ export class PlayerEntity extends MovingEntity {
       if (this.updatesCount % frameTicksModulo === 0) this.sprite?.nextFrame()
     }
 
+    Object.assign( response, super.update( gameSpeedMultiplier, data ) )
 
-    return super.update( gameSpeedMultiplier, data )
+    return response
   }
 
   draw({ ctx, ...config }:EntityDrawConfig) {
