@@ -57,7 +57,7 @@ export default class CactuJam13Game implements UiManagerHolder {
     console.log( `Setup` )
     const { ctx, sizes } = this
 
-    this.state = `GAMEPLAY`
+    this.state = `HOME`
 
     const storedScore = window.localStorage.getItem( `higher-score-record` )
     this.higherScore = storedScore ? Number( storedScore ) : 0
@@ -135,7 +135,6 @@ export default class CactuJam13Game implements UiManagerHolder {
 
     this.uiManager.updateUi({})
 
-    console.log( `await` )
     await Promise.all([ ...spritesLoading, ...soundsLoading ])
     console.log( `Setup done` )
   }

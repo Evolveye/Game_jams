@@ -1,13 +1,13 @@
 
 
 const sounds = {
-  mayConfused: makeAudio( `out/sounds/may-confused.wav` ),
-  gameOver1: makeAudio( `out/sounds/game-over-1.wav` ),
-  gameOver2: makeAudio( `out/sounds/game-over-2.wav` ),
-  jump1: makeAudio( `out/sounds/jump-1.wav` ),
-  jump2: makeAudio( `out/sounds/jump-2.wav` ),
-  may1: makeAudio( `out/sounds/may-1.wav` ),
-  powerup: makeAudio( `out/sounds/powerup.wav` ),
+  mayConfused: makeAudio( `sounds/may-confused.wav` ),
+  gameOver1: makeAudio( `sounds/game-over-1.wav` ),
+  gameOver2: makeAudio( `sounds/game-over-2.wav` ),
+  jump1: makeAudio( `sounds/jump-1.wav` ),
+  jump2: makeAudio( `sounds/jump-2.wav` ),
+  may1: makeAudio( `sounds/may-1.wav` ),
+  powerup: makeAudio( `sounds/powerup.wav` ),
 }
 
 export default sounds
