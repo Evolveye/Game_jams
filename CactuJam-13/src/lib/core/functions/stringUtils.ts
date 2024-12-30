@@ -1,5 +1,3 @@
-import BigNumber from "@lib/BigNumber"
-
 export function separateStr( str:string, sectionSize:number, separator:string, fromEnd = false ) {
   const initialSectionSize = fromEnd ? (str.length % sectionSize) : 0
   const strParts = [ str.slice( 0, initialSectionSize ) ]
@@ -42,18 +40,4 @@ export type NumberStringParserConfig = {
   allowNegatives?: boolean
   integerDigits?: number
   fractionDigits?: number
-}
-
-export function parseNumberStr( input:string, { max, allowNegatives = false, integerDigits = 7, fractionDigits = 2 }:NumberStringParserConfig = {} ): string {
-  if (max && new BigNumber( max ).lt( input )) return parseNumberStr( `${max}`, { max, allowNegatives, integerDigits, fractionDigits } )
-
-  const pattern = /^(-)?(\d+)(?:\.(\d*))?/
-  const [ , minus = ``, integer, fraction ] = pattern.exec( input ) ?? []
-
-  if (!integer) return ``
-  return ``
-    + (allowNegatives ? minus : ``)
-    + integer.slice( 0, integerDigits )
-    + (input.includes( `.` ) ? `.` : ``)
-    + (fraction ? fraction.slice( 0, fractionDigits ) : ``)
 }

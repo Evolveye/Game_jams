@@ -1,4 +1,5 @@
 export type KeyName =
+  | `1` | `2` | `3` | `4` | `5` | `6` | `7` | `8` | `9` | `0`
   | `q` | `w` | `e` | `r` | `t` | `y` | `u` | `i` | `o` | `p`
   | `a` | `s` | `d` | `f` | `g` | `h` | `j` | `k` | `l`
   | `z` | `x` | `c` | `v` | `b` | `n` | `m`
@@ -44,6 +45,7 @@ export default class Keys {
         let keyCode = code
         if (code.startsWith( `Key` )) keyCode = code.slice( 3 )
         else if (code.startsWith( `Arrow` )) keyCode = code.slice( 5 )
+        else if (code.startsWith( `Digit` )) keyCode = code.slice( 5 )
 
         keyCode = keyCode.toLowerCase()
 

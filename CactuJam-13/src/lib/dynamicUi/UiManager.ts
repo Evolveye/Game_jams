@@ -1,11 +1,13 @@
-"use client"
-
-import { useRef } from "react"
+import { useCallback, useReducer, useRef, useState } from "react"
 import { Primitive } from "../core/types"
 
-export type UiData = Record<string, Primitive>
+export type UiData = { [k:string]:Primitive | UiData }
 export type UiUpdater<T extends UiData = UiData> = (data:T) => void
-export type LoopCallback = (timestamp:number) => void
+export type LoopCallback = (timestamp:number, fps:number) => void
+export type TimerInfo = {
+  type: `timeout` | `interval`
+  id: number
+}
 
 type RegisteredEvent = {
   element: Window | HTMLElement
@@ -14,10 +16,12 @@ type RegisteredEvent = {
 }
 
 export default class UiManager<TEle extends HTMLElement> {
-  #loopId = -1
+  #loopId: null | number = -1
   #loopCb: null | LoopCallback = null
   #registeredEvents = new Set<RegisteredEvent>()
+  #registeredIntervals = new Set<TimerInfo>()
   #uiUpdater: null | UiUpdater = null
+  #targetFps = 60
 
   ctxs = new Map<string, CanvasRenderingContext2D>()
   rootElement: TEle
@@ -32,6 +36,13 @@ export default class UiManager<TEle extends HTMLElement> {
 
   updateUi( uiData:UiData ) {
     if (this.#uiUpdater) this.#uiUpdater( structuredClone( uiData ) )
+  }
+
+  registerTimer( type:TimerInfo[`type`], ms:number, cb:() => void ) {
+    this.#registeredIntervals.add({
+      type,
+      id: type === `interval` ? window.setInterval( cb, ms ) : window.setTimeout( cb, ms ),
+    })
   }
 
   registerEvent<TEv extends keyof HTMLElementEventMap>(element:Window | HTMLElement, eventname:TEv, handler:(e:HTMLElementEventMap[TEv]) => void) {
@@ -49,6 +60,7 @@ export default class UiManager<TEle extends HTMLElement> {
     const resizeHandler = () => {
       ctx.canvas.width = ctx.canvas.clientWidth * window.devicePixelRatio
       ctx.canvas.height = ctx.canvas.clientHeight * window.devicePixelRatio
+      ctx.imageSmoothingEnabled = false
     }
 
     this.ctxs.set( name, ctx )
@@ -59,29 +71,36 @@ export default class UiManager<TEle extends HTMLElement> {
   }
 
   startLoop( cb:LoopCallback ) {
+    this.pauseLoop()
     this.#loopCb = cb
     this.resumeLoop()
   }
 
   pauseLoop() {
-    window.cancelAnimationFrame( this.#loopId )
+    if (this.#loopId) window.cancelAnimationFrame( this.#loopId )
+    this.#loopId = null
   }
 
   resumeLoop() {
     const loopCb = this.#loopCb
 
-    if (!loopCb) return
+    if (!loopCb || this.#loopId) return
 
-    let previousTimestamp = performance.now()
-    const fpsInterval = 1000 / 60
+    const frameInterval = 1000 / this.#targetFps
+    let loopOldTimestamp = performance.now()
+
+    // let temp = 0
 
     const loop = (timestamp:number) => {
+      const timeDelta = timestamp - loopOldTimestamp
+      const fps = Math.round( 1 / timeDelta * 1000 )
+      const timeMultiplier = timeDelta / frameInterval
+
+      loopOldTimestamp = timestamp
+
       this.#loopId = window.requestAnimationFrame( loop )
-
-      const duration = timestamp - previousTimestamp
-      previousTimestamp = timestamp
-
-      loopCb( duration / fpsInterval )
+      // if (temp++ % 10 === 0) console.log( timeMultiplier, this.#loopCb )
+      if (timeMultiplier > 0) loopCb( timeMultiplier, fps )
     }
 
     loop( performance.now() )
@@ -93,20 +112,35 @@ export default class UiManager<TEle extends HTMLElement> {
     this.#registeredEvents.forEach( data => {
       data.element.removeEventListener( data.eventname, data.handler )
     } )
+    this.#registeredIntervals.forEach( timer => {
+      if (timer.type === `interval`) window.clearInterval( timer.id )
+      else window.clearTimeout( timer.id )
+    } )
   }
 }
 
 export interface UiManagerHolder {
   uiManager: UiManager<any> // eslint-disable-line @typescript-eslint/no-explicit-any
+  uiData: UiData
 }
 
-export function useUiManager<TRoot extends HTMLElement, THolder extends UiManagerHolder>( handler:(ref:TRoot) => THolder ) {
-  const managerHolderRef = useRef<THolder>( null )
+export function useUiManager<TRoot extends HTMLElement, THolder extends UiManagerHolder>( handler:(ref:TRoot) => THolder, assignToWindow = false ) {
+  const managerHolderRef = useRef<null | THolder>(null)
+  const [ updateCount, setUpdateCount ] = useState( 0 )
+  const [ , dispatchData ] = useReducer( (_:THolder[`uiData`], b:THolder[`uiData`]) => b, {} )
 
-  const handleRef = (ref:null | TRoot) => {
-    if (ref) managerHolderRef.current = handler( ref )
-    else managerHolderRef.current?.uiManager.dispose()
-  }
+  const handleRef = useCallback( (ref:TRoot | null) => {
+    if (ref) {
+      managerHolderRef.current = handler( ref )
+      managerHolderRef.current?.uiManager.setUIUpdater( data => dispatchData( data ) )
+      if (assignToWindow) (window as unknown as { game:THolder }).game = managerHolderRef.current
+      setUpdateCount( c => c + 1 )
+    } else {
+      managerHolderRef.current?.uiManager.dispose()
+      managerHolderRef.current = null
+      if (assignToWindow) (window as unknown as { game:undefined }).game = undefined
+    }
+  }, [] ) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return [ handleRef, managerHolderRef.current ] as const
+  return [ handleRef, managerHolderRef.current, updateCount ] as const
 }

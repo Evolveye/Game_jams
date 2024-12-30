@@ -57,7 +57,7 @@ export function makeStyleSpacings( spacings:undefined | SpacingsValue, styleBase
 export function makeSpacing( spacing:undefined | true | number | SpacingSize ) {
   if (spacing === undefined) return
   if (typeof spacing === `number`) return spacing
-  return spacing === true || spacing === `default` ? `var( --space )` : `var( --space-${spacing.replaceAll( ` `, `-` )} )`
+  return spacing === true || spacing === `default` ? `var( --space )` : `var( --space-${(spacing as string).replaceAll( ` `, `-` )} )`
 }
 
 export function addGapToStyles( style:undefined | React.CSSProperties, gap:undefined | SpacingsSimpleValue ): React.CSSProperties {

@@ -7,7 +7,7 @@ import classes from "./flow.module.css"
 type ContainerProps = {
   as?: keyof JSX.IntrinsicElements
   children: React.ReactNode
-  className?: string | {override: undefined | string}
+  className?: string | { override:undefined | string }
   style?: React.CSSProperties
 }
 
@@ -20,7 +20,7 @@ export type RowProps = ContainerProps & {
 
 export default function Row({ as:As = `div`, className, style, children, align, verticallAlign, gap, wrap }:RowProps) {
   const isCustomAligning = checkIsCustomHorizontalAlign( align )
-  let finalClassName = typeof className === `object`
+  const finalClassName = typeof className === `object`
     ? cn( className.override )
     : cn( isCustomAligning ? classes.stretchedRow : classes.row, className )
 

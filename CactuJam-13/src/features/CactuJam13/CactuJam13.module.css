@@ -1,11 +1,135 @@
 .game {
   position: relative;
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+  height: 100%;
+  max-height: 100dvh;
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+.game img {
+  image-rendering: pixelated;
+}
+.game button {
+  margin: 50px auto;
+}
+.game :where( h1 ) {
+  text-align: center;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+}
+.screenBgr {
+  width: 100%;
+  height: 100%;
+}
+
+
+/* HOME SCREEN */
+
+.homeToGameplay::after {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: 0;
+  animation-duration: 0.2s;
+  animation-name: homeScreen-blackScreen;
+  animation-fill-mode: forwards;
+  animation-delay: 2s;
+}
+
+.homeScreenNav {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 50px 1em;
+  width: 200px;
+  height: 100%;
+  background: #111;
+  transition: opacity 1s;
+}
+.homeToGameplay .homeScreenNav {
+  opacity: 0;
+}
+
+.homeScreenPlayer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 30%;
+}
+.homeToGameplay .homeScreenPlayer {
+  animation-duration: 0.5s;
+  animation-name: homeScreen-leavingPlayer;
+  animation-fill-mode: forwards;
+  animation-delay: 1s;
+}
+
+@keyframes homeScreen-blackScreen {
+  0% {
+    background-color: transparent;
+  }
+  100% {
+    background-color: black;
+  }
+}
+
+@keyframes homeScreen-leavingPlayer {
+  0% {
+    right: 0;
+    bottom: 0;
+  }
+
+  20% {
+    right: -50px;
+    bottom: -20px;
+  }
+
+  40% {
+    right: -100px;
+    bottom: 0px;
+  }
+
+  60% {
+    right: -150px;
+    bottom: -20px;
+  }
+
+  80% {
+    right: -200px;
+    bottom: 0px;
+  }
+
+  100% {
+    right: -250px;
+    bottom: -20px;
+  }
+}
+
+
+/* GAMEPLAY SCREEN */
+
+.gameplayScreen {
+  display: grid;
+  justify-content: center;
+  grid-template: "canvas menu" / min( 100%, 750px ) 200px;
   height: 100dvh;
-  background-color: #3cad19;
 }
 
 .canvas {
-  position: absolute;
-  width: 100%;
+  width: min( 100%, 700px );
   height: 100%;
+  background-size: 100% auto;
+  background-position: -3px;
+}
+
+.ui {
+  width: 150px;
+}
+
+.ui > * {
+  margin-top: 25px;
 }
