@@ -15,6 +15,6 @@ Lista moich prac sporządzona głównie na użytek własny:
 - ` 8`: [CactuJam 8](https://evolveye.github.io/Game_jams/CactuJam-8/views) -- piasek
 - ` 9`: [CactuJam 9](https://evolveye.github.io/Game_jams/CactuJam-9/public) -- nudne, ładne, samochodzik, losowość
 - `10`: [CactuJam 10](https://evolveye.github.io/Game_jams/CactuJam-10/public/game) -- niewypał, mikołaj i dziadek mróz 
-- `11`: **[CactuJam 11](**https://evolveye.github.io/Game_jams/CactuJam-11/public) -- fajne, przygody Pana Spinacza**
+- `11`: **[CactuJam 11](https://evolveye.github.io/Game_jams/CactuJam-11/public) -- fajne, przygody Pana Spinacza**
 - `12`: [CactuJam 12](https://evolveye.github.io/Game_jams/CactuJam-12/out) -- niewypał, 3 kolory
 - `13`: [CactuJam 13](https://evolveye.github.io/Game_jams/CactuJam-13/out) -- majowie, icy tower
