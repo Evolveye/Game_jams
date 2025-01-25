@@ -1,22 +1,22 @@
 {
   "files": {
-    "main.css": "/cactujam/7/static/css/main.8ef45442.chunk.css",
-    "main.js": "/cactujam/7/static/js/main.abdf389e.chunk.js",
-    "main.js.map": "/cactujam/7/static/js/main.abdf389e.chunk.js.map",
-    "runtime-main.js": "/cactujam/7/static/js/runtime-main.8031444c.js",
-    "runtime-main.js.map": "/cactujam/7/static/js/runtime-main.8031444c.js.map",
-    "static/js/2.f4b45162.chunk.js": "/cactujam/7/static/js/2.f4b45162.chunk.js",
-    "static/js/2.f4b45162.chunk.js.map": "/cactujam/7/static/js/2.f4b45162.chunk.js.map",
-    "index.html": "/cactujam/7/index.html",
-    "precache-manifest.5c1d573f185a924a3b75ab6c51cfd39c.js": "/cactujam/7/precache-manifest.5c1d573f185a924a3b75ab6c51cfd39c.js",
-    "service-worker.js": "/cactujam/7/service-worker.js",
-    "static/css/main.8ef45442.chunk.css.map": "/cactujam/7/static/css/main.8ef45442.chunk.css.map",
-    "static/js/2.f4b45162.chunk.js.LICENSE.txt": "/cactujam/7/static/js/2.f4b45162.chunk.js.LICENSE.txt"
+    "main.css": "/Game_jams/CactuJam-7/build/static/css/main.8ef45442.chunk.css",
+    "main.js": "/Game_jams/CactuJam-7/build/static/js/main.68d7e5c3.chunk.js",
+    "main.js.map": "/Game_jams/CactuJam-7/build/static/js/main.68d7e5c3.chunk.js.map",
+    "runtime-main.js": "/Game_jams/CactuJam-7/build/static/js/runtime-main.841abd73.js",
+    "runtime-main.js.map": "/Game_jams/CactuJam-7/build/static/js/runtime-main.841abd73.js.map",
+    "static/js/2.f4b45162.chunk.js": "/Game_jams/CactuJam-7/build/static/js/2.f4b45162.chunk.js",
+    "static/js/2.f4b45162.chunk.js.map": "/Game_jams/CactuJam-7/build/static/js/2.f4b45162.chunk.js.map",
+    "index.html": "/Game_jams/CactuJam-7/build/index.html",
+    "precache-manifest.2627ea59ad9a244a3c5d4b4935f7eb32.js": "/Game_jams/CactuJam-7/build/precache-manifest.2627ea59ad9a244a3c5d4b4935f7eb32.js",
+    "service-worker.js": "/Game_jams/CactuJam-7/build/service-worker.js",
+    "static/css/main.8ef45442.chunk.css.map": "/Game_jams/CactuJam-7/build/static/css/main.8ef45442.chunk.css.map",
+    "static/js/2.f4b45162.chunk.js.LICENSE.txt": "/Game_jams/CactuJam-7/build/static/js/2.f4b45162.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
-    "static/js/runtime-main.8031444c.js",
+    "static/js/runtime-main.841abd73.js",
     "static/js/2.f4b45162.chunk.js",
     "static/css/main.8ef45442.chunk.css",
-    "static/js/main.abdf389e.chunk.js"
+    "static/js/main.68d7e5c3.chunk.js"
   ]
 }
