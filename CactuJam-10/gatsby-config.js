@@ -1,5 +1,5 @@
 module.exports = {
-  pathPrefix: `/_/cactujam/10/`,
+  pathPrefix: `/Game_jams/CactuJam-10/public/`,
   siteMetadata: {
     siteUrl: `https://www.yourdomain.tld`,
     title: `CactuJam-10`,
