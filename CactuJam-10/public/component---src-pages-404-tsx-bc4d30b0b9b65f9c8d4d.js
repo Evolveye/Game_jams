@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkcactu_jam_10=self.webpackChunkcactu_jam_10||[]).push([[453],{731:function(u,c,n){function t(){return"404"}n.r(c),n.d(c,{default:function(){return t}})}}]);
+//# sourceMappingURL=component---src-pages-404-tsx-bc4d30b0b9b65f9c8d4d.js.map
