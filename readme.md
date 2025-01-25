@@ -3,7 +3,7 @@
 A Jams (Game Jams) are competitions in writing games on time.  
 I am the organizer of the `CactuJams`.
 
-## Summary of the CactuJams (in polish)
+## Summary of my games for the CactuJams (in polish)
 
 Lista moich prac sporządzona głównie na użytek własny:
 - ` 0`: [CactuJam 0](https://evolveye.github.io/Game_jams/CactuJam-0) -- wyspa, gra typu GROW Island
