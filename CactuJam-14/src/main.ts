@@ -298,7 +298,7 @@ export default class Game {
     this.score.combo = 0
     this.score.lastComboTime = 0
     this.rhythmGame.dancingLegMaxAngle = 45
-    this.ui.rhythmGameWrapper.attributeStyleMap.set( `--bouncing-multiplier`, 1 )
+    this.ui.rhythmGameWrapper.style[ `--bouncing-multiplier` as `top` ] = `1`
 
     if (this.rhythmGame.level.skipTime) {
       this.rhythmGame.level.audio.currentTime = this.rhythmGame.level.skipTime / 1000
@@ -441,20 +441,20 @@ export default class Game {
 
     const { points, combo } = this.score
 
-    if (points > 6000 || combo >= 80) {
+    if (points > 6500 || combo >= 80) {
       this.rhythmGame.dancingLegMaxAngle = 400
-      this.ui.rhythmGameWrapper.attributeStyleMap.set( `--bouncing-multiplier`, 3.2 )
+      this.ui.rhythmGameWrapper.style[ `--bouncing-multiplier` as `top` ] = `3.5`
     }
     if (points > 4500 || combo >= 65) {
       this.rhythmGame.dancingLegMaxAngle = 250
-      this.ui.rhythmGameWrapper.attributeStyleMap.set( `--bouncing-multiplier`, 3 )
+      this.ui.rhythmGameWrapper.style[ `--bouncing-multiplier` as `top` ] = `3`
     }
     else if (points > 3000 || combo >= 50) this.rhythmGame.dancingLegMaxAngle = 175
-    else if (points > 1000 || combo >= 35) this.ui.rhythmGameWrapper.attributeStyleMap.set( `--bouncing-multiplier`, 2.6 )
+    else if (points > 1000 || combo >= 35) this.ui.rhythmGameWrapper.style[ `--bouncing-multiplier` as `top` ] = `2.6`
     else if (points > 500 || combo >= 25) this.rhythmGame.dancingLegMaxAngle = 125
-    else if (points > 300 || combo >= 15) this.ui.rhythmGameWrapper.attributeStyleMap.set( `--bouncing-multiplier`, 1.9 )
+    else if (points > 300 || combo >= 15) this.ui.rhythmGameWrapper.style[ `--bouncing-multiplier` as `top` ] = `1.9`
     else if (points > 200 || combo >= 10) this.rhythmGame.dancingLegMaxAngle = 90
-    else if (points > 100 || combo >= 5) this.ui.rhythmGameWrapper.attributeStyleMap.set( `--bouncing-multiplier`, 1.4 )
+    else if (points > 100 || combo >= 5) this.ui.rhythmGameWrapper.style[ `--bouncing-multiplier` as `top` ] = `1.4`
   }
   endCombo( reason?:string ) {
     if (reason) this.log( { scope:`COMBO`, subscope:`RESET`, subscopeColor:`red` }, reason )
