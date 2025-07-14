@@ -86,6 +86,6 @@
   left: var( --gap );
 }
 .bestPoints::before {
-  content: "Ostatni najlepszy wynik: ";
+  content: "Najlepszy wynik: ";
   opacity: 0.7;
 }

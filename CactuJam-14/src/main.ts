@@ -205,7 +205,7 @@ export default class Game {
       dancingRanfisz.html.classList.toggle( classesRhythm.dancingRanfisz )
       rhythmGameWrapper.append( dancingRanfisz.html )
 
-      rhythmGameWrapper.append( createButton( `Menu`, `closeButton`, () => this.endLevel() ) )
+      rhythmGameWrapper.append( createButton( `Menu`, `closeButton`, () => this.endLevel( true ) ) )
 
       return { rhythmGameWrapper, bestPoints, soundKeyArea, combo, points }
     }
@@ -216,6 +216,10 @@ export default class Game {
           <h2>O grze</h2>
 
           <p>Wstęp do gry można przyspieszyć, klikając na obszarze gry. Guziki powinny pojawić się natychmiast
+
+          <p>
+            Guziki należy klikać myszką, utwory należy wykonywać klawiszami (głównie strzałkami),
+            których symbole znajdują się na wygrywanych kafelkach
 
           <p>
             <strong>Uwaga!</strong> Czasem poziom rozjeżdża się z muzyką.
@@ -251,6 +255,9 @@ export default class Game {
 
             <dt>Muzyka <a href="https://pixabay.com/music/techno-trance-hyperion-hypercube-355494/">"Hyperion Hypercube"</a> (poziom "Ranfisz vs złe korporacje")
             <dd>~<a href="https://pixabay.com/users/psychronic-13092015/">Psychronic</a> na <a href="https://pixabay.com/service/license-summary/">licencji Pixabay</a>
+
+            <dt>Gra jako całość
+            <dd>~Evolveye
           </dl>
 
           <button class="closeButton">Zamknij</button>
@@ -316,9 +323,18 @@ export default class Game {
     this.ui.points.innerHTML = `${this.score.points}`
 
     this.rhythmGame.level.audio.play()
-    this.rhythmGame.level.audio.addEventListener( `play`, () => {
+
+    const play = () => {
+      if (this.rhythmGame.level.audio.readyState !== HTMLMediaElement.HAVE_ENOUGH_DATA) {
+        setTimeout( () => play(), 200 )
+        return
+      }
+
+      this.log( { scope:`PLAY` }, this.rhythmGame.level.audio.readyState )
       this.loop.startLoop( (timestamp, data) => this.tickGameplayLoop( timestamp, dancingRanfisz, data ) )
-    }, { once:true } )
+    }
+
+    play()
   }
 
   tickGameplayLoop( timestamp:number, legsController:LegsController, { timeDelta }:LoopCallbackData ) {
@@ -462,18 +478,20 @@ export default class Game {
     this.ui.combo.innerHTML = `0`
   }
 
-  endLevel() {
+  endLevel( force = false ) {
     const level = this.rhythmGame.level
     const bestPoints = this.storageReadLevel<number>( level.inOrder, `bestPoints` )
-
-    level.audio.currentTime = 0
-    level.audio.pause()
 
     this.rhythmGame.doneLevels.add( level.inOrder )
     this.storageWrite( `doneLevels`, Array.from( this.rhythmGame.doneLevels ) )
     if (!bestPoints || this.score.points > bestPoints) this.storageWriteLevel( level.inOrder, `bestPoints`, this.score.points )
     this.loop.pauseLoop()
-    this.runInitScene()
+
+    setTimeout( () => {
+      level.audio.currentTime = 0
+      level.audio.pause()
+      this.runInitScene()
+    }, force ? 0 : 5000 )
   }
 
   storageWrite( key:string, value:boolean | number | string | (boolean | number | string)[] ) {
