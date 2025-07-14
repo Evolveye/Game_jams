@@ -215,11 +215,11 @@ export default class Game {
         <div class="textContainer ${classes.creditsPopup}">
           <h2>O grze</h2>
 
-          <p>Wstęp do gry można przyspieszyć, klikając na obszarze gry. Guziki powinny pojawić się natychmiast
+          <p>Wstęp do gry można przyspieszyć, klikając na obszarze gry. Guziki powinny pojawić się natychmiast.
 
           <p>
             Guziki należy klikać myszką, utwory należy wykonywać klawiszami (głównie strzałkami),
-            których symbole znajdują się na wygrywanych kafelkach
+            których symbole znajdują się na wygrywanych kafelkach.
 
           <p>
             <strong>Uwaga!</strong> Czasem poziom rozjeżdża się z muzyką.
