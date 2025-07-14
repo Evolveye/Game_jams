@@ -301,8 +301,6 @@ export default class Game {
       this.rhythmGame.elapsedMs = this.rhythmGame.level.skipTime
     }
 
-    this.rhythmGame.level.audio.play()
-
     const dancingRanfisz = Ranfisz.getRanfiszDancingLegsWithController( this.ui.rhythmGameWrapper )
     const bestPointsValue = this.storageReadLevel<number>( this.rhythmGame.level.inOrder, `bestPoints` )
     if (bestPointsValue) this.ui.bestPoints.innerHTML = `${bestPointsValue}`
@@ -312,7 +310,11 @@ export default class Game {
 
     this.ui.combo.innerHTML = `${this.score.combo}`
     this.ui.points.innerHTML = `${this.score.points}`
-    this.loop.startLoop( (timestamp, data) => this.tickGameplayLoop( timestamp, dancingRanfisz, data ) )
+
+    this.rhythmGame.level.audio.play()
+    this.rhythmGame.level.audio.addEventListener( `play`, () => {
+      this.loop.startLoop( (timestamp, data) => this.tickGameplayLoop( timestamp, dancingRanfisz, data ) )
+    }, { once:true } )
   }
 
   tickGameplayLoop( timestamp:number, legsController:LegsController, { timeDelta }:LoopCallbackData ) {
