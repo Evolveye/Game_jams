@@ -1,0 +1,56 @@
+@font-face {
+  font-family: bitcell;
+  src: url( "/bitcell.ttf" ) format( "truetype" );
+  /* src: url(  ) format( "opentype" ); */
+}
+
+.textContainer > * {
+  margin-bottom: var( --gap );
+}
+
+.textContainer > h2 {
+  margin-bottom: calc( var( --gap ) * 2.5 );
+  color: var( --color-strong-700 );
+}
+
+.textContainer > h3 {
+  margin-block: calc( var( --gap ) * 2.5 ) calc( var( --gap ) * 2 );
+  color: var( --color-strong-700 );
+}
+
+.textContainer > dl {
+  padding: calc( var( --gap ) * 0.5 ) var( --gap );
+  border-left: var( --border-width ) solid var( --color-ranfisz );
+}
+
+.textContainer > dl > dt {
+  color: var( --color-strong-700 );
+  margin-bottom: calc( var( --gap ) * 0.5 );
+}
+.textContainer > dl > dd {
+  margin-left: var( --gap );
+  margin-bottom: calc( var( --gap ) * 2 );
+}
+.textContainer > dl > :last-child {
+  margin-bottom: unset;
+}
+.textContainer strong {
+  color: var( --color-strong-500 );
+}
+
+.closeButton {
+  position: absolute;
+  top: var( --gap );
+  right: var( --gap );
+  padding: calc( var( --gap ) * 0.5 );
+  background-color: var( --color-ranfisz );
+  color: var( --color-ranfisz-bgr );
+  font-size: 15px;
+  letter-spacing: 2px;
+}
+.closeButton:hover {
+  background-color: color-mix( in srgb, var( --color-ranfisz ), transparent 10% );
+}
+.closeButton:active {
+  background-color: color-mix( in srgb, var( --color-ranfisz ), black 10% );
+}

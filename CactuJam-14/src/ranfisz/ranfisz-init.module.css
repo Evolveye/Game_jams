@@ -1,0 +1,70 @@
+.wrapper {
+  position: relative;
+  width: max-content;
+}
+.wrapper > :not( :last-child ) {
+  display: none;
+}
+.wrapper > img {
+  position: relative;
+  top: -18px;
+  left: 17px;
+}
+
+.ranfiszWithlegswrapper {
+  position: relative;
+  width: max-content;
+}
+
+.ranfisz {
+  position: relative;
+  z-index: 1;
+}
+
+.rightLeg,
+.leftLeg {
+  position: absolute;
+  left: 0px;
+  top: 30px;
+  transform: rotate( 10deg );
+  transition: rotate 0.5s;
+}
+
+.rightLeg {
+  --scale: -0.7 0.7;
+
+  transform-origin: 50% 30px;
+  scale: var( --scale );
+}
+.leftLeg {
+  --scale: 0.7;
+
+  transform-origin: 50% 30px;
+  scale: var( --scale );
+}
+
+.ranfisz ~ .init {
+  animation: ranfisz-initLegs;
+  animation-duration: 10s;
+}
+
+@keyframes ranfisz-initLegs {
+  0% {
+    scale: 0;
+  }
+
+  30% {
+    scale: 0;
+    transform: rotate( 0deg );
+  }
+
+  55% {
+    scale: var( --scale );
+    transform: rotate( 90deg );
+  }
+
+  100% {
+    scale: var( --scale );
+    transform: rotate( 10deg );
+  }
+}

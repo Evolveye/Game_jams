@@ -1,0 +1,185 @@
+.game {
+  --color-ranfisz-bgr: #f6f6f6;
+  --color-ranfisz: #c69e43;
+  --color-strong-500: #a47c2e;
+  --color-strong-700: #805a14;
+  --border-width: 2px;
+  --border-radius: 10px;
+  --gap: 20px;
+
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate( -50%, -50% );
+  width: 900px;
+  height: 550px;
+  margin-inline: auto;
+  border: var( --border-width ) solid var( --color-strong-700 );
+  background-color: black;
+  color: var( --color-ranfisz );
+  font-weight: bold;
+  font-family: "bitcell", "monospace";
+  font-size: 32px;
+  line-height: calc( 1em * 0.6 );
+}
+
+.game canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+:where( .game button ) {
+  padding: var( --gap );
+  border: var( --border-width ) solid var( --color-ranfisz );
+  border-radius: var( --border-radius );
+}
+:where( .game button:hover ) {
+  background-color: var( --color-ranfisz );
+  color: var( --color-ranfisz-bgr );
+}
+:where( .game button:active ) {
+  background-color: var( --color-ranfisz );
+  color: var( --color-ranfisz-bgr );
+  opacity: 0.9;
+}
+
+.game > * {
+  display: none;
+  height: 100%;
+}
+
+
+/* INIT SCREEN */
+
+
+[data-stage="init"] > .initScene {
+  display: block;
+  background-color: var( --color-ranfisz-bgr );
+}
+.initScene > :first-child {
+  left: 50%;
+  top: var( --gap );
+  transform: translateX( -50% );
+}
+
+.initScene .brand > * {
+  position: absolute;
+  left: var( --gap );
+  bottom: var( --gap );
+  width: 450px;
+  image-rendering: pixelated;
+}
+.initScene > :nth-child( n + 2 ) {
+  opacity: 0;
+  animation: 2s brand-show forwards;
+}
+.initScene .brand > :nth-child( 2 ) {
+  opacity: 0;
+  animation: 2s 3s brand-show forwards;
+}
+@keyframes brand-show {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+div.menuButton > button:not( :hover, :active ) {
+  background-color: var( --color-ranfisz-bgr );
+}
+.btnAddons {
+  position: relative;
+  top: -15px;
+  padding: 2px 5px;
+  padding-top: 15px;
+  background-color: var( --color-strong-500 );
+  border-radius: 0 0 var( --border-radius ) var( --border-radius );
+  font-size: 20px;
+  color: var( --color-ranfisz-bgr );
+  z-index: -1;
+  letter-spacing: 1px;
+}
+.btnAddons > [data-label]::before {
+  content: attr( data-label );
+  opacity: 0.6;
+}
+.menuButton {
+  position: absolute;
+  z-index: 2;
+}
+.btnBlock {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background-color: var( --color-strong-700 );
+  border-radius: var( --border-radius );
+  font-size: 20px;
+  text-align: center;
+  color: var( --color-ranfisz-bgr );
+  letter-spacing: 1px;
+  cursor: no-drop;
+}
+.btnBlock > ::before {
+  content: "Minimalna liczba punktów z poprzedniego poziomu aby odblokować ten wynosi: ";
+  color: var( --color-strong-500 );
+}
+.buttonCredits {
+  left: 400px;
+  bottom: var( --gap );
+}
+.buttonStartLvl-1 {
+  right: var( --gap );
+  top: 40%;
+}
+
+.game:not([data-done-levels*="1"]) .buttonStartLvl-2 { display:none }
+.buttonStartLvl-2 {
+  right: calc( var( --gap ) * 2 );
+  top: 60%;
+}
+.game:not([data-done-levels*="2"]) .buttonStartLvl-3 { display:none }
+.buttonStartLvl-3 {
+  right: calc( var( --gap ) * 3 );
+  top: 80%;
+}
+.game:not([data-done-levels*="3"]) .buttonStartLvl-4 { display:none }
+.buttonStartLvl-4 {
+  left: calc( var( --gap ) * 1 );
+  top: 35%;
+}
+.game:not([data-done-levels*="3"]) .buttonStartLvl-5 { display:none }
+.buttonStartLvl-5 {
+  left: calc( var( --gap ) * 1 );
+  top: var( --gap );
+}
+
+
+
+/* RHYTHM GAME SCREEN */
+
+
+
+[data-stage="rhythmGame"] > .rhythmGameWrapper {
+  display: block;
+}
+
+
+/* CREDITS SCREEN */
+
+
+.creditsPopup {
+  position: absolute;
+  inset: var( --gap );
+  padding: var( --gap );
+  height: unset;
+  border: var( --border-width ) solid var( --color-ranfisz );
+  border-radius: var( --border-radius );
+  background-color: color-mix( in srgb, var( --color-ranfisz-bgr ), transparent 5% );
+  overflow-y: scroll;
+  z-index: 100;
+}

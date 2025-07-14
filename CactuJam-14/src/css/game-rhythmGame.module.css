@@ -1,0 +1,91 @@
+.dancingRanfisz {
+  position: absolute;
+  left: 50%;
+  transform: translateX( -50% );
+  animation: bouncing 1s ease-in-out infinite;
+}
+
+@keyframes bouncing {
+  0% {
+    top: calc( 20px * var( --bouncing-multiplier, 1 ) );
+  }
+  50% {
+    top: 5px;
+  }
+  100% {
+    top: calc( 20px * var( --bouncing-multiplier, 1 ) );
+  }
+}
+
+.soundKeyArea {
+  position: absolute;
+  bottom: var( --gap );
+  left: var( --gap );
+  width: calc( 100% - var( --gap ) * 2 );
+  height: calc( 20px + var( --border-width ) );
+  border: var( --border-width ) solid var( --color-ranfisz );
+  border-radius: var( --border-radius );
+  background-color: color-mix(in srgb, var( --color-ranfisz ), transparent 70% );
+}
+
+.combo {
+  position: absolute;
+  top: 100px;
+  left: var( --gap );
+}
+.combo::before {
+  content: "Combo: ";
+  opacity: 0.7;
+}
+.endCombo {
+  animation: end-combo;
+  animation-duration: 0.15s;
+}
+
+@keyframes end-combo {
+  from {
+    color: red;
+    box-shadow: 0 0 100px 10px var( --color-ranfisz );
+  }
+  to {
+    color: var( --color-ranfisz );
+    box-shadow: 0 0 100px 0 transparent;
+  }
+}
+
+.hit {
+  animation: hit;
+  animation-duration: 0.15s;
+}
+
+@keyframes hit {
+  from {
+    background-color: color-mix(in srgb, var( --color-ranfisz ), lime 30% );
+  }
+  to {
+    background-color: color-mix(in srgb, var( --color-ranfisz ), transparent 70% );
+  }
+}
+
+.points {
+  position: absolute;
+  top: 60px;
+  left: var( --gap );
+}
+.points::before {
+  content: "Punkty: ";
+  opacity: 0.7;
+}
+
+.bestPoints:empty {
+  display: none;
+}
+.bestPoints {
+  position: absolute;
+  top: var( --gap );
+  left: var( --gap );
+}
+.bestPoints::before {
+  content: "Ostatni najlepszy wynik: ";
+  opacity: 0.7;
+}
