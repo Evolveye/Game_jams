@@ -215,12 +215,13 @@ export default class Game {
         <div class="textContainer ${classes.creditsPopup}">
           <h2>O grze</h2>
 
+          <p>Wstęp do gry można przyspieszyć, klikając na obszarze gry. Guziki powinny pojawić się natychmiast
+
           <p>
             <strong>Uwaga!</strong> Czasem poziom rozjeżdża się z muzyką.
             Muzyka powinna wystartować wraz z kliknięciem guzika startu.
             Jeżeli zauważyłeś rozjechanie się dźwięku ze sterowaniem,
             spróbuj włączyć poziom jeszcze raz.
-            <strong>Ten problem występuje dość często</strong>
 
           <h3>Autorstwo</h3>
 
@@ -247,6 +248,9 @@ export default class Game {
 
             <dt>Muzyka <a href="https://pixabay.com/music/video-games-8-bit-arcade-138828/">"8 bit Arcade"</a> (poziom "Ranfisz na łące")
             <dd>~<a href="https://pixabay.com/users/moodmode-33139253/">moodmode</a> na <a href="https://pixabay.com/service/license-summary/">licencji Pixabay</a>
+
+            <dt>Muzyka <a href="https://pixabay.com/music/techno-trance-hyperion-hypercube-355494/">"Hyperion Hypercube"</a> (poziom "Ranfisz vs złe korporacje")
+            <dd>~<a href="https://pixabay.com/users/psychronic-13092015/">Psychronic</a> na <a href="https://pixabay.com/service/license-summary/">licencji Pixabay</a>
           </dl>
 
           <button class="closeButton">Zamknij</button>
