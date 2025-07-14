@@ -2,11 +2,11 @@ var Z=Object.defineProperty;var K=o=>{throw TypeError(o)};var ee=(o,s,i)=>s in o
         <div class="textContainer ${A.creditsPopup}">
           <h2>O grze</h2>
 
-          <p>Wstęp do gry można przyspieszyć, klikając na obszarze gry. Guziki powinny pojawić się natychmiast
+          <p>Wstęp do gry można przyspieszyć, klikając na obszarze gry. Guziki powinny pojawić się natychmiast.
 
           <p>
             Guziki należy klikać myszką, utwory należy wykonywać klawiszami (głównie strzałkami),
-            których symbole znajdują się na wygrywanych kafelkach
+            których symbole znajdują się na wygrywanych kafelkach.
 
           <p>
             <strong>Uwaga!</strong> Czasem poziom rozjeżdża się z muzyką.
