@@ -11,11 +11,17 @@ export type WorldConfig = {
   seed: number
 }
 
-type WorldColors = Record<string, string>
+type WorldColorsTint = string
+type WorldColors = Record<string, WorldColorsTint[]>
 type ChunkNoiseFn = (node:Quadtree) => number
+type NoisesFns = {
+  hashCoords: (x:number, y:number) => 1 | 0
+  terrain: ChunkNoiseFn
+  biome: ChunkNoiseFn
+}
 
 class Chunk {
-  #noise2D: ChunkNoiseFn
+  #noiseFns: NoisesFns
   #ctx: CanvasRenderingContext2D
   #needsRedraw: boolean = true
   #offscreenCanvas: HTMLCanvasElement
@@ -23,7 +29,7 @@ class Chunk {
   #colors: WorldColors
   #boundary: Rect
 
-  constructor( boundary:Rect, maxTerrainDepth:number, colors:WorldColors, noiseFn:ChunkNoiseFn ) {
+  constructor( boundary:Rect, maxTerrainDepth:number, colors:WorldColors, noiseFns:NoisesFns ) {
     this.#offscreenCanvas = document.createElement( `canvas` )
     this.#offscreenCanvas.width = boundary.width
     this.#offscreenCanvas.height = boundary.height
@@ -31,7 +37,7 @@ class Chunk {
     const ctx = this.#offscreenCanvas.getContext( `2d` )
     if (!ctx) throw `guard`
 
-    this.#noise2D = noiseFn
+    this.#noiseFns = noiseFns
     this.#boundary = boundary
     this.#ctx = ctx
     this.#colors = colors
@@ -65,11 +71,31 @@ class Chunk {
 
       node.attemptCollapse()
     } else {
-      const elevation = this.#noise2D( node )
+      const elevation = this.#noiseFns.terrain( node )
+      const moisture = this.#noiseFns.biome( node )
+      const spawnChance = this.#noiseFns.hashCoords( node.boundary.x, node.boundary.y )
 
-      if (elevation > 0.2) node.tags = new Set([ `land` ])
-      else if (elevation > 0.1) node.tags = new Set([ `beach` ])
-      else node.tags = new Set([ `water` ])
+      if (elevation > 0.15) { // land
+        if (moisture > 0.6) {
+          node.tags = new Set([ `jungle` ])
+          if (spawnChance > 0.7) node.objects.push( new Rect( node.boundary.x, node.boundary.y, 1, 1 ) ) // Dużo owoców
+        } else if (moisture > 0.3) {
+          node.tags = new Set([ `forest` ])
+          if (spawnChance > 0.92) node.objects.push( new Rect( node.boundary.x, node.boundary.y, 1, 1 ) ) // Mało owoców
+        } else {
+          node.tags = new Set([ `desert` ])
+        }
+      } else if (elevation > 0.05) { // Beach
+        node.tags = new Set([ `beach` ])
+      } else { // Water
+        node.tags = new Set([ `water` ])
+      }
+
+      // TODO: Feature concept
+      // const isCenter = Math.abs( node.boundary.x - this.#width / 2 ) < 50 && Math.abs( node.boundary.y - this.#height / 2 ) < 50
+      // if (isCenter && elevation > 0.15) {
+      //   node.tags.add( `spawn_zone` )
+      // }
     }
 
     return node
@@ -93,8 +119,10 @@ class Chunk {
         const relX = node.boundary.x - boundary.x
         const relY = node.boundary.y - boundary.y
         const firstTag = node.tags.values().next().value
+        const tints = !firstTag ? undefined : this.#colors[ firstTag ]
+        const color = !tints ? `#000` : tints[ Math.floor( Math.random() * tints.length ) ]
 
-        ctx.fillStyle = (firstTag && this.#colors[ firstTag ]) || `#000`
+        ctx.fillStyle = color
         ctx.fillRect( relX, relY, node.boundary.width + 1, node.boundary.height + 1 )
       }
     }
@@ -132,10 +160,12 @@ export default class World {
   #height: number
   #maxTerrainDepth: number
 
-  #colors: Record<string, string> = {
-    land: `#4a7c44`,  // Green
-    beach: `#d2b48c`, // yellow
-    water: `#1e90ff`, // Blue
+  #colors: WorldColors = {
+    jungle: [ `#1a4314` ], // Dark green
+    forest: [ `#4a7c44`, `#4b7d44` ], // Green
+    desert: [ `#f3e5ab` ], // Light yellow
+    beach: [ `#d2b48c`, `#d3b98c` ], // Yellow
+    water: [ `#1e90ff`, `#1e80ff` ], // Blue
   }
 
   constructor( config:WorldConfig ) {
@@ -186,31 +216,46 @@ export default class World {
   }
 
   #generateChunks() {
+    const getTerrainElevation = (node:Quadtree) => {
+      const center = Rect.getCenter( node.boundary )
+
+      const scale = 0.001
+      const e = (this.#noise2D( center.x * scale, center.y * scale ) + 1) / 2
+
+      const dx = (center.x / this.#width) - 0.5
+      const dy = (center.y / this.#height) - 0.5
+      const dist = Math.sqrt( dx * dx + dy * dy ) * 2.2
+
+      return e - dist
+    }
+
+    const getMoisture = (node:Quadtree) => {
+      const center = Rect.getCenter( node.boundary )
+      const scale = 0.001
+
+      return (this.#noise2D( (center.x + 5000) * scale, (center.y + 5000) * scale ) + 1) / 2
+    }
+
+    const hashCoords = (x:number, y:number) => {
+      const h = Math.sin( x * 12.9898 + y * 78.233 ) * 43758.5453123
+      return (h - Math.floor( h )) as 0 | 1
+    }
+
     for (let x = 0;  x < this.#width;  x += this.#chunkSize) {
       for (let y = 0;  y < this.#height;  y += this.#chunkSize) {
         const chunk = new Chunk(
           new Rect( x, y, this.#chunkSize, this.#chunkSize ),
           this.#maxTerrainDepth,
           this.#colors,
-          node => this.#getTerrainElevation( node ),
+          {
+            hashCoords,
+            terrain: node => getTerrainElevation( node ),
+            biome: node => getMoisture( node ),
+          },
         )
 
         this.#chunks.set( `${x},${y}`, chunk )
       }
     }
-  }
-
-  #getTerrainElevation( node:Quadtree ) {
-    const centerX = node.boundary.x + node.boundary.width / 2
-    const centerY = node.boundary.y + node.boundary.height / 2
-
-    const scale = 0.001
-    const e = (this.#noise2D( centerX * scale, centerY * scale ) + 1) / 2
-
-    const dx = (centerX / this.#width) - 0.5
-    const dy = (centerY / this.#height) - 0.5
-    const dist = Math.sqrt( dx * dx + dy * dy ) * 2.2
-
-    return e - dist
   }
 }

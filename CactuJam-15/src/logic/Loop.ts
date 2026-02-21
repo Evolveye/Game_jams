@@ -1,4 +1,5 @@
 export type LoopCallbackData = {
+  iterationsCount: number
   timeDelta: number
   fps: number
 }
@@ -27,6 +28,7 @@ export default class Loop {
 
     const frameInterval = 1000 / this.#targetFps
     let loopOldTimestamp = performance.now()
+    let iterationsCount = 0
 
     const loop = (timestamp:number) => {
       const timeDelta = timestamp - loopOldTimestamp
@@ -34,9 +36,10 @@ export default class Loop {
       const timeMultiplier = timeDelta / frameInterval
 
       loopOldTimestamp = timestamp
+      iterationsCount++
 
       this.#loopId = window.requestAnimationFrame( loop )
-      if (timeMultiplier > 0) loopCb( timeMultiplier, { timeDelta, fps } )
+      if (timeMultiplier > 0) loopCb( timeMultiplier, { iterationsCount, timeDelta, fps } )
     }
 
     loop( performance.now() )
