@@ -1,56 +1,20 @@
-import { Point, Rect } from "./logic/shapes"
+import { Rect } from "./logic/shapes"
 import createTag from "./logic/createTag"
 import World from "./logic/World"
-import Sprite, { SpritesStorage, type SpriteConfig } from "./logic/Sprite"
 import Quadtree from "./logic/Quadtree"
 import Loop from "./logic/Loop"
-import Keys from "./logic/Keys"
 import Camera from "./logic/Camera"
-import humanImgSrc from "./entities/human.png"
-import humanWalkImgSrc from "./entities/human-walk.png"
+import { Men, Women } from "./entities/human"
 
 type GameUi = {
   canvas: HTMLCanvasElement
 }
 
-class Player {
-  sprites = new SpritesStorage({
-    idle: {
-      src: humanImgSrc,
-      framesPerRow: 3,
-      framesPerColumn: 2,
-      framesCount: 4,
-      framePixelsPadding: 1,
-    },
-    walking: {
-      src: humanWalkImgSrc,
-      framesPerRow: 3,
-      framesPerColumn: 2,
-      framesCount: 4,
-      framePixelsPadding: 1,
-    },
-  })
-
-  velocity: Point = new Point( 0, 0 )
-
-  constructor(
-    public boundary:Rect,
-    public tagOn:undefined | string,
-  ) {}
-}
-
 export default class Game {
   world: World
   camera: Camera
-  player: Player
+  player: Women | Men
   loop = new Loop()
-
-  controls = {
-    up: [ Keys.getKeyCode( `w` ), Keys.getKeyCode( `up` ) ],
-    down: [ Keys.getKeyCode( `s` ), Keys.getKeyCode( `down` ) ],
-    left: [ Keys.getKeyCode( `a` ), Keys.getKeyCode( `left` ) ],
-    right: [ Keys.getKeyCode( `d` ), Keys.getKeyCode( `right` ) ],
-  }
 
   ui: GameUi
   ctx: CanvasRenderingContext2D
@@ -74,16 +38,21 @@ export default class Game {
 
     const playerX = this.world.width / 2 - mapUnit / 2
     const playerY = this.world.height / 2 - mapUnit / 2
-    const playerMultiplier = 19
+    const menMultiplier = 19
+    const womenMultiplier = 18
 
-    this.player = new Player(
-      new Rect( playerX, playerY, mapUnit * playerMultiplier, mapUnit * playerMultiplier * 2 ),
+    this.player = new Men(
+      new Rect( playerX, playerY, mapUnit * menMultiplier, mapUnit * menMultiplier * 2 ),
+      this.world.getTileAt( playerX, playerY ),
+    )
+    this.player = new Women(
+      new Rect( playerX, playerY, mapUnit * womenMultiplier * 1, mapUnit * womenMultiplier * 2 ),
       this.world.getTileAt( playerX, playerY ),
     )
 
-    this.camera.follow( this.player.boundary )
+    this.camera.follow( Rect.getCenter( this.player.boundary ) )
 
-    this.loop.startLoop( (mul, { iterationsCount }) => this.draw( mul, iterationsCount, ctx ) )
+    this.loop.startLoop( mul => this.draw( mul, ctx ) )
   }
 
   buildUi() {
@@ -96,55 +65,37 @@ export default class Game {
     document.body.innerHTML = ``
     document.body.appendChild( canvas )
 
+    window.addEventListener( `wheel`, e => {
+      e.preventDefault()
+
+      const zoomSpeed = 0.1
+      if (e.deltaY < 0) {
+        this.camera.zoom = Math.min( this.camera.zoom + zoomSpeed, 3.0 ) // Max 300%
+      } else {
+        this.camera.zoom = Math.max( this.camera.zoom - zoomSpeed, 0.5 ) // Min 50%
+      }
+
+      this.camera.follow( Rect.getCenter( this.player.boundary ) )
+    }, { passive:false } )
+
     return [ ctx, {
       canvas,
     } ] as const
   }
 
-  draw( mul:number, iterationsCount:number, ctx:CanvasRenderingContext2D ) {
-    ctx.save()
+  draw( mul:number, ctx:CanvasRenderingContext2D ) {
     ctx.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height )
 
-    const speed = 5 * mul
-    const playerPos = this.player.boundary
-    const playerVelocity = this.player.velocity
-    const playerCenter = Rect.getCenter( playerPos )
-
-    if (Keys.isPressed( this.controls.up )) playerVelocity.y -= speed
-    if (Keys.isPressed( this.controls.down )) playerVelocity.y += speed
-    if (Keys.isPressed( this.controls.left )) playerVelocity.x -= speed
-    if (Keys.isPressed( this.controls.right )) playerVelocity.x += speed
-
-    let xFlip = false
-    if (playerVelocity.x > 0) this.player.sprites.changeSprite( `walking` )
-    else if (playerVelocity.x < 0) {
-      this.player.sprites.changeSprite( `walking` )
-      xFlip = true
-    } else {
-      if (playerVelocity.y < 0) this.player.sprites.changeSprite( `walking` )
-      else if (playerVelocity.y > 0) {
-        this.player.sprites.changeSprite( `walking` )
-        xFlip = true
-      } else this.player.sprites.changeSprite( `idle` )
-    }
-
-    this.player.boundary.x += playerVelocity.x
-    this.player.boundary.y += playerVelocity.y
-
-    playerVelocity.x = 0
-    playerVelocity.y = 0
-
-    this.player.tagOn = this.world.getTileAt( playerCenter.x, playerCenter.y )
-    this.camera.followSlowly( playerPos )
+    ctx.save()
     this.camera.apply( ctx )
+
+    const playerStepOnCenter = Rect.getCenter( this.player.collideBoundary )
+    this.player.tagOn = this.world.getTileAt( playerStepOnCenter.x, playerStepOnCenter.y )
+
+    this.camera.followSlowly( Rect.getCenter( this.player.boundary ) )
+
     this.world.draw( ctx, this.camera )
-
-    // ctx.strokeStyle = `red`
-    // ctx.rect( playerPos.x, playerPos.y, playerPos.width, playerPos.height )
-    // ctx.stroke()
-
-    if (iterationsCount % 30 === 0) this.player.sprites.current?.nextFrame()
-    this.player.sprites.current?.draw( ctx, playerPos.x, playerPos.y, playerPos.width, playerPos.height, { x:xFlip ? -1 : 1 } )
+    this.player.draw( ctx, mul )
 
     ctx.restore()
   }

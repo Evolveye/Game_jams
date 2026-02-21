@@ -3,6 +3,7 @@ import { Rect, type Point } from "./shapes"
 export default class Camera {
   x: number = 0
   y: number = 0
+  zoom: number = 1
   #worldWidth: number
   #worldHeight: number
 
@@ -16,20 +17,28 @@ export default class Camera {
     this.#worldHeight = worldHeight
   }
 
-  follow( target:Point ) {
-    const targetX = target.x - this.width / 2
-    const targetY = target.y - this.height / 2
+  get visibleWidth() {
+    return this.width / this.zoom
+  }
 
-    this.x = Math.max( 0, Math.min( this.#worldWidth - this.width, targetX ) )
-    this.y = Math.max( 0, Math.min( this.#worldHeight - this.height, targetY ) )
+  get visibleHeight() {
+    return this.height / this.zoom
+  }
+
+  follow( target:Point ) {
+    const targetX = target.x - this.visibleWidth / 2
+    const targetY = target.y - this.visibleHeight / 2
+
+    this.x = Math.max( 0, Math.min( this.#worldWidth - this.visibleWidth, targetX ) )
+    this.y = Math.max( 0, Math.min( this.#worldHeight - this.visibleHeight, targetY ) )
   }
 
   followSlowly( target:Point, lerpFactor = 0.02 ) {
-    const idealX = target.x - this.width / 2
-    const idealY = target.y - this.height / 2
+    const idealX = target.x - this.visibleWidth / 2
+    const idealY = target.y - this.visibleHeight / 2
 
-    const clampedTargetX = Math.max( 0, Math.min( this.#worldWidth - this.width, idealX ) )
-    const clampedTargetY = Math.max( 0, Math.min( this.#worldHeight - this.height, idealY ) )
+    const clampedTargetX = Math.max( 0, Math.min( this.#worldWidth - this.visibleWidth, idealX ) )
+    const clampedTargetY = Math.max( 0, Math.min( this.#worldHeight - this.visibleHeight, idealY ) )
 
     this.x += (clampedTargetX - this.x) * lerpFactor
     this.y += (clampedTargetY - this.y) * lerpFactor
@@ -39,13 +48,24 @@ export default class Camera {
   }
 
   apply( ctx:CanvasRenderingContext2D ) {
+    ctx.translate( this.width / 2, this.height / 2 )
+
+    ctx.scale( this.zoom, this.zoom )
+
     ctx.translate(
-      Math.floor( -this.x ),
-      Math.floor( -this.y ),
+      -(this.x + this.visibleWidth / 2),
+      -(this.y + this.visibleHeight / 2),
     )
   }
 
   intersects( rect:Rect ) {
-    return Rect.intersects( this, rect )
+    const viewport = {
+      x: this.x,
+      y: this.y,
+      width: this.visibleWidth,
+      height: this.visibleHeight,
+    }
+
+    return Rect.intersects( viewport, rect )
   }
 }

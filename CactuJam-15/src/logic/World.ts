@@ -15,7 +15,7 @@ type WorldColorsTint = string
 type WorldColors = Record<string, WorldColorsTint[]>
 type ChunkNoiseFn = (node:Quadtree) => number
 type NoisesFns = {
-  hashCoords: (x:number, y:number) => 1 | 0
+  hashCoords: (x:number, y:number) => number
   terrain: ChunkNoiseFn
   biome: ChunkNoiseFn
 }
@@ -28,6 +28,7 @@ class Chunk {
   #tree: Quadtree
   #colors: WorldColors
   #boundary: Rect
+  #entities: Rect[] = []
 
   constructor( boundary:Rect, maxTerrainDepth:number, colors:WorldColors, noiseFns:NoisesFns ) {
     this.#offscreenCanvas = document.createElement( `canvas` )
@@ -55,7 +56,18 @@ class Chunk {
       this.#offscreenCanvas,
       this.boundary.x,
       this.boundary.y,
+      this.boundary.width + 1, // Dodaj "jeden piksel świata" zapasu
+      this.boundary.height + 1,
     )
+
+    ctx.fillStyle = `pink`
+    for (const entity of this.#entities) {
+      ctx.fillRect( entity.x, entity.y, entity.width, entity.height )
+    }
+  }
+
+  getTileAt( x:number, y:number ) {
+    return this.#findTagInTree( this.#tree, x, y )
   }
 
   #buildTerrain( maxTerrainDepth:number, depth:number, boundary:Rect ) {
@@ -78,10 +90,10 @@ class Chunk {
       if (elevation > 0.15) { // land
         if (moisture > 0.6) {
           node.tags = new Set([ `jungle` ])
-          if (spawnChance > 0.7) node.objects.push( new Rect( node.boundary.x, node.boundary.y, 1, 1 ) ) // Dużo owoców
+          if (spawnChance > 0.999) this.#entities.push( new Rect( node.boundary.x, node.boundary.y, 10, 10 ) ) // Dużo owoców
         } else if (moisture > 0.3) {
           node.tags = new Set([ `forest` ])
-          if (spawnChance > 0.92) node.objects.push( new Rect( node.boundary.x, node.boundary.y, 1, 1 ) ) // Mało owoców
+          if (spawnChance > 0.9995) this.#entities.push( new Rect( node.boundary.x, node.boundary.y, 10, 10 ) ) // Mało owoców
         } else {
           node.tags = new Set([ `desert` ])
         }
@@ -131,10 +143,6 @@ class Chunk {
     this.#needsRedraw = false
   }
 
-  getTileAt( x:number, y:number ) {
-    return this.#findTagInTree( this.#tree, x, y )
-  }
-
   #findTagInTree( node:Quadtree, x:number, y:number ): string | undefined {
     if (!node.division) return node.tags.values().next().value
 
@@ -161,10 +169,10 @@ export default class World {
   #maxTerrainDepth: number
 
   #colors: WorldColors = {
-    jungle: [ `#1a4314` ], // Dark green
+    jungle: [ `#3e6c37` ], // Dark green
     forest: [ `#4a7c44`, `#4b7d44` ], // Green
-    desert: [ `#f3e5ab` ], // Light yellow
-    beach: [ `#d2b48c`, `#d3b98c` ], // Yellow
+    desert: [ `#d2b48c`, `#d3b98c` ], // Dark yellow
+    beach: [ `#f3e5ab`, `#f8e6ab` ], // Light yellow
     water: [ `#1e90ff`, `#1e80ff` ], // Blue
   }
 
@@ -238,7 +246,7 @@ export default class World {
 
     const hashCoords = (x:number, y:number) => {
       const h = Math.sin( x * 12.9898 + y * 78.233 ) * 43758.5453123
-      return (h - Math.floor( h )) as 0 | 1
+      return h - Math.floor( h )
     }
 
     for (let x = 0;  x < this.#width;  x += this.#chunkSize) {
