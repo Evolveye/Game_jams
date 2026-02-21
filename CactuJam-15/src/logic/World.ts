@@ -102,6 +102,26 @@ class Chunk {
     drawNode( this.#tree )
     this.#needsRedraw = false
   }
+
+  getTileAt( x:number, y:number ) {
+    return this.#findTagInTree( this.#tree, x, y )
+  }
+
+  #findTagInTree( node:Quadtree, x:number, y:number ): string | undefined {
+    if (!node.division) return node.tags.values().next().value
+
+    const { x:bx, y:by, width, height } = node.boundary
+    const midX = bx + width / 2
+    const midY = by + height / 2
+
+    if (x < midX) {
+      if (y < midY) return this.#findTagInTree( node.division.northwest, x, y )
+      return this.#findTagInTree( node.division.southwest, x, y )
+    } else {
+      if (y < midY) return this.#findTagInTree( node.division.northeast, x, y )
+      return this.#findTagInTree( node.division.southeast, x, y )
+    }
+  }
 }
 
 export default class World {
@@ -149,6 +169,22 @@ export default class World {
     return this.#maxTerrainDepth
   }
 
+  getTileAt( x:number, y:number ): string | undefined {
+    const cx = Math.floor( x / this.#chunkSize ) * this.#chunkSize
+    const cy = Math.floor( y / this.#chunkSize ) * this.#chunkSize
+    const chunk = this.#chunks.get( `${cx},${cy}` )
+
+    return chunk?.getTileAt( x, y )
+  }
+
+  draw( ctx:CanvasRenderingContext2D, camera:Camera ) {
+    for (const chunk of this.#chunks.values()) {
+      if (camera.intersects( chunk.boundary )) {
+        chunk.draw( ctx )
+      }
+    }
+  }
+
   #generateChunks() {
     for (let x = 0;  x < this.#width;  x += this.#chunkSize) {
       for (let y = 0;  y < this.#height;  y += this.#chunkSize) {
@@ -176,13 +212,5 @@ export default class World {
     const dist = Math.sqrt( dx * dx + dy * dy ) * 2.2
 
     return e - dist
-  }
-
-  draw( ctx:CanvasRenderingContext2D, camera:Camera ) {
-    for (const chunk of this.#chunks.values()) {
-      if (camera.intersects( chunk.boundary )) {
-        chunk.draw( ctx )
-      }
-    }
   }
 }

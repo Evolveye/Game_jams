@@ -6,6 +6,10 @@ export class Rect {
     public height:number,
   ) {}
 
+  static getCenter( rect:Rect ) {
+    return new Point( rect.x + rect.width / 2, rect.y + rect.height / 2 )
+  }
+
   static contains( container:Rect, containing:Rect ): boolean {
     return (
       containing.x >= container.x && containing.x < container.x + container.width &&

@@ -10,10 +10,17 @@ type GameUi = {
   canvas: HTMLCanvasElement
 }
 
+class Entity {
+  constructor(
+    public boundary:Rect,
+    public tagOn:undefined | string,
+  ) {}
+}
+
 export default class Game {
   world: World
   camera: Camera
-  player: Rect
+  player: Entity
   loop = new Loop()
 
   controls = {
@@ -42,9 +49,16 @@ export default class Game {
 
     this.camera = new Camera( ui.canvas.width, ui.canvas.height, this.world.width, this.world.height )
     const playerWidth = Quadtree.getNodeSize( this.world.chunkSize, this.world.maxTerrainDepth )
-    this.player = new Rect( this.world.width / 2 - playerWidth / 2, this.world.height / 2 - playerWidth / 2, playerWidth, playerWidth )
 
-    this.camera.follow( this.player )
+    const playerX = this.world.width / 2 - playerWidth / 2
+    const playerY = this.world.height / 2 - playerWidth / 2
+
+    this.player = new Entity(
+      new Rect( playerX, playerY, playerWidth, playerWidth ),
+      this.world.getTileAt( playerX, playerY ),
+    )
+
+    this.camera.follow( this.player.boundary )
 
     this.loop.startLoop( () => this.draw( ctx ) )
   }
@@ -68,19 +82,22 @@ export default class Game {
     ctx.save()
     ctx.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height )
 
-    const speed = 2
+    const speed = 1
+    const playerPos = this.player.boundary
+    const playerCenter = Rect.getCenter( playerPos )
 
-    if (Keys.isPressed( this.controls.up )) this.player.y -= speed
-    if (Keys.isPressed( this.controls.down )) this.player.y += speed
-    if (Keys.isPressed( this.controls.left )) this.player.x -= speed
-    if (Keys.isPressed( this.controls.right )) this.player.x += speed
+    if (Keys.isPressed( this.controls.up )) playerPos.y -= speed
+    if (Keys.isPressed( this.controls.down )) playerPos.y += speed
+    if (Keys.isPressed( this.controls.left )) playerPos.x -= speed
+    if (Keys.isPressed( this.controls.right )) playerPos.x += speed
 
-    this.camera.followSlowly( this.player )
+    this.player.tagOn = this.world.getTileAt( playerCenter.x, playerCenter.y )
+    this.camera.followSlowly( playerPos )
     this.camera.apply( ctx )
     this.world.draw( ctx, this.camera )
 
     ctx.fillStyle = `white`
-    ctx.fillRect( this.player.x, this.player.y, this.player.width, this.player.height )
+    ctx.fillRect( playerPos.x, playerPos.y, playerPos.width, playerPos.height )
 
     ctx.restore()
   }
