@@ -35,22 +35,7 @@ export default class Quadtree<T = unknown> {
 
     const oldObjects = [ ...this.objects ]
     this.objects = []
-    oldObjects.forEach( o => this.recursiveInsert( o ) )
-  }
-
-  recursiveInsert( rect:Rect ) {
-    if (!Rect.contains( this.boundary, rect )) return
-
-    if (!this.division && this.objects.length < Quadtree.capacity) {
-      this.objects.push( rect )
-      return
-    }
-
-    if (!this.division) this.subdivide()
-    this.division!.northwest.recursiveInsert( rect )
-    this.division!.northeast.recursiveInsert( rect )
-    this.division!.southwest.recursiveInsert( rect )
-    this.division!.southeast.recursiveInsert( rect )
+    oldObjects.forEach( o => this.#recursiveInsert( o ) )
   }
 
   attemptCollapse() {
@@ -77,5 +62,24 @@ export default class Quadtree<T = unknown> {
         ...southwest.tags, ...southeast.tags,
       ])
     }
+  }
+
+  #recursiveInsert( rect:Rect ) {
+    if (!Rect.contains( this.boundary, rect )) return
+
+    if (!this.division && this.objects.length < Quadtree.capacity) {
+      this.objects.push( rect )
+      return
+    }
+
+    if (!this.division) this.subdivide()
+    this.division!.northwest.#recursiveInsert( rect )
+    this.division!.northeast.#recursiveInsert( rect )
+    this.division!.southwest.#recursiveInsert( rect )
+    this.division!.southeast.#recursiveInsert( rect )
+  }
+
+  static getNodeSize( size:number, depth:number ) {
+    return size >> depth
   }
 }

@@ -1,24 +1,19 @@
-import { Point } from "./world/shapes"
-import Camera from "./world/Camera"
-import World from "./world"
-import createTag from "./createTag"
-import Loop from "./Loop"
-import Keys from "./Keys"
+import { Rect } from "./logic/shapes"
+import createTag from "./logic/createTag"
+import World from "./logic/World"
+import Quadtree from "./logic/Quadtree"
+import Loop from "./logic/Loop"
+import Keys from "./logic/Keys"
+import Camera from "./logic/Camera"
 
 type GameUi = {
   canvas: HTMLCanvasElement
 }
 
 export default class Game {
-  world = new World({
-    seed: 1.2,
-    chunkSize: 256,
-    widthInChunks: 8,
-    heightInChunks: 8,
-    maxTerrainDepth: 4,
-  })
+  world: World
   camera: Camera
-  player: Point
+  player: Rect
   loop = new Loop()
 
   controls = {
@@ -36,15 +31,30 @@ export default class Game {
 
     this.ui = ui
     this.ctx = ctx
-    this.loop.startLoop( () => this.draw( ctx ) )
+
+    this.world = new World({
+      seed: 1.2,
+      chunkSize: 256,
+      widthInChunks: 16,
+      heightInChunks: 16,
+      maxTerrainDepth: 5,
+    })
+
     this.camera = new Camera( ui.canvas.width, ui.canvas.height, this.world.width, this.world.height )
-    this.player = new Point( this.world.width / 2, this.world.height / 2 )
+    const playerWidth = Quadtree.getNodeSize( this.world.chunkSize, this.world.maxTerrainDepth )
+    this.player = new Rect( this.world.width / 2 - playerWidth / 2, this.world.height / 2 - playerWidth / 2, playerWidth, playerWidth )
+
+    this.camera.follow( this.player )
+
+    this.loop.startLoop( () => this.draw( ctx ) )
   }
 
   buildUi() {
-    const canvas = createTag<HTMLCanvasElement>( `canvas`, { width:1000, height:800 } )
+    const canvas = createTag<HTMLCanvasElement>( `canvas`, { width:window.innerWidth, height:window.innerHeight } )
     const ctx = canvas.getContext( `2d` )
     if (!ctx) throw `guard`
+
+    ctx.imageSmoothingEnabled = false
 
     document.body.innerHTML = ``
     document.body.appendChild( canvas )
@@ -65,13 +75,12 @@ export default class Game {
     if (Keys.isPressed( this.controls.left )) this.player.x -= speed
     if (Keys.isPressed( this.controls.right )) this.player.x += speed
 
-    this.camera.follow( this.player )
+    this.camera.followSlowly( this.player )
     this.camera.apply( ctx )
     this.world.draw( ctx, this.camera )
 
     ctx.fillStyle = `white`
-    ctx.fillRect( this.player.x - 4, this.player.y - 4, 8, 8 )
-
+    ctx.fillRect( this.player.x, this.player.y, this.player.width, this.player.height )
 
     ctx.restore()
   }

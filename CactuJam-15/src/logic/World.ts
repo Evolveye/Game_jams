@@ -142,6 +142,13 @@ export default class World {
     return this.#height
   }
 
+  get chunkSize() {
+    return this.#chunkSize
+  }
+  get maxTerrainDepth() {
+    return this.#maxTerrainDepth
+  }
+
   #generateChunks() {
     for (let x = 0;  x < this.#width;  x += this.#chunkSize) {
       for (let y = 0;  y < this.#height;  y += this.#chunkSize) {
@@ -161,7 +168,7 @@ export default class World {
     const centerX = node.boundary.x + node.boundary.width / 2
     const centerY = node.boundary.y + node.boundary.height / 2
 
-    const scale = 0.003
+    const scale = 0.001
     const e = (this.#noise2D( centerX * scale, centerY * scale ) + 1) / 2
 
     const dx = (centerX / this.#width) - 0.5
@@ -173,7 +180,7 @@ export default class World {
 
   draw( ctx:CanvasRenderingContext2D, camera:Camera ) {
     for (const chunk of this.#chunks.values()) {
-      if (Rect.intersects( chunk.boundary, camera )) {
+      if (camera.intersects( chunk.boundary )) {
         chunk.draw( ctx )
       }
     }
