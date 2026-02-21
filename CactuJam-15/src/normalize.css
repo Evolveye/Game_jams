@@ -1,0 +1,71 @@
+@layer reset {
+  * {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
+
+  body {
+    line-height: 1em;
+  }
+
+  template {
+    display: none !important;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    text-wrap: balance;
+  }
+
+  ol, ul {
+    list-style-type: none;
+  }
+
+  img {
+    max-width: 100%;
+    height: unset;
+    vertical-align: top;
+  }
+
+  svg {
+    vertical-align: middle;
+  }
+
+  fieldset {
+    border: none;
+  }
+
+  a {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  button {
+    line-height: 1em;
+  }
+
+  input:not( [type="radio"], [type="checkbox"], [hidden] ) {
+    display: block;
+    padding: 0;
+    border: none;
+    background-color: unset;
+  }
+
+  input[type="search"]::-webkit-search-decoration,
+  input[type="search"]::-webkit-search-cancel-button {
+    appearance: none;
+  }
+
+  input[type="date"]::-webkit-inner-spin-button,
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    appearance: none;
+    display: none;
+  }
+
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+}
