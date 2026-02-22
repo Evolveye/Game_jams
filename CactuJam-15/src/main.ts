@@ -1,4 +1,5 @@
 import "./normalize.css"
+import "./typography.css"
 import "./main.css"
 import Game from "./Game"
 

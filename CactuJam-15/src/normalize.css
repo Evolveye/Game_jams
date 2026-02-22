@@ -42,7 +42,11 @@
   }
 
   button {
+    background-color: unset;
+    border: none;
     line-height: 1em;
+    color: inherit;
+    font: inherit;
   }
 
   input:not( [type="radio"], [type="checkbox"], [hidden] ) {

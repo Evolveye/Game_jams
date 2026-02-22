@@ -1,0 +1,19 @@
+h1 {
+  line-height: 2em;
+}
+
+h2 {
+  margin-top: 2lh;
+  line-height: 1em;
+}
+
+dl {
+  margin-left: 1em;
+}
+dt {
+  margin-top: 1em;
+}
+
+dd {
+  margin-left: 1em;
+}

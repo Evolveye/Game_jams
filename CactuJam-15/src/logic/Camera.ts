@@ -7,8 +7,15 @@ export default class Camera {
   #worldWidth: number
   #worldHeight: number
   cursorElement?: HTMLElement
-  pointerDown = false
+  activePointers = {
+    mouseRight: false,
+    mouseLeft: false,
+  }
   pointerPos = {
+    inGame: {
+      x: 0,
+      y: 0,
+    },
     x: 0,
     y: 0,
   }
@@ -25,8 +32,10 @@ export default class Camera {
     this.cursorElement = cursorElement
 
     window.addEventListener( `mousemove`, ({ clientX, clientY }) => {
-      this.pointerPos.x = this.x + (clientX / this.zoom)
-      this.pointerPos.y = this.y + (clientY / this.zoom)
+      this.pointerPos.inGame.x = this.x + (clientX / this.zoom)
+      this.pointerPos.inGame.y = this.y + (clientY / this.zoom)
+      this.pointerPos.x = clientX
+      this.pointerPos.y = clientY
 
       if (cursorElement) requestAnimationFrame( () => {
         cursorElement.style.left = `${clientX}px`
@@ -34,8 +43,20 @@ export default class Camera {
       } )
     } )
 
-    window.addEventListener( `pointerdown`, () => this.pointerDown = true )
-    window.addEventListener( `pointerup`, () => this.pointerDown = false )
+    window.addEventListener( `pointerdown`, e => {
+      if (e.target instanceof HTMLElement && e.target.tagName !== `CANVAS`) return
+
+      switch (e.button) {
+        case 0: this.activePointers.mouseLeft = true; break
+        case 2: this.activePointers.mouseRight = true; break
+      }
+    } )
+    window.addEventListener( `pointerup`, e => {
+      switch (e.button) {
+        case 0: this.activePointers.mouseLeft = false; break
+        case 2: this.activePointers.mouseRight = false; break
+      }
+    } )
   }
 
   get visibleWidth() {

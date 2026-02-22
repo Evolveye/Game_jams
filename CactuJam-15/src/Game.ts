@@ -7,11 +7,14 @@ import Loop from "./logic/Loop"
 import Keys from "./logic/Keys"
 import Camera from "./logic/Camera"
 import { HumanEntity } from "./entities/human"
+import fruitImgSrc from "./entities/fruit-static.png"
 import arrowHeadImgSrc from "./entities/arrowHead.png"
 
 type GameUi = {
   canvas: HTMLCanvasElement
   cursor: HTMLElement
+  contextmenu: HTMLDivElement
+  fruitsCount: HTMLSpanElement
 }
 
 export default class Game {
@@ -56,18 +59,87 @@ export default class Game {
   }
 
   buildUi() {
+    // DOM
     const canvas = createTag<HTMLCanvasElement>( `canvas`, { width:window.innerWidth, height:window.innerHeight } )
     const ctx = canvas.getContext( `2d` )
-    if (!ctx) throw `guard`
+    if (!ctx) throw new Error( `Cannot create canvas context 2D` )
 
     ctx.imageSmoothingEnabled = false
 
-    document.body.innerHTML = ``
-    document.body.appendChild( canvas )
+
+    const fruitsCount = createTag( `span`, { children:0 } )
+    const menu = createTag<HTMLDivElement>( `article`, {
+      id: `menu`,
+      children: [
+        createTag( `section`, { children: [
+          createTag( `hgroup`, { children: [
+            createTag( `h1`, { children:`Wyspa golasów` } ),
+            createTag( `p`, { children:`Alternatywna historia pierwszych ludzi` } ),
+          ] } ),
+          createTag( `hr` ),
+          createTag( `p`, { children:`Jesteś nieśmiertelny!` } ),
+          createTag( `p`, { children:`Przynajmniej do czasu. Zebranie pierwszego owocu sprowadzi śmierć na ten swiat.` } ),
+          createTag( `h2`, { children:`Sterowanie` } ),
+          createTag( `p`, { children: createTag( `dl`, { children: [
+            createTag( `dt`, { children: [
+              createTag( `b`, { children:`W` } ),
+              `, `,
+              createTag( `b`, { children:`S` } ),
+              `, `,
+              createTag( `b`, { children:`A` } ),
+              `, `,
+              createTag( `b`, { children:`D` } ),
+              `, `,
+              createTag( `b`, { children:`Strzałki` } ),
+            ] } ),
+            createTag( `dd`, { children:`Poruszanie się` } ),
+            createTag( `dt`, { children:`Lewy przycisk myszy` } ),
+            createTag( `dd`, { children:`Wykonywanie akcji` } ),
+            createTag( `dt`, { children:`Prawy przycisk myszy` } ),
+            createTag( `dd`, { children:`menu kontekstowe (na niektóych elementach)` } ),
+          ] } ) } ),
+          createTag( `h2`, { children:`Znikoma instrukcja` } ),
+          createTag( `p`, { children:`Podchodź do przedmiotów;` } ),
+          createTag( `p`, { children:`wykonuj na nich akcje;` } ),
+          createTag( `p`, { children:`rozmnażaj się!` } ),
+          createTag( `p`, { children:`Im dłuzej przetrwasz, tym lepiej` } ),
+        ] } ),
+
+        createTag( `section`, { children: [
+          createTag( `h2`, { children:`Przedmioty postaci` } ),
+          createTag( `div`, { class: `stat`, children: [
+            createTag( `img`, { width:22, height:22, src:fruitImgSrc } ),
+            createTag( `p`, { children:`Liczba owoców:` } ),
+            fruitsCount,
+          ] } ),
+        ] } ),
+      ],
+    } )
+
+    const contextmenu = createTag<HTMLDivElement>( `div`, {
+      id: `contextmenu`,
+      children: [
+        createTag( `button`, {
+          class: `fastAction`,
+          children: [
+            `Przekaż owoc`,
+            createTag( `img`, { src:fruitImgSrc } ),
+          ],
+        } ),
+
+      ],
+    } )
 
     const cursor = createTag<HTMLElement>( `i`, { id:`cursor` } )
+
+    document.body.innerHTML = ``
+    document.body.appendChild( canvas )
+    document.body.appendChild( menu )
+    document.body.appendChild( contextmenu )
     document.body.appendChild( cursor )
 
+
+    // Events
     window.addEventListener( `wheel`, e => {
       e.preventDefault()
 
@@ -81,13 +153,21 @@ export default class Game {
       this.camera.follow( Rect.getCenter( this.player.boundary ) )
     }, { passive:false } )
 
-    window.addEventListener( `click`, ({ clientX, clientY }) => {
-      console.log( `%cAt (${clientX}, ${clientY}) is %c${this.world.getTileAt( this.camera.pointerPos.x, this.camera.pointerPos.y )}`, `color:gray`, `font-weight:bold` )
+    window.addEventListener( `pointerdown`, e => {
+      if (!(e.target instanceof HTMLElement)) return
+      if (!e.target.closest( `#contextmenu` )) contextmenu.style.display = ``
+      console.log( `%cAt (${e.clientX}, ${e.clientY}) is %c${this.world.getTileAt( this.camera.pointerPos.inGame.x, this.camera.pointerPos.inGame.y )}`, `color:gray`, `font-weight:bold` )
     }, { passive:false } )
 
+    window.addEventListener( `contextmenu`, e => e.preventDefault(), { passive:false } )
+
+
+    // Return
     return [ ctx, {
       canvas,
       cursor,
+      contextmenu,
+      fruitsCount,
     } ] as const
   }
 
@@ -96,6 +176,22 @@ export default class Game {
 
     this.player.sprites.changeSprite( `idle` )
     this.player = entity
+  }
+
+  toggleContextMenu( show:boolean ) {
+    const { contextmenu } = this.ui
+
+    if (contextmenu.style.display === `block`) {
+      if (show) return
+
+      contextmenu.style.display = ``
+    } else {
+      if (!show) return
+
+      contextmenu.style.left = `${this.camera.pointerPos.x}px`
+      contextmenu.style.top = `${this.camera.pointerPos.y}px`
+      contextmenu.style.display = `block`
+    }
   }
 
   draw( ctx:CanvasRenderingContext2D, timeMultiplier:number, iterationsCount:number ) {
@@ -161,9 +257,14 @@ export default class Game {
       e => e !== player && Rect.getDistance( player.collideBoundary, e.collideBoundary ?? e.boundary ) < 25,
     )
 
+    const cursorEntity = this.world.findEntityNear<Drawable>(
+      camera.pointerPos.inGame.x, camera.pointerPos.inGame.y, 1,
+      e => e !== player && Rect.containsPoint( e.boundary, camera.pointerPos.inGame ),
+    )
+
     ctx.fillStyle = `#aaa`
     for (const entity of nearEntitiesGen) {
-      if (Rect.containsPoint( entity.boundary, camera.pointerPos )) {
+      if (Rect.containsPoint( entity.boundary, camera.pointerPos.inGame )) {
         camera.updateCursor( `action` )
         cursorChanged = true
         ctx.fillStyle = `#fff`
@@ -172,15 +273,16 @@ export default class Game {
       } else {
         ctx.fillRect( entity.boundary.x, entity.boundary.y + entity.boundary.height - 2, entity.boundary.width, 2 )
       }
+
+      if (entity === cursorEntity) {
+        if (cursorEntity instanceof HumanEntity) {
+          if (camera.activePointers.mouseRight) this.toggleContextMenu( true )
+        }
+      }
     }
 
-    const cursorEntity = this.world.findEntityNear<Drawable>(
-      camera.pointerPos.x, camera.pointerPos.y, 1,
-      e => e !== player && Rect.containsPoint( e.boundary, camera.pointerPos ),
-    )
-
     if (cursorEntity instanceof HumanEntity) {
-      if (camera.pointerDown) this.changePlayer( cursorEntity )
+      if (camera.activePointers.mouseLeft) this.changePlayer( cursorEntity )
       if (!cursorChanged) {
         cursorChanged = true
         camera.updateCursor( `action` )

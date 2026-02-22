@@ -1,11 +1,77 @@
 body {
   background-color: black;
+  image-rendering: pixelated;
+  font-family: monospace;
+  cursor: none;
+}
+
+button {
+  cursor: none;
+  user-select: none;
 }
 
 canvas {
   position: absolute;
   inset: 0;
-  cursor: none;
+}
+
+#menu {
+  position: fixed;
+  right: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100dvh;
+  width: 250px;
+  padding: 8px;
+  background-color: #000a;
+  color: #fafafa;
+
+  & hr {
+    margin: 30px auto;
+    width: 50%;
+  }
+
+  & hgroup {
+    text-align: center;
+  }
+
+  & p {
+    margin-block: 15px;
+  }
+
+  & .stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+#contextmenu {
+  position: fixed;
+  padding: 8px;
+  background-color: #557;
+  display: none;
+  color: black;
+
+  & .fastAction {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background-image: linear-gradient( 45deg, #f3e5ab, #d2b48c );
+
+    &:active {
+      background-image: linear-gradient( 45deg, #d2b48c, #f3e5ab );
+    }
+
+    & img {
+      width: 32px;
+      height: 32px;
+    }
+  }
 }
 
 #cursor {
@@ -15,19 +81,21 @@ canvas {
   background-image: url( "./cursor.png" );
   background-repeat: no-repeat;
   background-size: contain;
-  image-rendering: pixelated;
   pointer-events: none;
   z-index: 9999;
-
-  &.action {
-    background-image: url( "./cursor-action.gif" );
-    translate: -50% -50%;
-    height: 64px;
-
-    canvas:active ~ & {
-      height: 32px;
-      background-image: url( "./cursor-active.png" );
-      translate: -50% -75%;
-    }
-  }
 }
+
+
+body:has( button:hover ) #cursor,
+canvas:hover ~ #cursor.action {
+  background-image: url( "./cursor-action.gif" );
+  translate: -50% -50%;
+  height: 64px;
+}
+
+body:has( button:active ) #cursor,
+canvas:active ~ #cursor.action {
+    height: 32px;
+    background-image: url( "./cursor-active.png" );
+    translate: -50% -75%;
+  }

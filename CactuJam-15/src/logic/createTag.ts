@@ -2,8 +2,10 @@ type EventHandlers = {
   [K in keyof HTMLElementEventMap as `on${Capitalize<K>}`]?:(this:HTMLElement, ev:HTMLElementEventMap[K]) => void
 }
 
+type Arrayable<T> = T | T[]
+
 type CustomProperties = {
-  children?: number | string | HTMLElement | (() => HTMLElement)
+  children?: Arrayable<number | string | HTMLElement | (() => HTMLElement)>
 }
 
 type Properties = EventHandlers & CustomProperties & {
@@ -24,12 +26,20 @@ export default function createTag<T extends HTMLElement>( tag:string, { children
     }
   }
 
-  switch (typeof children) {
-    case `object`: element.appendChild( children ); break
-    case `function`: element.appendChild( children() ); break
-    case `string`: element.append( children ); break
-    case `number`: element.append( `${children}` ); break
+  const renderChildren = (children:CustomProperties[`children`]) => {
+    switch (typeof children) {
+      case `object`:
+        if (Array.isArray( children )) {
+          for (const c of children) renderChildren( c )
+          break
+        } else element.appendChild( children ); break
+      case `function`: element.appendChild( children() ); break
+      case `string`: element.append( children ); break
+      case `number`: element.append( `${children}` ); break
+    }
   }
+
+  renderChildren( children )
 
   return element
 }
