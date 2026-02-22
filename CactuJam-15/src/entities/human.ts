@@ -16,6 +16,10 @@ export class HumanEntity implements Drawable {
   #drawCount = 0
   velocity: Point = new Point( 0, 0 )
   collideBoundary: Rect
+  locked = false
+  inventory = {
+    fruits: 0,
+  }
 
   belowSurface = false
 

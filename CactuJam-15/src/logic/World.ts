@@ -247,6 +247,7 @@ export default class World {
   get chunkSize() {
     return this.#chunkSize
   }
+
   get maxTerrainDepth() {
     return this.#maxTerrainDepth
   }
@@ -267,6 +268,20 @@ export default class World {
       x: Math.floor( x / this.#chunkSize ) * this.#chunkSize,
       y: Math.floor( y / this.#chunkSize ) * this.#chunkSize,
     }
+  }
+
+  despawnEntity( x:number, y:number, entity:Drawable ) {
+    const chunk = this.#getChunkAt( x, y )
+    if (!chunk) return false
+
+    chunk.despawn( entity )
+  }
+
+  spawnEntity( x:number, y:number, entity:Drawable ) {
+    const chunk = this.#getChunkAt( x, y )
+    if (!chunk) return false
+
+    chunk.spawn( entity )
   }
 
   drawTerrain( drawData:DrawData ) {

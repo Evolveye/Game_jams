@@ -6,8 +6,11 @@ import Sprite from "./logic/Sprite"
 import Loop from "./logic/Loop"
 import Keys from "./logic/Keys"
 import Camera from "./logic/Camera"
-import { HumanEntity } from "./entities/human"
+import { HumanEntity, Men, Women } from "./entities/human"
+import heartImgSrc from "./entities/heart.png"
 import fruitImgSrc from "./entities/fruit-static.png"
+import { Fruit } from "./entities/fruit"
+import { Copulation } from "./entities/copulation"
 import arrowHeadImgSrc from "./entities/arrowHead.png"
 
 type GameUi = {
@@ -29,8 +32,15 @@ export default class Game {
   camera: Camera
   player: HumanEntity
   loop = new Loop()
+  copulations = new Set<Copulation>()
+
+  settings = {
+    copulationFruits: 10,
+    copulationTimeSec: 1,
+  }
 
   ui: GameUi
+  contextMenuEntity: undefined | Drawable
   ctx: CanvasRenderingContext2D
 
   constructor() {
@@ -118,15 +128,48 @@ export default class Game {
 
     const contextmenu = createTag<HTMLDivElement>( `div`, {
       id: `contextmenu`,
+      class: `hidden`,
       children: [
         createTag( `button`, {
           class: `fastAction`,
+          onClick: () => {
+            if (this.contextMenuEntity instanceof HumanEntity) {
+              if (this.player.inventory.fruits === 0) return
+
+              this.player.inventory.fruits--
+              this.contextMenuEntity.inventory.fruits++
+              fruitsCount.innerHTML = `${this.player.inventory.fruits}`
+            }
+          },
           children: [
             `Przekaż owoc`,
             createTag( `img`, { src:fruitImgSrc } ),
           ],
         } ),
+        createTag( `button`, {
+          class: `fastAction`,
+          onClick: () => {
+            if (this.contextMenuEntity instanceof HumanEntity) {
+              if (this.player.inventory.fruits === 0) return
 
+              this.player.inventory.fruits -= this.settings.copulationFruits
+              this.contextMenuEntity.inventory.fruits -= this.settings.copulationFruits
+              fruitsCount.innerHTML = `${this.player.inventory.fruits}`
+
+              this.copulate( this.player, this.contextMenuEntity )
+            }
+          },
+          "data-only": `couple`,
+          children: [
+            `Kopuluj`,
+            createTag( `img`, { src:heartImgSrc } ),
+            createTag( `span`, { children: [
+              `Wymaga ${this.settings.copulationFruits}`,
+              createTag( `img`, { src:fruitImgSrc } ),
+            ] } ),
+            `u każdego osobnika`,
+          ],
+        } ),
       ],
     } )
 
@@ -155,7 +198,7 @@ export default class Game {
 
     window.addEventListener( `pointerdown`, e => {
       if (!(e.target instanceof HTMLElement)) return
-      if (!e.target.closest( `#contextmenu` )) contextmenu.style.display = ``
+      if (!e.target.closest( `#contextmenu` )) this.toggleContextMenu( false )
       console.log( `%cAt (${e.clientX}, ${e.clientY}) is %c${this.world.getTileAt( this.camera.pointerPos.inGame.x, this.camera.pointerPos.inGame.y )}`, `color:gray`, `font-weight:bold` )
     }, { passive:false } )
 
@@ -171,26 +214,46 @@ export default class Game {
     } ] as const
   }
 
-  changePlayer( entity?:HumanEntity ) {
+  changePlayer( entity?:HumanEntity, options:{ withoutSpriteChange?: boolean } = {} ) {
     if (!entity || this.player === entity) return
 
-    this.player.sprites.changeSprite( `idle` )
+    if (!options.withoutSpriteChange) this.player.sprites.changeSprite( `idle` )
     this.player = entity
+    this.ui.fruitsCount.innerHTML = `${this.player.inventory.fruits}`
   }
 
   toggleContextMenu( show:boolean ) {
     const { contextmenu } = this.ui
 
-    if (contextmenu.style.display === `block`) {
+    this.camera.activePointers.mouseRight = false
+    this.contextMenuEntity = this.world.findEntityNear<Drawable>(
+      this.camera.pointerPos.inGame.x, this.camera.pointerPos.inGame.y, 1,
+      e => e !== this.player && Rect.containsPoint( e.boundary, this.camera.pointerPos.inGame ),
+    )
+
+    if (!contextmenu.classList.contains( `hidden` )) {
       if (show) return
 
-      contextmenu.style.display = ``
+      contextmenu.classList.add( `hidden` )
+      contextmenu.querySelectorAll( `[data-only]` ).forEach( ele => {
+        if (ele instanceof HTMLElement) ele.classList.remove( `showed` )
+      } )
     } else {
       if (!show) return
 
       contextmenu.style.left = `${this.camera.pointerPos.x}px`
       contextmenu.style.top = `${this.camera.pointerPos.y}px`
-      contextmenu.style.display = `block`
+
+      const isCouple = this.contextMenuEntity instanceof Men && this.player instanceof Women
+        || this.contextMenuEntity instanceof Women && this.player instanceof Men
+
+      if (isCouple) contextmenu.querySelectorAll( `[data-only="couple"]` ).forEach( ele => {
+        if (ele instanceof HTMLElement) {
+          ele.classList.add( `showed` )
+        }
+      } )
+
+      contextmenu.classList.remove( `hidden` )
     }
   }
 
@@ -198,7 +261,7 @@ export default class Game {
     // Dead player processing
     if (this.player.stage === `dead`) {
       const newPlayer = this.world.findEntityNear<HumanEntity>( this.world.width / 2, this.world.height / 2, Infinity, e => e instanceof HumanEntity && e.stage !== `dead` )
-      if (newPlayer) this.player = newPlayer
+      if (newPlayer) this.changePlayer( newPlayer, { withoutSpriteChange:true } )
       else alert( `Game over` )
     }
 
@@ -220,33 +283,35 @@ export default class Game {
 
 
     // Player logic
-    if (Keys.isPressed( controls.up )) playerVelocity.y -= speed
-    if (Keys.isPressed( controls.down )) playerVelocity.y += speed
-    if (Keys.isPressed( controls.left )) playerVelocity.x -= speed
-    if (Keys.isPressed( controls.right )) playerVelocity.x += speed
+    if (!player.locked) {
+      if (Keys.isPressed( controls.up )) playerVelocity.y -= speed
+      if (Keys.isPressed( controls.down )) playerVelocity.y += speed
+      if (Keys.isPressed( controls.left )) playerVelocity.x -= speed
+      if (Keys.isPressed( controls.right )) playerVelocity.x += speed
 
-    playerFlip.x = false
-    if (player.velocity.x > 0) player.sprites.changeSprite( `walking` )
-    else if (playerVelocity.x < 0) {
-      player.sprites.changeSprite( `walking` )
-      playerFlip.x = true
-    } else {
-      if (playerVelocity.y < 0) player.sprites.changeSprite( `walking` )
-      else if (playerVelocity.y > 0) {
+      playerFlip.x = false
+      if (player.velocity.x > 0) player.sprites.changeSprite( `walking` )
+      else if (playerVelocity.x < 0) {
         player.sprites.changeSprite( `walking` )
         playerFlip.x = true
-      } else player.sprites.changeSprite( `idle` )
+      } else {
+        if (playerVelocity.y < 0) player.sprites.changeSprite( `walking` )
+        else if (playerVelocity.y > 0) {
+          player.sprites.changeSprite( `walking` )
+          playerFlip.x = true
+        } else player.sprites.changeSprite( `idle` )
+      }
+
+
+      playerPos.x += playerVelocity.x
+      playerPos.y += playerVelocity.y
+      player.updateBoundaries()
+
+      this.world.moveEntity( posBefore, player )
+
+      playerVelocity.x = 0
+      playerVelocity.y = 0
     }
-
-
-    playerPos.x += playerVelocity.x
-    playerPos.y += playerVelocity.y
-    player.updateBoundaries()
-
-    this.world.moveEntity( posBefore, player )
-
-    playerVelocity.x = 0
-    playerVelocity.y = 0
 
 
     // World draw
@@ -254,7 +319,7 @@ export default class Game {
 
     const nearEntitiesGen = this.world.getNearEntitiesGenerator<Drawable>(
       posBefore.x, posBefore.y, 1,
-      e => e !== player && Rect.getDistance( player.collideBoundary, e.collideBoundary ?? e.boundary ) < 25,
+      e => e !== player && Rect.getDistance( player.collideBoundary, e.collideBoundary ?? e.boundary ) < 40,
     )
 
     const cursorEntity = this.world.findEntityNear<Drawable>(
@@ -277,6 +342,12 @@ export default class Game {
       if (entity === cursorEntity) {
         if (cursorEntity instanceof HumanEntity) {
           if (camera.activePointers.mouseRight) this.toggleContextMenu( true )
+        } else if (cursorEntity instanceof Fruit) {
+          if (camera.activePointers.mouseLeft) {
+            this.world.despawnEntity( entity.boundary.x, entity.boundary.y, cursorEntity )
+            this.player.inventory.fruits++
+            this.ui.fruitsCount.innerHTML = `${this.player.inventory.fruits}`
+          }
         }
       }
     }
@@ -302,11 +373,69 @@ export default class Game {
       this.world.sizeUnit * 11,
     )
     ctx.globalAlpha = 1
-    if (iterationsCount % 30 === 0) this.utilitiesSprites.arrowHead.nextFrame()
+    if (iterationsCount % 30 === 0) {
+      this.utilitiesSprites.arrowHead.nextFrame()
+    }
+
+    for (const copulation of this.copulations) {
+      if (iterationsCount % 30 === 0) copulation.sprite.nextFrame()
+
+      copulation.sprite.draw(
+        ctx,
+        copulation.x - 17 * this.world.sizeUnit,
+        copulation.y,
+        copulation.sprite.getWidth() * this.world.sizeUnit,
+        copulation.sprite.getHeight() * this.world.sizeUnit,
+      )
+    }
 
 
+    // Cleaning
     ctx.restore()
 
     if (!cursorChanged) camera.updateCursor( `default` )
+  }
+
+  copulate( men:Men, women:Women ) {
+    const menPosBefore = Rect.getCenter( men.collideBoundary )
+    const womenPosBefore = Rect.getCenter( women.collideBoundary )
+    const sizeUnit = this.world.sizeUnit
+    const menOffset = this.world.sizeUnit * 2
+
+    const referencePos = {
+      x: (menPosBefore.x + womenPosBefore.x) / 2,
+      y: (menPosBefore.y + womenPosBefore.y) / 2 - men.boundary.height,
+    }
+
+    men.locked = true
+    men.boundary.x = referencePos.x - 50
+    men.boundary.y = referencePos.y
+    men.updateBoundaries()
+    this.world.moveEntity( menPosBefore, men )
+
+    women.locked = true
+    women.boundary.x = referencePos.x + 50
+    women.boundary.y = referencePos.y + menOffset
+    women.updateBoundaries()
+    this.world.moveEntity( womenPosBefore, women )
+
+    const copulation = new Copulation( referencePos.x, referencePos.y )
+    this.copulations.add( copulation )
+    setTimeout( () => {
+      this.copulations.delete( copulation )
+      women.locked = false
+      men.locked = false
+
+      const tag = this.world.getTileAt( referencePos.x, referencePos.y )
+      if (!tag) throw new Error( `Missing chunk tag` )
+
+      const x = referencePos.x
+      const y = referencePos.y + 10 * sizeUnit
+
+      if (Math.random() > 0.5) this.world.spawnEntity( x, y, new Men( x, y, sizeUnit, tag ) )
+      else this.world.spawnEntity( x, y + menOffset, new Women( x, y + menOffset, sizeUnit, tag ) )
+    }, 1000 * this.settings.copulationTimeSec )
+
+    this.toggleContextMenu( false )
   }
 }

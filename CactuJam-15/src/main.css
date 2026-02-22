@@ -48,14 +48,16 @@ canvas {
   }
 }
 
-#contextmenu {
+:where( #contextmenu ) {
   position: fixed;
   padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   background-color: #557;
-  display: none;
   color: black;
 
-  & .fastAction {
+  :where( & .fastAction ) {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -70,6 +72,17 @@ canvas {
     & img {
       width: 32px;
       height: 32px;
+    }
+
+    & span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      & img {
+        width: 16px;
+        height: 16px;
+      }
     }
   }
 }
@@ -95,7 +108,15 @@ canvas:hover ~ #cursor.action {
 
 body:has( button:active ) #cursor,
 canvas:active ~ #cursor.action {
-    height: 32px;
-    background-image: url( "./cursor-active.png" );
-    translate: -50% -75%;
-  }
+  height: 32px;
+  background-image: url( "./cursor-active.png" );
+  translate: -50% -75%;
+}
+
+.hidden {
+  display: none;
+}
+
+[data-only]:not( .showed ) {
+  display: none;
+}
