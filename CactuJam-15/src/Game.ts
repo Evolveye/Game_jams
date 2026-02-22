@@ -11,6 +11,7 @@ import arrowHeadImgSrc from "./entities/arrowHead.png"
 
 type GameUi = {
   canvas: HTMLCanvasElement
+  cursor: HTMLElement
 }
 
 export default class Game {
@@ -43,7 +44,7 @@ export default class Game {
       maxTerrainDepth: 6,
     })
 
-    this.camera = new Camera( ui.canvas.width, ui.canvas.height, this.world.width, this.world.height )
+    this.camera = new Camera( ui.canvas.width, ui.canvas.height, this.world.width, this.world.height, ui.cursor )
 
     const player = this.world.findEntityNear<HumanEntity>( this.world.width / 2, this.world.height / 2, e => e instanceof HumanEntity )
     if (!player) throw new Error( `Missing player` )
@@ -64,6 +65,9 @@ export default class Game {
     document.body.innerHTML = ``
     document.body.appendChild( canvas )
 
+    const cursor = createTag<HTMLElement>( `i`, { id:`cursor` } )
+    document.body.appendChild( cursor )
+
     window.addEventListener( `wheel`, e => {
       e.preventDefault()
 
@@ -78,54 +82,12 @@ export default class Game {
     }, { passive:false } )
 
     window.addEventListener( `click`, ({ clientX, clientY }) => {
-      const chunksInRadius = new Set<string>()
-      const entities:Drawable[] = []
-      const clickPos = {
-        x: this.camera.x + clientX,
-        y: this.camera.y + clientY,
-      }
-      const distance = this.world.sizeUnit * 20
-
-      const checks = [
-        { x:this.camera.x + clientX - distance, y:this.camera.y + clientY - distance },
-        { x:this.camera.x + clientX + distance, y:this.camera.y + clientY - distance },
-        { x:this.camera.x + clientX - distance, y:this.camera.y + clientY + distance },
-        { x:this.camera.x + clientX + distance, y:this.camera.y + clientY + distance },
-      ]
-
-      for (const checkPos of checks) {
-        const { x, y } = this.world.roundPosToChunk( checkPos.x, checkPos.y )
-        const key = `${x},${y}`
-
-        if (chunksInRadius.has( key )) continue
-        chunksInRadius.add( key )
-
-        const chunk = this.world.getChunk( x, y )
-        if (!chunk) continue
-
-        entities.push( ...chunk.entities )
-      }
-
-      const sortedEntities = entities.map( entity => {
-        const center = Rect.getCenter( entity.boundary )
-        const distance = Math.hypot( clickPos.x - center.x, clickPos.y - center.y )
-
-        return { entity, center, distance }
-      } ).toSorted( (a, b) => a.distance - b.distance )
-
-      console.log( `%cAt (${clientX}, ${clientY}) is %c${this.world.getTileAt( this.camera.x + clientX, this.camera.y + clientY )}`, `color:gray`, `font-weight:bold` )
-      if (sortedEntities[ 0 ]?.entity) {
-        console.log( `   %c and found entity is`, `color:gray`, { entity:sortedEntities[ 0 ].entity } )
-
-        const firstHuman = sortedEntities.find( e => e.entity instanceof HumanEntity && e.entity.stage !== `dead` )
-          ?.entity as HumanEntity
-
-        if (firstHuman) this.changePlayer( firstHuman )
-      }
+      console.log( `%cAt (${clientX}, ${clientY}) is %c${this.world.getTileAt( this.camera.pointerPos.x, this.camera.pointerPos.y )}`, `color:gray`, `font-weight:bold` )
     }, { passive:false } )
 
     return [ ctx, {
       canvas,
+      cursor,
     } ] as const
   }
 
@@ -137,12 +99,15 @@ export default class Game {
   }
 
   draw( ctx:CanvasRenderingContext2D, timeMultiplier:number, iterationsCount:number ) {
+    // Dead player processing
     if (this.player.stage === `dead`) {
-      const newPlayer = this.world.findEntityNear<HumanEntity>( this.world.width / 2, this.world.height / 2, e => e instanceof HumanEntity && e.stage !== `dead` )
-      // this.changePlayer( newPlayer )
+      const newPlayer = this.world.findEntityNear<HumanEntity>( this.world.width / 2, this.world.height / 2, Infinity, e => e instanceof HumanEntity && e.stage !== `dead` )
       if (newPlayer) this.player = newPlayer
+      else alert( `Game over` )
     }
 
+
+    // Setup
     const { camera, player } = this
     ctx.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height )
     ctx.save()
@@ -150,11 +115,15 @@ export default class Game {
     camera.apply( ctx )
     camera.followSlowly( Rect.getCenter( this.player.boundary ) )
 
+    const posBefore = Rect.getCenter( player.collideBoundary )
     const speed = player.getSpeed() * timeMultiplier
     const playerPos = player.boundary
     const playerVelocity = player.velocity
     const playerFlip = player.sprites.current!.flip
+    let cursorChanged = false
 
+
+    // Player logic
     if (Keys.isPressed( controls.up )) playerVelocity.y -= speed
     if (Keys.isPressed( controls.down )) playerVelocity.y += speed
     if (Keys.isPressed( controls.left )) playerVelocity.x -= speed
@@ -173,7 +142,6 @@ export default class Game {
       } else player.sprites.changeSprite( `idle` )
     }
 
-    const posBefore = Rect.getCenter( player.collideBoundary )
 
     playerPos.x += playerVelocity.x
     playerPos.y += playerVelocity.y
@@ -184,7 +152,45 @@ export default class Game {
     playerVelocity.x = 0
     playerVelocity.y = 0
 
-    this.world.draw({ ctx, timeMultiplier, camera, updatePosition:this.world.moveEntity })
+
+    // World draw
+    const visibleChunks = this.world.drawTerrain({ ctx, timeMultiplier, camera, updatePosition:this.world.moveEntity })
+
+    const nearEntitiesGen = this.world.getNearEntitiesGenerator<Drawable>(
+      posBefore.x, posBefore.y, 1,
+      e => e !== player && Rect.getDistance( player.collideBoundary, e.collideBoundary ?? e.boundary ) < 25,
+    )
+
+    ctx.fillStyle = `#aaa`
+    for (const entity of nearEntitiesGen) {
+      if (Rect.containsPoint( entity.boundary, camera.pointerPos )) {
+        camera.updateCursor( `action` )
+        cursorChanged = true
+        ctx.fillStyle = `#fff`
+        ctx.fillRect( entity.boundary.x, entity.boundary.y + entity.boundary.height - 2, entity.boundary.width, 2 )
+        ctx.fillStyle = `#aaa`
+      } else {
+        ctx.fillRect( entity.boundary.x, entity.boundary.y + entity.boundary.height - 2, entity.boundary.width, 2 )
+      }
+    }
+
+    const cursorEntity = this.world.findEntityNear<Drawable>(
+      camera.pointerPos.x, camera.pointerPos.y, 1,
+      e => e !== player && Rect.containsPoint( e.boundary, camera.pointerPos ),
+    )
+
+    if (cursorEntity instanceof HumanEntity) {
+      if (camera.pointerDown) this.changePlayer( cursorEntity )
+      if (!cursorChanged) {
+        cursorChanged = true
+        camera.updateCursor( `action` )
+      }
+    }
+
+    this.world.drawEntities( visibleChunks, { ctx, timeMultiplier, camera, updatePosition:this.world.moveEntity } )
+
+
+    // Utilities
     ctx.globalAlpha = 0.25
     this.utilitiesSprites.arrowHead.draw(
       ctx,
@@ -193,11 +199,12 @@ export default class Game {
       this.world.sizeUnit * 8,
       this.world.sizeUnit * 11,
     )
-
-    if (iterationsCount % 30 === 0) this.utilitiesSprites.arrowHead.nextFrame()
     ctx.globalAlpha = 1
+    if (iterationsCount % 30 === 0) this.utilitiesSprites.arrowHead.nextFrame()
 
 
     ctx.restore()
+
+    if (!cursorChanged) camera.updateCursor( `default` )
   }
 }

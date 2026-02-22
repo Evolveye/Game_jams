@@ -126,10 +126,10 @@ class Chunk {
       if (elevation > 0.15) { // land
         if (moisture > 0.6) {
           tag = `jungle`
-          if (spawnChance > 0.999) this.entities.add( new Fruit( nodeCenter.x, nodeCenter.y, tag ) )
+          if (spawnChance > 0.999) this.entities.add( new Fruit( nodeCenter.x, nodeCenter.y, this.#sizeUnit, tag ) )
         } else if (moisture > 0.3) {
           tag = `forest`
-          if (spawnChance > 0.9995) this.entities.add( new Fruit( nodeCenter.x, nodeCenter.y, tag ) )
+          if (spawnChance > 0.9995) this.entities.add( new Fruit( nodeCenter.x, nodeCenter.y, this.#sizeUnit, tag ) )
         } else {
           tag = `desert`
         }
@@ -269,7 +269,7 @@ export default class World {
     }
   }
 
-  draw( drawData:DrawData ) {
+  drawTerrain( drawData:DrawData ) {
     const visibleChunks = new Set<Chunk>()
 
     for (const chunk of this.#chunks.values()) {
@@ -279,6 +279,9 @@ export default class World {
       }
     }
 
+    return visibleChunks
+  }
+  drawEntities( visibleChunks:Set<Chunk>, drawData:DrawData ) {
     for (const chunk of visibleChunks) {
       chunk.draw( drawData )
     }
@@ -288,52 +291,61 @@ export default class World {
   findEntityNear<T extends Drawable>( x:number, y:number, radius:number, cb:(entity:Drawable) => boolean ): T | undefined
   findEntityNear( x:number, y:number, radiusOrCb:number | ((entity:Drawable) => boolean), maybeCb?:(entity:Drawable) => boolean ) {
     const [ radius, cb ] = typeof radiusOrCb === `number` ? [ radiusOrCb, maybeCb! ] : [ 0, radiusOrCb ]
-    const { x:startCx, y:startCy } = this.roundPosToChunk( x, y )
-
-    for (let ring = 0;  ring <= radius;  ring++) {
-      const found = this.#searchRing( startCx, startCy, ring, cb )
-      if (found) return found
-    }
-
-    return undefined
+    return this.getNearEntitiesGenerator( x, y, radius, cb ).next().value
   }
 
-  #searchRing( cx:number, cy:number, ring:number, cb:(entity:Drawable) => boolean ) {
-    if (ring === 0) return this.#checkChunk( cx, cy, cb )
+  getNearEntitiesGenerator<T extends Drawable>( x:number, y:number, cb:(entity:Drawable) => boolean ): Generator<T>
+  getNearEntitiesGenerator<T extends Drawable>( x:number, y:number, radius:number, cb:(entity:Drawable) => boolean ): Generator<T>
+  * getNearEntitiesGenerator( x:number, y:number, radiusOrCb:number | ((entity:Drawable) => boolean), maybeCb?:(entity:Drawable) => boolean ) {
+    const [ radius, cb ] = typeof radiusOrCb === `number` ? [ radiusOrCb, maybeCb! ] : [ 0, radiusOrCb ]
+    const { x:startCx, y:startCy } = this.roundPosToChunk( x, y )
+
+    const actualRadius = radius === Infinity ? Math.max( this.#width, this.#height ) / this.#chunkSize : radius
+
+    for (let ring = 0;  ring <= actualRadius;  ring++) {
+      for (const entity of this.getChunkEntitiesRingGenerator( startCx, startCy, ring )) {
+        if (cb( entity )) yield entity
+      }
+    }
+  }
+
+  * getChunkEntitiesRingGenerator( cx:number, cy:number, ring:number ) {
+    if (ring === 0) {
+      yield * this.#getChunkEntitiesGenerator( cx, cy )
+      return
+    }
 
     const minX = cx - ring * this.#chunkSize
     const maxX = cx + ring * this.#chunkSize
     const minY = cy - ring * this.#chunkSize
     const maxY = cy + ring * this.#chunkSize
 
-    for (let x = minX;  x <= maxX;  x += this.#chunkSize) {
-      const top = this.#checkChunk( x, minY, cb )
-      if (top) return top
+    const isTopIn = minY >= 0 && minY < this.#height
+    const isBottomIn = maxY >= 0 && maxY < this.#height
+    const isLeftIn = minX >= 0 && minX < this.#width
+    const isRightIn = maxX >= 0 && maxX < this.#width
 
-      const bottom = this.#checkChunk( x, maxY, cb )
-      if (bottom) return bottom
+    if (isTopIn) for (let x = minX;  x <= maxX;  x += this.#chunkSize) {
+      yield * this.#getChunkEntitiesGenerator( x, minY )
     }
 
-    for (let y = minY + this.#chunkSize;  y < maxY;  y += this.#chunkSize) {
-      const left = this.#checkChunk( minX, y, cb )
-      if (left) return left
-
-      const right = this.#checkChunk( maxX, y, cb )
-      if (right) return right
+    if (isBottomIn) for (let x = minX;  x <= maxX;  x += this.#chunkSize) {
+      yield * this.#getChunkEntitiesGenerator( x, maxY )
     }
 
-    return undefined
+    if (isLeftIn) for (let y = minY + this.#chunkSize;  y < maxY;  y += this.#chunkSize) {
+      yield * this.#getChunkEntitiesGenerator( minX, y )
+    }
+
+    if (isRightIn) for (let y = minY + this.#chunkSize;  y < maxY;  y += this.#chunkSize) {
+      yield * this.#getChunkEntitiesGenerator( maxX, y )
+    }
   }
 
-  #checkChunk( cx:number, cy:number, cb:(entity:Drawable) => boolean ) {
+  * #getChunkEntitiesGenerator( cx:number, cy:number ) {
     const chunk = this.#chunks.get( `${cx},${cy}` )
     if (!chunk) return undefined
-
-    for (const entity of chunk.entities) {
-      if (cb( entity )) return entity
-    }
-
-    return undefined
+    for (const entity of chunk.entities) yield entity
   }
 
   #getChunkAt( x:number, y:number ) {

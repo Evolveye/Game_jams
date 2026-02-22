@@ -6,15 +6,36 @@ export default class Camera {
   zoom: number = 1
   #worldWidth: number
   #worldHeight: number
+  cursorElement?: HTMLElement
+  pointerDown = false
+  pointerPos = {
+    x: 0,
+    y: 0,
+  }
 
   constructor(
     public width:number,
     public height:number,
     worldWidth:number,
     worldHeight:number,
+    cursorElement?:HTMLElement,
   ) {
     this.#worldWidth = worldWidth
     this.#worldHeight = worldHeight
+    this.cursorElement = cursorElement
+
+    window.addEventListener( `mousemove`, ({ clientX, clientY }) => {
+      this.pointerPos.x = this.x + (clientX / this.zoom)
+      this.pointerPos.y = this.y + (clientY / this.zoom)
+
+      if (cursorElement) requestAnimationFrame( () => {
+        cursorElement.style.left = `${clientX}px`
+        cursorElement.style.top = `${clientY}px`
+      } )
+    } )
+
+    window.addEventListener( `pointerdown`, () => this.pointerDown = true )
+    window.addEventListener( `pointerup`, () => this.pointerDown = false )
   }
 
   get visibleWidth() {
@@ -23,6 +44,13 @@ export default class Camera {
 
   get visibleHeight() {
     return this.height / this.zoom
+  }
+
+  updateCursor( type:`default` | `action` ) {
+    if (!this.cursorElement) return
+
+    if (type === `default`) this.cursorElement.className = ``
+    else if (!this.cursorElement.className.includes( type )) this.cursorElement.className = type
   }
 
   follow( target:Point ) {
