@@ -213,11 +213,14 @@ export default class World {
     water: [ `#1e90ff`, `#1e80ff` ], // Blue
   }
 
+  sizeUnit: number
+
   constructor( config:WorldConfig ) {
     this.#chunkSize = config.chunkSize
     this.#width = config.widthInChunks * config.chunkSize
     this.#height = config.widthInChunks * config.chunkSize
     this.#maxTerrainDepth = config.maxTerrainDepth
+    this.sizeUnit = Quadtree.getNodeSize( this.chunkSize, this.maxTerrainDepth )
 
     this.#noise2D = createNoise2D( () => {
       let t = config.seed += 0x6D2B79F5
@@ -244,12 +247,22 @@ export default class World {
     return this.#maxTerrainDepth
   }
 
+  getChunk( x:number, y:number ) {
+    return this.#chunks.get( `${x},${y}` )
+  }
+
   getTileAt( x:number, y:number ): string | undefined {
-    const cx = Math.floor( x / this.#chunkSize ) * this.#chunkSize
-    const cy = Math.floor( y / this.#chunkSize ) * this.#chunkSize
-    const chunk = this.#chunks.get( `${cx},${cy}` )
+    const { x:cx, y:cy } = this.roundPosToChunk( x, y )
+    const chunk = this.getChunk( cx, cy )
 
     return chunk?.getTileAt( x, y )
+  }
+
+  roundPosToChunk( x:number, y:number ) {
+    return {
+      x: Math.floor( x / this.#chunkSize ) * this.#chunkSize,
+      y: Math.floor( y / this.#chunkSize ) * this.#chunkSize,
+    }
   }
 
   draw( drawData:DrawData ) {
@@ -271,9 +284,7 @@ export default class World {
   findEntityNear<T extends Drawable>( x:number, y:number, radius:number, cb:(entity:Drawable) => boolean ): T | undefined
   findEntityNear( x:number, y:number, radiusOrCb:number | ((entity:Drawable) => boolean), maybeCb?:(entity:Drawable) => boolean ) {
     const [ radius, cb ] = typeof radiusOrCb === `number` ? [ radiusOrCb, maybeCb! ] : [ 0, radiusOrCb ]
-
-    const startCx = Math.floor( x / this.#chunkSize ) * this.#chunkSize
-    const startCy = Math.floor( y / this.#chunkSize ) * this.#chunkSize
+    const { x:startCx, y:startCy } = this.roundPosToChunk( x, y )
 
     for (let ring = 0;  ring <= radius;  ring++) {
       const found = this.#searchRing( startCx, startCy, ring, cb )
@@ -322,14 +333,11 @@ export default class World {
   }
 
   #getChunkAt( x:number, y:number ) {
-    const cx = Math.floor( x / this.#chunkSize ) * this.#chunkSize
-    const cy = Math.floor( y / this.#chunkSize ) * this.#chunkSize
+    const { x:cx, y:cy } = this.roundPosToChunk( x, y )
     return this.#chunks.get( `${cx},${cy}` )
   }
 
   #generateChunks() {
-    const sizeUnit = Quadtree.getNodeSize( this.chunkSize, this.maxTerrainDepth )
-
     const getTerrainElevation = (node:Quadtree) => {
       const center = Rect.getCenter( node.boundary )
 
@@ -386,9 +394,9 @@ export default class World {
       cb( cx, cy, chunk, tag )
     }
 
-    getSpawnArea( 0, 0, (x, y, chunk, tag) => chunk.spawn( new Men( x, y, sizeUnit, tag ) ) )
-    getSpawnArea( 100, 0, (x, y, chunk, tag) => chunk.spawn( new Men( x, y, sizeUnit, tag ) ) )
-    getSpawnArea( 50, 100, (x, y, chunk, tag) => chunk.spawn( new Women( x, y, sizeUnit, tag ) ) )
+    getSpawnArea( 0, 0, (x, y, chunk, tag) => chunk.spawn( new Men( x, y, this.sizeUnit, tag ) ) )
+    getSpawnArea( 100, 0, (x, y, chunk, tag) => chunk.spawn( new Men( x, y, this.sizeUnit, tag ) ) )
+    getSpawnArea( 50, 100, (x, y, chunk, tag) => chunk.spawn( new Women( x, y, this.sizeUnit, tag ) ) )
   }
 
   moveEntity = (entityPosBefore:Point, entityAfter:Drawable) => {
