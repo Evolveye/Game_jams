@@ -59,11 +59,12 @@ export default class Camera {
   }
 
   intersects( rect:Rect ) {
+    const offset = 100
     const viewport = {
-      x: this.x,
-      y: this.y,
-      width: this.visibleWidth,
-      height: this.visibleHeight,
+      x: this.x - offset,
+      y: this.y - 100,
+      width: this.visibleWidth + offset * 2,
+      height: this.visibleHeight + offset * 2,
     }
 
     return Rect.intersects( viewport, rect )

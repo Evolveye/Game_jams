@@ -117,7 +117,9 @@ export default class Game {
       if (sortedEntities[ 0 ]?.entity) {
         console.log( `   %c and found entity is`, `color:gray`, { entity:sortedEntities[ 0 ].entity } )
 
-        const firstHuman = sortedEntities.find( e => e.entity instanceof HumanEntity )?.entity as HumanEntity
+        const firstHuman = sortedEntities.find( e => e.entity instanceof HumanEntity && e.entity.stage !== `dead` )
+          ?.entity as HumanEntity
+
         if (firstHuman) this.changePlayer( firstHuman )
       }
     }, { passive:false } )
@@ -127,14 +129,19 @@ export default class Game {
     } ] as const
   }
 
-  changePlayer( entity:HumanEntity ) {
-    if (this.player === entity) return
+  changePlayer( entity?:HumanEntity ) {
+    if (!entity || this.player === entity) return
 
     this.player.sprites.changeSprite( `idle` )
     this.player = entity
   }
 
   draw( ctx:CanvasRenderingContext2D, timeMultiplier:number, iterationsCount:number ) {
+    if (this.player.stage === `dead`) {
+      const newPlayer = this.world.findEntityNear<HumanEntity>( this.world.width / 2, this.world.height / 2, e => e instanceof HumanEntity && e.stage !== `dead` )
+      this.changePlayer( newPlayer )
+    }
+
     const { camera, player } = this
     ctx.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height )
     ctx.save()
@@ -142,7 +149,8 @@ export default class Game {
     camera.apply( ctx )
     camera.followSlowly( Rect.getCenter( this.player.boundary ) )
 
-    const speed = 5 * timeMultiplier
+
+    const speed = player.getSpeed() * timeMultiplier
     const playerPos = player.boundary
     const playerVelocity = player.velocity
     const playerFlip = player.sprites.current!.flip

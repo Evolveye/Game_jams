@@ -5,6 +5,11 @@ export type SpriteConfig = {
   framePixelsPadding?: number
 }
 
+export type DrawOptions = {
+  scale?: { x?: number, y?: number }
+  clip?: { left?: number, right?: number, top?: number, bottom?: number }
+}
+
 export default class Sprite {
   #framesCount: number
   #framesPerRow: number
@@ -50,12 +55,12 @@ export default class Sprite {
   }
 
 
-  draw = (ctx:CanvasRenderingContext2D, x:number, y:number, width?:number, height?:number, scale?:{ x?: number, y?: number }) => {
+  draw = (ctx:CanvasRenderingContext2D, x:number, y:number, width?:number, height?:number, { scale, clip }:DrawOptions = {}) => {
     const sprite = this.#spreadsheet
-    const frameW = this.#frameWidth - this.#framePixelsPadding * 2
-    const frameH = this.#frameheight - this.#framePixelsPadding * 2
-    const frameX = this.#currentFrame % this.#framesPerRow * this.#frameWidth + this.#framePixelsPadding
-    const frameY = Math.floor( this.#currentFrame / this.#framesPerRow ) * this.#frameheight + this.#framePixelsPadding
+    const frameX = this.#currentFrame % this.#framesPerRow * this.#frameWidth + this.#framePixelsPadding + (clip?.left ?? 0)
+    const frameY = Math.floor( this.#currentFrame / this.#framesPerRow ) * this.#frameheight + this.#framePixelsPadding + (clip?.top ?? 0)
+    const frameW = this.#frameWidth - this.#framePixelsPadding * 2 - (clip?.left ?? 0) - (clip?.right ?? 0)
+    const frameH = this.#frameheight - this.#framePixelsPadding * 2 - (clip?.top ?? 0) - (clip?.bottom ?? 0)
 
     if (!width) width = sprite.width
     if (!height) height = sprite.height

@@ -30,6 +30,7 @@ export type Drawable = {
   boundary: Rect
   collideBoundary?: Rect
   draw: (data:DrawData) => void
+  updateTagOn: (tag:undefined | string) => void
 }
 
 
@@ -134,8 +135,10 @@ class Chunk {
         }
       } else if (elevation > 0.05) { // Beach
         tag = `beach`
-      } else { // Water
+      } else if (elevation > -0.4) { // Water
         tag = `water`
+      } else {
+        tag = `deepWater`
       }
 
       node.tags = new Set([ tag ])
@@ -211,6 +214,7 @@ export default class World {
     desert: [ `#d2b48c`, `#d3b98c` ], // Dark yellow
     beach: [ `#f3e5ab`, `#f8e6ab` ], // Light yellow
     water: [ `#1e90ff`, `#1e80ff` ], // Blue
+    deepWater: [ `#0d56c5`, `#0e4ba9` ], // Dark blue
   }
 
   sizeUnit: number
@@ -348,6 +352,7 @@ export default class World {
       const dy = (center.y / this.#height) - 0.5
       const dist = Math.sqrt( dx * dx + dy * dy ) * 2.2
 
+      if (dist > 0.99) return -1
       return e - dist
     }
 
@@ -411,7 +416,7 @@ export default class World {
         chunkAfter.spawn( entityAfter )
       }
 
-      entityAfter.tagOn = chunkAfter.getTileAt( entityCenter.x, entityCenter.y )
+      entityAfter.updateTagOn( chunkAfter.getTileAt( entityCenter.x, entityCenter.y ) )
     }
   }
 }

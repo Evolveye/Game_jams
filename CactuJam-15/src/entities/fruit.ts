@@ -4,8 +4,12 @@ import type { Drawable, DrawData } from "../logic/World"
 export class Fruit implements Drawable {
   boundary: Rect
 
-  constructor( x:number, y:number, public tagOn:string ) {
+  constructor( x:number, y:number, public tagOn:undefined | string ) {
     this.boundary = new Rect( x, y, 10, 10 )
+  }
+
+  updateTagOn( tag?:string ) {
+    this.tagOn = tag
   }
 
   draw({ ctx }:DrawData) {

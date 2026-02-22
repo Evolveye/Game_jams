@@ -7,10 +7,16 @@ import humanMenImgSrc from "./human-men.png"
 import humanMenWalkImgSrc from "./human-men-walk.png"
 import type { Drawable, DrawData } from "../logic/World"
 
+export type HumanStage = `young` | `adult` | `old` | `dead`
+
 export class HumanEntity implements Drawable {
+  stage = `adult` as HumanStage
+  speed = 5
   #drawCount = 0
   velocity: Point = new Point( 0, 0 )
   collideBoundary: Rect
+
+  belowSurface = false
 
   constructor(
     public boundary:Rect,
@@ -23,6 +29,18 @@ export class HumanEntity implements Drawable {
   updateBoundaries() {
     this.collideBoundary.x = this.boundary.x
     this.collideBoundary.y = this.boundary.y + this.boundary.height - 15
+  }
+
+  updateTagOn( tag?:string ) {
+    if (tag === `deepWater`) this.stage = `dead`
+
+    this.belowSurface = tag?.toLowerCase().includes( `water` ) ?? false
+    this.tagOn = tag
+  }
+
+  getSpeed() {
+    if (this.belowSurface) return this.speed * 0.5
+    return this.speed
   }
 
   draw({ ctx }:DrawData) {
@@ -42,7 +60,8 @@ export class HumanEntity implements Drawable {
 
     this.#drawCount++
     if (this.#drawCount % 30 === 0) this.sprites.current?.nextFrame()
-    this.sprites.current?.draw( ctx, pos.x, pos.y, pos.width, pos.height )
+    if (this.belowSurface) this.sprites.current?.draw( ctx, pos.x, pos.y + pos.height * 0.45, pos.width, pos.height * 0.55, { clip:{ bottom:15 } } )
+    else this.sprites.current?.draw( ctx, pos.x, pos.y, pos.width, pos.height )
   }
 }
 
