@@ -5,6 +5,7 @@ import humanWomenImgSrc from "./human-women.png"
 import humanWomenWalkImgSrc from "./human-women-walk.png"
 import humanMenImgSrc from "./human-men.png"
 import humanMenWalkImgSrc from "./human-men-walk.png"
+import humanGraveImgSrc from "./human-grave.png"
 import type { Drawable, DrawData } from "../logic/World"
 
 export type HumanStage = `young` | `adult` | `old` | `dead`
@@ -20,7 +21,7 @@ export class HumanEntity implements Drawable {
 
   constructor(
     public boundary:Rect,
-    public sprites:SpritesStorage<`idle` | `walking`>,
+    public sprites:SpritesStorage<`idle` | `walking` | `grave`>,
     public tagOn:undefined | string,
   ) {
     this.collideBoundary = new Rect( boundary.x, boundary.y + boundary.height - 15, boundary.width, 15 )
@@ -32,7 +33,10 @@ export class HumanEntity implements Drawable {
   }
 
   updateTagOn( tag?:string ) {
-    if (tag === `deepWater`) this.stage = `dead`
+    if (tag === `deepWater`) {
+      this.stage = `dead`
+      this.sprites.changeSprite( `grave` )
+    }
 
     this.belowSurface = tag?.toLowerCase().includes( `water` ) ?? false
     this.tagOn = tag
@@ -57,9 +61,8 @@ export class HumanEntity implements Drawable {
     // ctx.rect( playerCol.x + 1, playerCol.y + 1, playerCol.width - 2, playerCol.height - 2 )
     // ctx.stroke()
 
-
     this.#drawCount++
-    if (this.#drawCount % 30 === 0) this.sprites.current?.nextFrame()
+    if (this.#drawCount % (this.stage === `dead` ? 100 : 30) === 0) this.sprites.current?.nextFrame()
     if (this.belowSurface) this.sprites.current?.draw( ctx, pos.x, pos.y + pos.height * 0.45, pos.width, pos.height * 0.55, { clip:{ bottom:15 } } )
     else this.sprites.current?.draw( ctx, pos.x, pos.y, pos.width, pos.height )
   }
@@ -84,6 +87,13 @@ export class Women extends HumanEntity {
           framesPerRow: 3,
           framesPerColumn: 2,
           framesCount: 4,
+          framePixelsPadding: 1,
+        },
+        grave: {
+          src: humanGraveImgSrc,
+          framesPerRow: 2,
+          framesPerColumn: 2,
+          framesCount: 3,
           framePixelsPadding: 1,
         },
       }),
@@ -111,6 +121,13 @@ export class Men extends HumanEntity {
           framesPerRow: 3,
           framesPerColumn: 2,
           framesCount: 4,
+          framePixelsPadding: 1,
+        },
+        grave: {
+          src: humanGraveImgSrc,
+          framesPerRow: 2,
+          framesPerColumn: 2,
+          framesCount: 3,
           framePixelsPadding: 1,
         },
       }),

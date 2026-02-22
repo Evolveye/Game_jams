@@ -139,7 +139,8 @@ export default class Game {
   draw( ctx:CanvasRenderingContext2D, timeMultiplier:number, iterationsCount:number ) {
     if (this.player.stage === `dead`) {
       const newPlayer = this.world.findEntityNear<HumanEntity>( this.world.width / 2, this.world.height / 2, e => e instanceof HumanEntity && e.stage !== `dead` )
-      this.changePlayer( newPlayer )
+      // this.changePlayer( newPlayer )
+      if (newPlayer) this.player = newPlayer
     }
 
     const { camera, player } = this
@@ -148,7 +149,6 @@ export default class Game {
 
     camera.apply( ctx )
     camera.followSlowly( Rect.getCenter( this.player.boundary ) )
-
 
     const speed = player.getSpeed() * timeMultiplier
     const playerPos = player.boundary
