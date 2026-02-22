@@ -1,5 +1,3 @@
-import type { Point } from "./shapes"
-
 export type SpriteConfig = {
   framesPerColumn?: number
   framesPerRow?: number
@@ -18,6 +16,8 @@ export default class Sprite {
   #currentFrame: number = 0
   #frameWidth: number = -1
   #frameheight: number = -1
+
+  flip = { x:false, y:false }
 
   constructor( src:string, config:SpriteConfig ) {
     this.#spreadsheet = new Image()
@@ -63,6 +63,7 @@ export default class Sprite {
     ctx.save()
     ctx.translate( x + width / 2, y + height / 2 )
     if (scale) ctx.scale( scale.x ?? 1, scale.y ?? 1 )
+    if (this.flip.x || this.flip.y) ctx.scale( this.flip.x ? -1 : 1, this.flip.y ? -1 : 1 )
 
     ctx.drawImage(
       sprite,

@@ -1,10 +1,11 @@
 import { Rect } from "./logic/shapes"
 import createTag from "./logic/createTag"
+import controls from "./logic/controls"
 import World from "./logic/World"
-import Quadtree from "./logic/Quadtree"
 import Loop from "./logic/Loop"
+import Keys from "./logic/Keys"
 import Camera from "./logic/Camera"
-import { Men, Women } from "./entities/human"
+import { HumanEntity } from "./entities/human"
 
 type GameUi = {
   canvas: HTMLCanvasElement
@@ -13,7 +14,7 @@ type GameUi = {
 export default class Game {
   world: World
   camera: Camera
-  player: Women | Men
+  player: HumanEntity
   loop = new Loop()
 
   ui: GameUi
@@ -34,25 +35,14 @@ export default class Game {
     })
 
     this.camera = new Camera( ui.canvas.width, ui.canvas.height, this.world.width, this.world.height )
-    const mapUnit = Quadtree.getNodeSize( this.world.chunkSize, this.world.maxTerrainDepth )
 
-    const playerX = this.world.width / 2 - mapUnit / 2
-    const playerY = this.world.height / 2 - mapUnit / 2
-    const menMultiplier = 19
-    const womenMultiplier = 18
-
-    this.player = new Men(
-      new Rect( playerX, playerY, mapUnit * menMultiplier, mapUnit * menMultiplier * 2 ),
-      this.world.getTileAt( playerX, playerY ),
-    )
-    this.player = new Women(
-      new Rect( playerX, playerY, mapUnit * womenMultiplier * 1, mapUnit * womenMultiplier * 2 ),
-      this.world.getTileAt( playerX, playerY ),
-    )
+    const player = this.world.findEntityNear<HumanEntity>( this.world.width / 2, this.world.height / 2, e => e instanceof HumanEntity )
+    if (!player) throw new Error( `Missing player` )
+    this.player = player
 
     this.camera.follow( Rect.getCenter( this.player.boundary ) )
 
-    this.loop.startLoop( mul => this.draw( mul, ctx ) )
+    this.loop.startLoop( mul => this.draw( ctx, mul ) )
   }
 
   buildUi() {
@@ -83,19 +73,49 @@ export default class Game {
     } ] as const
   }
 
-  draw( mul:number, ctx:CanvasRenderingContext2D ) {
+  draw( ctx:CanvasRenderingContext2D, timeMultiplier:number ) {
+    const { camera, player } = this
     ctx.clearRect( 0, 0, ctx.canvas.width, ctx.canvas.height )
-
     ctx.save()
-    this.camera.apply( ctx )
 
-    const playerStepOnCenter = Rect.getCenter( this.player.collideBoundary )
-    this.player.tagOn = this.world.getTileAt( playerStepOnCenter.x, playerStepOnCenter.y )
+    camera.apply( ctx )
+    camera.followSlowly( Rect.getCenter( this.player.boundary ) )
 
-    this.camera.followSlowly( Rect.getCenter( this.player.boundary ) )
+    const speed = 5 * timeMultiplier
+    const playerPos = player.boundary
+    const playerVelocity = player.velocity
+    const playerFlip = player.sprites.current!.flip
 
-    this.world.draw( ctx, this.camera )
-    this.player.draw( ctx, mul )
+    if (Keys.isPressed( controls.up )) playerVelocity.y -= speed
+    if (Keys.isPressed( controls.down )) playerVelocity.y += speed
+    if (Keys.isPressed( controls.left )) playerVelocity.x -= speed
+    if (Keys.isPressed( controls.right )) playerVelocity.x += speed
+
+    playerFlip.x = false
+    if (player.velocity.x > 0) player.sprites.changeSprite( `walking` )
+    else if (playerVelocity.x < 0) {
+      player.sprites.changeSprite( `walking` )
+      playerFlip.x = true
+    } else {
+      if (playerVelocity.y < 0) player.sprites.changeSprite( `walking` )
+      else if (playerVelocity.y > 0) {
+        player.sprites.changeSprite( `walking` )
+        playerFlip.x = true
+      } else player.sprites.changeSprite( `idle` )
+    }
+
+    const posBefore = Rect.getCenter( player.collideBoundary )
+
+    playerPos.x += playerVelocity.x
+    playerPos.y += playerVelocity.y
+    player.updateBoundaries()
+
+    this.world.moveEntity( posBefore, player )
+
+    playerVelocity.x = 0
+    playerVelocity.y = 0
+
+    this.world.draw({ ctx, timeMultiplier, camera, updatePosition:this.world.moveEntity })
 
     ctx.restore()
   }

@@ -1,5 +1,7 @@
 import { createNoise2D, type NoiseFunction2D } from 'simplex-noise'
-import { Rect } from './shapes'
+import { Men, Women } from '../entities/human'
+import { Fruit } from '../entities/fruit'
+import { Point, Rect } from './shapes'
 import Quadtree from './Quadtree'
 import type Camera from './Camera'
 
@@ -10,6 +12,26 @@ export type WorldConfig = {
   maxTerrainDepth: number
   seed: number
 }
+
+export type TerrainDrawData = {
+  ctx: CanvasRenderingContext2D
+  camera: Camera
+}
+
+export type DrawData = {
+  ctx: CanvasRenderingContext2D
+  camera: Camera
+  timeMultiplier: number
+  updatePosition: (entityPosBefore:Point, entityAfter:Drawable) => void
+}
+
+export type Drawable = {
+  tagOn: undefined | string
+  boundary: Rect
+  collideBoundary?: Rect
+  draw: (data:DrawData) => void
+}
+
 
 type WorldColorsTint = string
 type WorldColors = Record<string, WorldColorsTint[]>
@@ -28,9 +50,10 @@ class Chunk {
   #tree: Quadtree
   #colors: WorldColors
   #boundary: Rect
-  #entities: Rect[] = []
+  entities = new Set<Drawable>()
+  #sizeUnit: number
 
-  constructor( boundary:Rect, maxTerrainDepth:number, colors:WorldColors, noiseFns:NoisesFns ) {
+  constructor( boundary:Rect, maxTerrainDepth:number, colors:WorldColors, sizeUnit:number, noiseFns:NoisesFns ) {
     this.#offscreenCanvas = document.createElement( `canvas` )
     this.#offscreenCanvas.width = boundary.width
     this.#offscreenCanvas.height = boundary.height
@@ -42,6 +65,7 @@ class Chunk {
     this.#boundary = boundary
     this.#ctx = ctx
     this.#colors = colors
+    this.#sizeUnit = sizeUnit
     this.#tree = this.#buildTerrain( maxTerrainDepth, 0, boundary )
   }
 
@@ -49,25 +73,34 @@ class Chunk {
     return this.#boundary
   }
 
-  draw( ctx:CanvasRenderingContext2D ) {
+  drawTerrain( drawData:TerrainDrawData ) {
     this.#renderOffscreen()
 
-    ctx.drawImage(
+    drawData.ctx.drawImage(
       this.#offscreenCanvas,
       this.boundary.x,
       this.boundary.y,
-      this.boundary.width + 1, // Dodaj "jeden piksel świata" zapasu
+      this.boundary.width + 1,
       this.boundary.height + 1,
     )
+  }
 
-    ctx.fillStyle = `pink`
-    for (const entity of this.#entities) {
-      ctx.fillRect( entity.x, entity.y, entity.width, entity.height )
+  draw( drawData:DrawData ) {
+    for (const entity of this.entities) {
+      entity.draw( drawData )
     }
   }
 
   getTileAt( x:number, y:number ) {
     return this.#findTagInTree( this.#tree, x, y )
+  }
+
+  despawn( entity:Drawable ) {
+    this.entities.delete( entity )
+  }
+
+  spawn( entity:Drawable ) {
+    this.entities.add( entity )
   }
 
   #buildTerrain( maxTerrainDepth:number, depth:number, boundary:Rect ) {
@@ -86,22 +119,26 @@ class Chunk {
       const elevation = this.#noiseFns.terrain( node )
       const moisture = this.#noiseFns.biome( node )
       const spawnChance = this.#noiseFns.hashCoords( node.boundary.x, node.boundary.y )
+      const nodeCenter = Rect.getCenter( node.boundary )
+      let tag = ``
 
       if (elevation > 0.15) { // land
         if (moisture > 0.6) {
-          node.tags = new Set([ `jungle` ])
-          if (spawnChance > 0.999) this.#entities.push( new Rect( node.boundary.x, node.boundary.y, 10, 10 ) ) // Dużo owoców
+          tag = `jungle`
+          if (spawnChance > 0.999) this.entities.add( new Fruit( nodeCenter.x, nodeCenter.y, tag ) )
         } else if (moisture > 0.3) {
-          node.tags = new Set([ `forest` ])
-          if (spawnChance > 0.9995) this.#entities.push( new Rect( node.boundary.x, node.boundary.y, 10, 10 ) ) // Mało owoców
+          tag = `forest`
+          if (spawnChance > 0.9995) this.entities.add( new Fruit( nodeCenter.x, nodeCenter.y, tag ) )
         } else {
-          node.tags = new Set([ `desert` ])
+          tag = `desert`
         }
       } else if (elevation > 0.05) { // Beach
-        node.tags = new Set([ `beach` ])
+        tag = `beach`
       } else { // Water
-        node.tags = new Set([ `water` ])
+        tag = `water`
       }
+
+      node.tags = new Set([ tag ])
 
       // TODO: Feature concept
       // const isCenter = Math.abs( node.boundary.x - this.#width / 2 ) < 50 && Math.abs( node.boundary.y - this.#height / 2 ) < 50
@@ -215,15 +252,84 @@ export default class World {
     return chunk?.getTileAt( x, y )
   }
 
-  draw( ctx:CanvasRenderingContext2D, camera:Camera ) {
+  draw( drawData:DrawData ) {
+    const visibleChunks = new Set<Chunk>()
+
     for (const chunk of this.#chunks.values()) {
-      if (camera.intersects( chunk.boundary )) {
-        chunk.draw( ctx )
+      if (drawData.camera.intersects( chunk.boundary )) {
+        chunk.drawTerrain( drawData )
+        visibleChunks.add( chunk )
       }
+    }
+
+    for (const chunk of visibleChunks) {
+      chunk.draw( drawData )
     }
   }
 
+  findEntityNear<T extends Drawable>( x:number, y:number, cb:(entity:Drawable) => boolean ): T | undefined
+  findEntityNear<T extends Drawable>( x:number, y:number, radius:number, cb:(entity:Drawable) => boolean ): T | undefined
+  findEntityNear( x:number, y:number, radiusOrCb:number | ((entity:Drawable) => boolean), maybeCb?:(entity:Drawable) => boolean ) {
+    const [ radius, cb ] = typeof radiusOrCb === `number` ? [ radiusOrCb, maybeCb! ] : [ 0, radiusOrCb ]
+
+    const startCx = Math.floor( x / this.#chunkSize ) * this.#chunkSize
+    const startCy = Math.floor( y / this.#chunkSize ) * this.#chunkSize
+
+    for (let ring = 0;  ring <= radius;  ring++) {
+      const found = this.#searchRing( startCx, startCy, ring, cb )
+      if (found) return found
+    }
+
+    return undefined
+  }
+
+  #searchRing( cx:number, cy:number, ring:number, cb:(entity:Drawable) => boolean ) {
+    if (ring === 0) return this.#checkChunk( cx, cy, cb )
+
+    const minX = cx - ring * this.#chunkSize
+    const maxX = cx + ring * this.#chunkSize
+    const minY = cy - ring * this.#chunkSize
+    const maxY = cy + ring * this.#chunkSize
+
+    for (let x = minX;  x <= maxX;  x += this.#chunkSize) {
+      const top = this.#checkChunk( x, minY, cb )
+      if (top) return top
+
+      const bottom = this.#checkChunk( x, maxY, cb )
+      if (bottom) return bottom
+    }
+
+    for (let y = minY + this.#chunkSize;  y < maxY;  y += this.#chunkSize) {
+      const left = this.#checkChunk( minX, y, cb )
+      if (left) return left
+
+      const right = this.#checkChunk( maxX, y, cb )
+      if (right) return right
+    }
+
+    return undefined
+  }
+
+  #checkChunk( cx:number, cy:number, cb:(entity:Drawable) => boolean ) {
+    const chunk = this.#chunks.get( `${cx},${cy}` )
+    if (!chunk) return undefined
+
+    for (const entity of chunk.entities) {
+      if (cb( entity )) return entity
+    }
+
+    return undefined
+  }
+
+  #getChunkAt( x:number, y:number ) {
+    const cx = Math.floor( x / this.#chunkSize ) * this.#chunkSize
+    const cy = Math.floor( y / this.#chunkSize ) * this.#chunkSize
+    return this.#chunks.get( `${cx},${cy}` )
+  }
+
   #generateChunks() {
+    const sizeUnit = Quadtree.getNodeSize( this.chunkSize, this.maxTerrainDepth )
+
     const getTerrainElevation = (node:Quadtree) => {
       const center = Rect.getCenter( node.boundary )
 
@@ -255,6 +361,7 @@ export default class World {
           new Rect( x, y, this.#chunkSize, this.#chunkSize ),
           this.#maxTerrainDepth,
           this.#colors,
+          Quadtree.getNodeSize( this.chunkSize, this.maxTerrainDepth ),
           {
             hashCoords,
             terrain: node => getTerrainElevation( node ),
@@ -264,6 +371,39 @@ export default class World {
 
         this.#chunks.set( `${x},${y}`, chunk )
       }
+    }
+
+    const getSpawnArea = (x:number, y:number, cb:( x:number, y:number, chunk:Chunk, tag:string) => void) => {
+      const cx = this.#width / 2 + x
+      const cy = this.#height / 2 + y
+
+      const chunk = this.#getChunkAt( cx, cy )
+      if (!chunk) throw new Error( `Missing chunk` )
+
+      const tag = chunk?.getTileAt( cx, cy )
+      if (!tag) throw new Error( `Missing chunk tag` )
+
+      cb( cx, cy, chunk, tag )
+    }
+
+    getSpawnArea( 0, 0, (x, y, chunk, tag) => chunk.spawn( new Men( x, y, sizeUnit, tag ) ) )
+    getSpawnArea( 100, 0, (x, y, chunk, tag) => chunk.spawn( new Men( x, y, sizeUnit, tag ) ) )
+    getSpawnArea( 50, 100, (x, y, chunk, tag) => chunk.spawn( new Women( x, y, sizeUnit, tag ) ) )
+  }
+
+  moveEntity = (entityPosBefore:Point, entityAfter:Drawable) => {
+    const entityCenter = Rect.getCenter( entityAfter.collideBoundary ?? entityAfter.boundary )
+
+    const chunkBefore = this.#getChunkAt( entityPosBefore.x, entityPosBefore.y )
+    const chunkAfter = this.#getChunkAt( entityCenter.x, entityCenter.y )
+
+    if (chunkAfter) {
+      if (chunkBefore && chunkBefore !== chunkAfter) {
+        chunkBefore.despawn( entityAfter )
+        chunkAfter.spawn( entityAfter )
+      }
+
+      entityAfter.tagOn = chunkAfter.getTileAt( entityCenter.x, entityCenter.y )
     }
   }
 }
