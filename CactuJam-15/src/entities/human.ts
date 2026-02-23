@@ -3,8 +3,12 @@ import { Point, Rect } from "../logic/shapes"
 import { SpritesStorage } from "../logic/Sprite"
 import humanWomenImgSrc from "./human-women.png"
 import humanWomenWalkImgSrc from "./human-women-walk.png"
+import humanWomenChildImgSrc from "./human-women-child.png"
+import humanWomenChildWalkImgSrc from "./human-women-child-walk.png"
 import humanMenImgSrc from "./human-men.png"
 import humanMenWalkImgSrc from "./human-men-walk.png"
+import humanMenChildImgSrc from "./human-men-child.png"
+import humanMenChildWalkImgSrc from "./human-men-child-walk.png"
 import humanGraveImgSrc from "./human-grave.png"
 import type { Drawable, DrawData } from "../logic/World"
 
@@ -22,18 +26,22 @@ export class HumanEntity implements Drawable {
   }
 
   belowSurface = false
+  #sizeUnit: number
 
   constructor(
     public boundary:Rect,
-    public sprites:SpritesStorage<`idle` | `walking` | `grave`>,
+    public sprites:SpritesStorage<`idle` | `walking` | `childIdle` | `childWalking` | `grave`>,
+    sizeUnit:number,
     public tagOn:undefined | string,
   ) {
+    this.#sizeUnit = sizeUnit
     this.collideBoundary = new Rect( boundary.x, boundary.y + boundary.height - 15, boundary.width, 15 )
   }
 
   updateBoundaries() {
     this.collideBoundary.x = this.boundary.x
     this.collideBoundary.y = this.boundary.y + this.boundary.height - 15
+    this.collideBoundary.width = this.boundary.width
   }
 
   updateTagOn( tag?:string ) {
@@ -47,8 +55,37 @@ export class HumanEntity implements Drawable {
   }
 
   getSpeed() {
-    if (this.belowSurface) return this.speed * 0.5
+    if (this.belowSurface) return this.speed + (4 - this.speed) * 2
     return this.speed
+  }
+
+  changeSprite( type:`idle` | `walking` ) {
+    if (this.stage === `young`) {
+      switch (type) {
+        case `idle`: return this.sprites.changeSprite( `childIdle` )
+        case `walking`: return this.sprites.changeSprite( `childWalking` )
+      }
+    } else if (this.stage === `adult`) {
+      switch (type) {
+        case `idle`: return this.sprites.changeSprite( `idle` )
+        case `walking`: return this.sprites.changeSprite( `walking` )
+      }
+    }
+  }
+
+  changeStage( stage:HumanStage ) {
+    if (stage === `young` && (this.stage === `adult` || this.stage === `old`)) {
+      this.boundary.width -= 5 * this.#sizeUnit
+      this.boundary.height -= 10 * this.#sizeUnit
+      this.updateBoundaries()
+    }
+
+    if (stage === `young`) {
+      this.speed = 7
+      this.sprites.changeSprite( `childIdle` )
+    }
+
+    this.stage = stage
   }
 
   draw({ ctx }:DrawData) {
@@ -84,10 +121,24 @@ export class Women extends HumanEntity {
           framesPerRow: 3,
           framesPerColumn: 2,
           framesCount: 4,
-          framePixelsPadding: 2,
+          framePixelsPadding: 1,
         },
         walking: {
           src: humanWomenWalkImgSrc,
+          framesPerRow: 3,
+          framesPerColumn: 2,
+          framesCount: 4,
+          framePixelsPadding: 1,
+        },
+        childIdle: {
+          src: humanWomenChildImgSrc,
+          framesPerRow: 3,
+          framesPerColumn: 2,
+          framesCount: 4,
+          framePixelsPadding: 1,
+        },
+        childWalking: {
+          src: humanWomenChildWalkImgSrc,
           framesPerRow: 3,
           framesPerColumn: 2,
           framesCount: 4,
@@ -101,6 +152,7 @@ export class Women extends HumanEntity {
           framePixelsPadding: 1,
         },
       }),
+      sizeUnit,
       tagOn,
     )
   }
@@ -127,6 +179,20 @@ export class Men extends HumanEntity {
           framesCount: 4,
           framePixelsPadding: 1,
         },
+        childIdle: {
+          src: humanMenChildImgSrc,
+          framesPerRow: 3,
+          framesPerColumn: 2,
+          framesCount: 4,
+          framePixelsPadding: 1,
+        },
+        childWalking: {
+          src: humanMenChildWalkImgSrc,
+          framesPerRow: 3,
+          framesPerColumn: 2,
+          framesCount: 4,
+          framePixelsPadding: 1,
+        },
         grave: {
           src: humanGraveImgSrc,
           framesPerRow: 2,
@@ -135,6 +201,7 @@ export class Men extends HumanEntity {
           framePixelsPadding: 1,
         },
       }),
+      sizeUnit,
       tagOn,
     )
   }

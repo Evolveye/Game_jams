@@ -35,7 +35,7 @@ export default class Game {
   copulations = new Set<Copulation>()
 
   settings = {
-    copulationFruits: 10,
+    copulationFruits: 2,
     copulationTimeSec: 1,
   }
 
@@ -106,13 +106,15 @@ export default class Game {
             createTag( `dt`, { children:`Lewy przycisk myszy` } ),
             createTag( `dd`, { children:`Wykonywanie akcji` } ),
             createTag( `dt`, { children:`Prawy przycisk myszy` } ),
-            createTag( `dd`, { children:`menu kontekstowe (na niektóych elementach)` } ),
+            createTag( `dd`, { children:`Menu kontekstowe (na niektóych elementach)` } ),
+            createTag( `dt`, { children:`Kółko myszy` } ),
+            createTag( `dd`, { children:`Przyblizanie/oddalanie` } ),
           ] } ) } ),
           createTag( `h2`, { children:`Znikoma instrukcja` } ),
-          createTag( `p`, { children:`Podchodź do przedmiotów;` } ),
-          createTag( `p`, { children:`wykonuj na nich akcje;` } ),
+          createTag( `p`, { children:`Zbieraj owoce;` } ),
+          createTag( `p`, { children:`poderwij parę;` } ),
           createTag( `p`, { children:`rozmnażaj się!` } ),
-          createTag( `p`, { children:`Im dłuzej przetrwasz, tym lepiej` } ),
+          createTag( `p`, { children:`Im dłuzej przetrwasz, tym dłuzej przetrwa gatunek, tym więcej punktów zdobędzisz!` } ),
         ] } ),
 
         createTag( `section`, { children: [
@@ -152,11 +154,10 @@ export default class Game {
             if (this.contextMenuEntity instanceof HumanEntity) {
               if (this.player.inventory.fruits === 0) return
 
-              this.player.inventory.fruits -= this.settings.copulationFruits
-              this.contextMenuEntity.inventory.fruits -= this.settings.copulationFruits
-              fruitsCount.innerHTML = `${this.player.inventory.fruits}`
+              if (this.player instanceof Men) this.copulate( this.player, this.contextMenuEntity )
+              else this.copulate( this.contextMenuEntity, this.player )
 
-              this.copulate( this.player, this.contextMenuEntity )
+              fruitsCount.innerHTML = `${this.player.inventory.fruits}`
             }
           },
           "data-only": `couple`,
@@ -217,7 +218,7 @@ export default class Game {
   changePlayer( entity?:HumanEntity, options:{ withoutSpriteChange?: boolean } = {} ) {
     if (!entity || this.player === entity) return
 
-    if (!options.withoutSpriteChange) this.player.sprites.changeSprite( `idle` )
+    if (!options.withoutSpriteChange) this.player.changeSprite( `idle` )
     this.player = entity
     this.ui.fruitsCount.innerHTML = `${this.player.inventory.fruits}`
   }
@@ -244,8 +245,10 @@ export default class Game {
       contextmenu.style.left = `${this.camera.pointerPos.x}px`
       contextmenu.style.top = `${this.camera.pointerPos.y}px`
 
-      const isCouple = this.contextMenuEntity instanceof Men && this.player instanceof Women
-        || this.contextMenuEntity instanceof Women && this.player instanceof Men
+      const isCouple = this.contextMenuEntity instanceof HumanEntity && this.contextMenuEntity.stage !== `young` && this.player.stage !== `young` && (
+        this.contextMenuEntity instanceof Men && this.player instanceof Women ||
+        this.contextMenuEntity instanceof Women && this.player instanceof Men
+      )
 
       if (isCouple) contextmenu.querySelectorAll( `[data-only="couple"]` ).forEach( ele => {
         if (ele instanceof HTMLElement) {
@@ -290,16 +293,16 @@ export default class Game {
       if (Keys.isPressed( controls.right )) playerVelocity.x += speed
 
       playerFlip.x = false
-      if (player.velocity.x > 0) player.sprites.changeSprite( `walking` )
+      if (player.velocity.x > 0) player.changeSprite( `walking` )
       else if (playerVelocity.x < 0) {
-        player.sprites.changeSprite( `walking` )
+        player.changeSprite( `walking` )
         playerFlip.x = true
       } else {
-        if (playerVelocity.y < 0) player.sprites.changeSprite( `walking` )
+        if (playerVelocity.y < 0) player.changeSprite( `walking` )
         else if (playerVelocity.y > 0) {
-          player.sprites.changeSprite( `walking` )
+          player.changeSprite( `walking` )
           playerFlip.x = true
-        } else player.sprites.changeSprite( `idle` )
+        } else player.changeSprite( `idle` )
       }
 
 
@@ -397,6 +400,9 @@ export default class Game {
   }
 
   copulate( men:Men, women:Women ) {
+    men.inventory.fruits -= this.settings.copulationFruits
+    women.inventory.fruits -= this.settings.copulationFruits
+
     const menPosBefore = Rect.getCenter( men.collideBoundary )
     const womenPosBefore = Rect.getCenter( women.collideBoundary )
     const sizeUnit = this.world.sizeUnit
@@ -408,13 +414,13 @@ export default class Game {
     }
 
     men.locked = true
-    men.boundary.x = referencePos.x - 50
+    men.boundary.x = referencePos.x - 15 * sizeUnit
     men.boundary.y = referencePos.y
     men.updateBoundaries()
     this.world.moveEntity( menPosBefore, men )
 
     women.locked = true
-    women.boundary.x = referencePos.x + 50
+    women.boundary.x = referencePos.x + 14 * sizeUnit
     women.boundary.y = referencePos.y + menOffset
     women.updateBoundaries()
     this.world.moveEntity( womenPosBefore, women )
@@ -429,11 +435,20 @@ export default class Game {
       const tag = this.world.getTileAt( referencePos.x, referencePos.y )
       if (!tag) throw new Error( `Missing chunk tag` )
 
-      const x = referencePos.x
-      const y = referencePos.y + 10 * sizeUnit
+      const x = referencePos.x + 3 * sizeUnit
+      const y = referencePos.y + 17 * sizeUnit
 
-      if (Math.random() > 0.5) this.world.spawnEntity( x, y, new Men( x, y, sizeUnit, tag ) )
-      else this.world.spawnEntity( x, y + menOffset, new Women( x, y + menOffset, sizeUnit, tag ) )
+      if (Math.random() > 0.5) {
+        const human = new Men( x, y, sizeUnit, tag )
+        human.changeStage( `young` )
+
+        this.world.spawnEntity( x, y, human )
+      } else {
+        const human = new Women( x, y + menOffset, sizeUnit, tag )
+        human.changeStage( `young` )
+
+        this.world.spawnEntity( x, y + menOffset, human )
+      }
     }, 1000 * this.settings.copulationTimeSec )
 
     this.toggleContextMenu( false )

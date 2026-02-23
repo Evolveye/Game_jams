@@ -278,6 +278,7 @@ export default class World {
   }
 
   spawnEntity( x:number, y:number, entity:Drawable ) {
+    console.log( entity )
     const chunk = this.#getChunkAt( x, y )
     if (!chunk) return false
 
@@ -427,7 +428,7 @@ export default class World {
     }
 
     getSpawnArea( 0, 0, (x, y, chunk, tag) => chunk.spawn( new Men( x, y, this.sizeUnit, tag ) ) )
-    getSpawnArea( 100, 0, (x, y, chunk, tag) => chunk.spawn( new Men( x, y, this.sizeUnit, tag ) ) )
+    // getSpawnArea( 100, 0, (x, y, chunk, tag) => chunk.spawn( new Men( x, y, this.sizeUnit, tag ) ) )
     getSpawnArea( 50, 100, (x, y, chunk, tag) => chunk.spawn( new Women( x, y, this.sizeUnit, tag ) ) )
   }
 
