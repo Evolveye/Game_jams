@@ -77,13 +77,13 @@ export default class Game {
     ctx.imageSmoothingEnabled = false
 
 
-    const fruitsCount = createTag( `span`, { children:0 } )
+    const fruitsCount = createTag( `span`, { children:0, style:`font-weight:bold; color:gold`  } )
     const menu = createTag<HTMLDivElement>( `article`, {
       id: `menu`,
       children: [
         createTag( `section`, { children: [
           createTag( `hgroup`, { children: [
-            createTag( `h1`, { children:`Wyspa golasów` } ),
+            createTag( `h1`, { children:`Wyspa golasów`, style:`color:pink`  } ),
             createTag( `p`, { children:`Alternatywna historia pierwszych ludzi` } ),
           ] } ),
           createTag( `hr` ),
@@ -103,17 +103,27 @@ export default class Game {
               createTag( `b`, { children:`Strzałki` } ),
             ] } ),
             createTag( `dd`, { children:`Poruszanie się` } ),
-            createTag( `dt`, { children:`Lewy przycisk myszy` } ),
-            createTag( `dd`, { children:`Wykonywanie akcji` } ),
-            createTag( `dt`, { children:`Prawy przycisk myszy` } ),
-            createTag( `dd`, { children:`Menu kontekstowe (na niektóych elementach)` } ),
-            createTag( `dt`, { children:`Kółko myszy` } ),
+            createTag( `dt`, { children:createTag( `b`, { children:`Lewy przycisk myszy` } ) } ),
+            createTag( `dd`, { children: [
+              `Wykonywanie akcji,`,
+              createTag( `br` ),
+              `w tym wybór postaci`,
+            ] } ),
+            createTag( `dt`, { children:createTag( `b`, { children:`Prawy przycisk myszy` } ) } ),
+            createTag( `dd`, { children:`Menu kontekstowe (na niektóych elementach);` } ),
+            createTag( `dt`, { children:createTag( `b`, { children:`Kółko myszy` } ) } ),
             createTag( `dd`, { children:`Przyblizanie/oddalanie` } ),
           ] } ) } ),
           createTag( `h2`, { children:`Znikoma instrukcja` } ),
           createTag( `p`, { children:`Zbieraj owoce;` } ),
-          createTag( `p`, { children:`poderwij parę;` } ),
-          createTag( `p`, { children:`rozmnażaj się!` } ),
+          createTag( `p`, { children: [
+            createTag( `span`, { children:`poderwij`, style:`color:pink` } ),
+            ` parę;`,
+          ] } ),
+          createTag( `p`, { children: [
+            createTag( `span`, { children:`rozmnażaj się`, style:`color:red` } ),
+            `!`,
+          ] } ),
           createTag( `p`, { children:`Im dłuzej przetrwasz, tym dłuzej przetrwa gatunek, tym więcej punktów zdobędzisz!` } ),
         ] } ),
 

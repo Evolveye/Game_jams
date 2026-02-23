@@ -12,6 +12,10 @@ dl {
 }
 dt {
   margin-top: 1em;
+
+  & b {
+    color: gold;
+  }
 }
 
 dd {
