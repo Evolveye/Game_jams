@@ -8,6 +8,8 @@ import Keys from "./logic/Keys"
 import Camera from "./logic/Camera"
 import { HumanEntity, Men, Women } from "./entities/human"
 import heartImgSrc from "./entities/heart.png"
+import growSkullImgSrc from "./entities/grow-skull.png"
+import { FruitPlant } from "./entities/fruitPlant"
 import fruitImgSrc from "./entities/fruit-static.png"
 import { Fruit } from "./entities/fruit"
 import { Copulation } from "./entities/copulation"
@@ -18,6 +20,7 @@ type GameUi = {
   cursor: HTMLElement
   contextmenu: HTMLDivElement
   fruitsCount: HTMLSpanElement
+  timeToLive: HTMLSpanElement
 }
 
 export default class Game {
@@ -35,8 +38,10 @@ export default class Game {
   copulations = new Set<Copulation>()
 
   settings = {
-    copulationFruits: 2,
-    copulationTimeSec: 1,
+    copulationFruits: 10,
+    copulationTimeSec: 10,
+    fruitsToPlantCount: 1,
+    handRange: 40,
   }
 
   ui: GameUi
@@ -76,8 +81,8 @@ export default class Game {
 
     ctx.imageSmoothingEnabled = false
 
-
     const fruitsCount = createTag( `span`, { children:0, style:`font-weight:bold; color:gold`  } )
+    const timeToLive = createTag( `span`, { children:`--:--`, style:`font-weight:bold; color:gold`  } )
     const menu = createTag<HTMLDivElement>( `article`, {
       id: `menu`,
       children: [
@@ -134,6 +139,11 @@ export default class Game {
             createTag( `p`, { children:`Liczba owoców:` } ),
             fruitsCount,
           ] } ),
+          createTag( `div`, { class: `stat`, children: [
+            createTag( `img`, { width:22, height:22, src:growSkullImgSrc } ),
+            createTag( `p`, { children:`Starzenie za:` } ),
+            timeToLive,
+          ] } ),
         ] } ),
       ],
     } )
@@ -145,6 +155,41 @@ export default class Game {
         createTag( `button`, {
           class: `fastAction`,
           onClick: () => {
+            if (!this.contextMenuEntity) {
+              if (this.player.inventory.fruits === 0) return
+
+              this.player.inventory.fruits--
+
+              const pos = this.camera.pointerPos.ctxClick
+              const plant = new FruitPlant( pos.x, pos.y, this.world.sizeUnit, () => {
+                const fruitA = new Fruit( pos.x - 5 * this.world.sizeUnit, pos.y, this.world.sizeUnit, undefined )
+                this.world.spawnEntity( pos.x - 5 * this.world.sizeUnit, pos.y, fruitA )
+
+                const fruitB = new Fruit( pos.x + 5 * this.world.sizeUnit, pos.y, this.world.sizeUnit, undefined )
+                this.world.spawnEntity( pos.x + 5 * this.world.sizeUnit, pos.y, fruitB )
+
+                this.world.despawnEntity( pos.x, pos.y, plant )
+              } )
+
+              this.world.spawnEntity( pos.x, pos.y, plant )
+              fruitsCount.innerHTML = `${this.player.inventory.fruits}`
+              this.toggleContextMenu( false )
+            }
+          },
+          "data-only": `jungle`,
+          children: [
+            `Zasadź owoc`,
+            createTag( `img`, { src:fruitImgSrc } ),
+            createTag( `span`, { children: [
+              `Wymaga ${this.settings.fruitsToPlantCount}`,
+              createTag( `img`, { src:fruitImgSrc } ),
+            ] } ),
+          ],
+        } ),
+
+        createTag( `button`, {
+          class: `s`,
+          onClick: () => {
             if (this.contextMenuEntity instanceof HumanEntity) {
               if (this.player.inventory.fruits === 0) return
 
@@ -153,11 +198,13 @@ export default class Game {
               fruitsCount.innerHTML = `${this.player.inventory.fruits}`
             }
           },
+          "data-only": `human`,
           children: [
             `Przekaż owoc`,
             createTag( `img`, { src:fruitImgSrc } ),
           ],
         } ),
+
         createTag( `button`, {
           class: `fastAction`,
           onClick: () => {
@@ -222,6 +269,7 @@ export default class Game {
       cursor,
       contextmenu,
       fruitsCount,
+      timeToLive,
     } ] as const
   }
 
@@ -246,27 +294,29 @@ export default class Game {
       if (show) return
 
       contextmenu.classList.add( `hidden` )
-      contextmenu.querySelectorAll( `[data-only]` ).forEach( ele => {
-        if (ele instanceof HTMLElement) ele.classList.remove( `showed` )
-      } )
+      contextmenu.querySelectorAll<HTMLElement>( `[data-only]` ).forEach( ele => ele.classList.remove( `showed` ) )
     } else {
       if (!show) return
 
       contextmenu.style.left = `${this.camera.pointerPos.x}px`
       contextmenu.style.top = `${this.camera.pointerPos.y}px`
 
-      const isCouple = this.contextMenuEntity instanceof HumanEntity && this.contextMenuEntity.stage !== `young` && this.player.stage !== `young` && (
-        this.contextMenuEntity instanceof Men && this.player instanceof Women ||
-        this.contextMenuEntity instanceof Women && this.player instanceof Men
-      )
+      if (!this.contextMenuEntity) {
+        const dist = Rect.getDistance( this.player.collideBoundary, new Rect( this.camera.pointerPos.inGame.x, this.camera.pointerPos.inGame.y, 1, 1 ) )
+        const tile = this.world.getTileAt( this.camera.pointerPos.inGame.x, this.camera.pointerPos.inGame.y )
+        if (dist < this.settings.handRange && tile === `jungle`) contextmenu.querySelectorAll<HTMLElement>( `[data-only="jungle"]` ).forEach( ele => ele.classList.add( `showed` ) )
+      } else {
+        const isCouple = this.contextMenuEntity instanceof HumanEntity && this.contextMenuEntity.stage !== `young` && this.player.stage !== `young` && (
+          this.contextMenuEntity instanceof Men && this.player instanceof Women ||
+          this.contextMenuEntity instanceof Women && this.player instanceof Men
+        )
 
-      if (isCouple) contextmenu.querySelectorAll( `[data-only="couple"]` ).forEach( ele => {
-        if (ele instanceof HTMLElement) {
-          ele.classList.add( `showed` )
-        }
-      } )
+        contextmenu.querySelectorAll<HTMLElement>( `[data-only="human"]` ).forEach( ele => ele.classList.add( `showed` ) )
+        if (isCouple) contextmenu.querySelectorAll<HTMLElement>( `[data-only="couple"]` ).forEach( ele => ele.classList.add( `showed` ) )
+      }
 
-      contextmenu.classList.remove( `hidden` )
+      const items = contextmenu.querySelectorAll<HTMLElement>( `& > :is( :not( [data-only] ), [data-only].showed )` )
+      if (items.length) contextmenu.classList.remove( `hidden` )
     }
   }
 
@@ -332,7 +382,7 @@ export default class Game {
 
     const nearEntitiesGen = this.world.getNearEntitiesGenerator<Drawable>(
       posBefore.x, posBefore.y, 1,
-      e => e !== player && Rect.getDistance( player.collideBoundary, e.collideBoundary ?? e.boundary ) < 40,
+      e => e !== player && Rect.getDistance( player.collideBoundary, e.collideBoundary ?? e.boundary ) < this.settings.handRange,
     )
 
     const cursorEntity = this.world.findEntityNear<Drawable>(
@@ -365,7 +415,9 @@ export default class Game {
       }
     }
 
-    if (cursorEntity instanceof HumanEntity) {
+    if (!cursorEntity && camera.activePointers.mouseRight) {
+      this.toggleContextMenu( true )
+    } else if (cursorEntity instanceof HumanEntity) {
       if (camera.activePointers.mouseLeft) this.changePlayer( cursorEntity )
       if (!cursorChanged) {
         cursorChanged = true
@@ -387,6 +439,12 @@ export default class Game {
     )
     ctx.globalAlpha = 1
     if (iterationsCount % 30 === 0) {
+      const seconds = Math.floor( player.timeToGrow / 1000 )
+      this.ui.timeToLive.innerHTML = ``
+        + `${Math.floor( seconds / 60 )}`.padStart( 2, `0` )
+        + `:`
+        + `${seconds % 60}`.padStart( 2, `0` )
+
       this.utilitiesSprites.arrowHead.nextFrame()
     }
 

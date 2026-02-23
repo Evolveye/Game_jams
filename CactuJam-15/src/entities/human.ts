@@ -17,7 +17,6 @@ export type HumanStage = `young` | `adult` | `old` | `dead`
 export class HumanEntity implements Drawable {
   stage = `adult` as HumanStage
   speed = 5
-  #drawCount = 0
   velocity: Point = new Point( 0, 0 )
   collideBoundary: Rect
   locked = false
@@ -26,7 +25,11 @@ export class HumanEntity implements Drawable {
   }
 
   belowSurface = false
+  // timeToGrow = 1000 * 60 * 5
+  timeToGrow = 1000 * 60 * 2
   #sizeUnit: number
+  #drawCount = 0
+  #growIntervalId = 0
 
   constructor(
     public boundary:Rect,
@@ -36,6 +39,18 @@ export class HumanEntity implements Drawable {
   ) {
     this.#sizeUnit = sizeUnit
     this.collideBoundary = new Rect( boundary.x, boundary.y + boundary.height - 15, boundary.width, 15 )
+
+    this.#growIntervalId = window.setInterval( () => {
+      this.timeToGrow -= Math.min( 1000, this.timeToGrow )
+
+      if (this.timeToGrow === 0 && !this.locked) {
+        if (this.stage === `young`) this.changeStage( `adult` )
+        else if (this.stage === `adult`) {
+          window.clearInterval( this.#growIntervalId )
+          this.changeStage( `dead` )
+        }
+      }
+    }, 1000 )
   }
 
   updateBoundaries() {
@@ -82,7 +97,19 @@ export class HumanEntity implements Drawable {
 
     if (stage === `young`) {
       this.speed = 7
+      this.timeToGrow = 1000 * 60 * 5
       this.sprites.changeSprite( `childIdle` )
+    }
+
+    if (stage === `adult`) {
+      this.timeToGrow = 1000 * 60 * 5
+      this.speed = 5
+      this.sprites.changeSprite( `idle` )
+    }
+
+    if (stage === `dead`) {
+      this.speed = 0
+      this.sprites.changeSprite( `grave` )
     }
 
     this.stage = stage

@@ -278,7 +278,6 @@ export default class World {
   }
 
   spawnEntity( x:number, y:number, entity:Drawable ) {
-    console.log( entity )
     const chunk = this.#getChunkAt( x, y )
     if (!chunk) return false
 

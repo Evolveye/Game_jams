@@ -12,6 +12,10 @@ export default class Camera {
     mouseLeft: false,
   }
   pointerPos = {
+    ctxClick: {
+      x: 0,
+      y: 0,
+    },
     inGame: {
       x: 0,
       y: 0,
@@ -48,7 +52,11 @@ export default class Camera {
 
       switch (e.button) {
         case 0: this.activePointers.mouseLeft = true; break
-        case 2: this.activePointers.mouseRight = true; break
+        case 2:
+          this.activePointers.mouseRight = true
+          this.pointerPos.ctxClick.x = this.pointerPos.inGame.x
+          this.pointerPos.ctxClick.y = this.pointerPos.inGame.y
+          break
       }
     } )
     window.addEventListener( `pointerup`, e => {
