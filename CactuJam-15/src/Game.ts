@@ -55,7 +55,7 @@ export default class Game {
     this.ctx = ctx
 
     this.world = new World({
-      seed: 1.2,
+      seed: Math.random() * 100,
       chunkSize: 256,
       widthInChunks: 16,
       heightInChunks: 16,
@@ -122,6 +122,10 @@ export default class Game {
           createTag( `h2`, { children:`Znikoma instrukcja` } ),
           createTag( `p`, { children:`Zbieraj owoce;` } ),
           createTag( `p`, { children: [
+            createTag( `span`, { children:`siej`, style:`color:lime` } ),
+            ` plony;`,
+          ] } ),
+          createTag( `p`, { children: [
             createTag( `span`, { children:`poderwij`, style:`color:pink` } ),
             ` parę;`,
           ] } ),
@@ -130,6 +134,8 @@ export default class Game {
             `!`,
           ] } ),
           createTag( `p`, { children:`Im dłuzej przetrwasz, tym dłuzej przetrwa gatunek, tym więcej punktów zdobędzisz!` } ),
+          createTag( `hr` ),
+          createTag( `p`, { children:`Produkcja wykonana przez ~Evolveye, z pomocą Gemini; grafiki rysownao w PiskelApp` } ),
         ] } ),
 
         createTag( `section`, { children: [
@@ -160,7 +166,7 @@ export default class Game {
 
               this.player.inventory.fruits--
 
-              const pos = this.camera.pointerPos.ctxClick
+              const pos = structuredClone( this.camera.pointerPos.ctxClick )
               const plant = new FruitPlant( pos.x, pos.y, this.world.sizeUnit, () => {
                 const fruitA = new Fruit( pos.x - 5 * this.world.sizeUnit, pos.y, this.world.sizeUnit, undefined )
                 this.world.spawnEntity( pos.x - 5 * this.world.sizeUnit, pos.y, fruitA )
@@ -188,7 +194,7 @@ export default class Game {
         } ),
 
         createTag( `button`, {
-          class: `s`,
+          class: `fastAction`,
           onClick: () => {
             if (this.contextMenuEntity instanceof HumanEntity) {
               if (this.player.inventory.fruits === 0) return
@@ -209,8 +215,6 @@ export default class Game {
           class: `fastAction`,
           onClick: () => {
             if (this.contextMenuEntity instanceof HumanEntity) {
-              if (this.player.inventory.fruits === 0) return
-
               if (this.player instanceof Men) this.copulate( this.player, this.contextMenuEntity )
               else this.copulate( this.contextMenuEntity, this.player )
 
@@ -242,6 +246,8 @@ export default class Game {
 
     // Events
     window.addEventListener( `wheel`, e => {
+      if (!(e.target instanceof HTMLElement) || !e.target.closest( `canvas` )) return
+
       e.preventDefault()
 
       const zoomSpeed = 0.1
@@ -470,6 +476,13 @@ export default class Game {
   copulate( men:Men, women:Women ) {
     men.inventory.fruits -= this.settings.copulationFruits
     women.inventory.fruits -= this.settings.copulationFruits
+
+    const menRip = men.inventory.fruits < 0
+    const womenRip = women.inventory.fruits < 0
+
+    if (menRip) men.changeStage( `dead` )
+    if (womenRip) women.changeStage( `dead` )
+    if (menRip || womenRip) return
 
     const menPosBefore = Rect.getCenter( men.collideBoundary )
     const womenPosBefore = Rect.getCenter( women.collideBoundary )

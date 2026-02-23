@@ -46,6 +46,10 @@ canvas {
     align-items: center;
     gap: 8px;
   }
+
+  & > :first-child {
+    overflow: auto;
+  }
 }
 
 :where( #contextmenu ) {
