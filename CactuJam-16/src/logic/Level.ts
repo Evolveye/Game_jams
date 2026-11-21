@@ -10,6 +10,9 @@ import { WORLD, type Point, type Rect } from "./world"
 
 export type LevelScript = (level:Level) => Promise<void>
 
+/** Where a kid starts, and the toys it holds (dropped when it is beaten). */
+export type KidSpawn = Point & { toys?:ToyKind[] }
+
 /** `speaker` defaults to the player's kid, `seconds` is how long the subtitle stays. */
 export type SayOptions = { speaker?:Speaker, seconds?:number }
 
@@ -170,15 +173,20 @@ export default class Level {
     this.toys.add( new ToyPickup( this.#runningGame, kind, x, y ) )
   }
 
-  spawnKids( spots:Point[] ) {
+  /** Puts peacefully playing kids at the given spots, optionally holding toys. Returns them in the same order. */
+  spawnKids( spots:KidSpawn[] ) {
     const game = this.#runningGame
 
-    for (const { x, y } of spots) {
+    return spots.map( ({ x, y, toys = [] }) => {
       const kid = new Kid( game, x, y )
+
+      for (const kind of toys) kid.inventory.add( kind )
 
       this.kids.add( kid )
       game.events.emit( `kidSpawned`, { kid } )
-    }
+
+      return kid
+    } )
   }
 
   angerKids() {

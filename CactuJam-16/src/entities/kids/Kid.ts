@@ -1,4 +1,5 @@
 import type Game from "../../Game"
+import { snapToPixels } from "../../logic/engine"
 import { SANDBOX, WORLD, type Point } from "../../logic/world"
 import Entity from "../Entity"
 import Inventory from "../items/Inventory"
@@ -43,7 +44,7 @@ export default class Kid extends Entity {
   state: KidState = `playing`
   health = STATS.health
   isGone = false
-  /** Toys the kid holds, e.g. ones taken from the player. Empty for now. */
+  /** Toys the kid holds. A beaten kid drops them. */
   inventory = new Inventory()
 
   stunTime = 0
@@ -75,7 +76,10 @@ export default class Kid extends Entity {
     this.cooldownTime = Math.random() * STATS.attackCooldown
   }
 
-  /** Hit by the player: a playing kid runs away at once, a hostile one only when out of health. */
+  /**
+   * Hit by the player: a playing kid runs away at once (unless it has toys to defend),
+   * a hostile one only when out of health, dropping its toys.
+   */
   takeHit( direction:Point, swing:SwingStats ) {
     if (this.state === `fleeing`) return
 
@@ -85,7 +89,25 @@ export default class Kid extends Entity {
     this.game.events.emit( `kidHit`, { kid:this } )
 
     if (this.state === `hostile`) this.health -= swing.damage
+
+    // A kid holding toys defends them instead of running away.
+    if (this.state === `playing` && this.inventory.items.length) this.becomeHostile()
+
+    if (this.health <= 0) this.dropToys()
     if (this.state === `playing` || this.health <= 0) this.flee()
+  }
+
+  /** Leaves every held toy on the ground where the kid stands. */
+  dropToys() {
+    const level = this.game.level
+    if (!level) return
+
+    for (const item of [ ...this.inventory.items ]) {
+      if (item.kind === `fist`) continue
+
+      this.inventory.remove( item.kind )
+      level.placeToy( item.kind, this.x, this.y )
+    }
   }
 
   /** Runs to the nearest edge of the playground and leaves. */
@@ -115,6 +137,7 @@ export default class Kid extends Entity {
   draw( ctx:CanvasRenderingContext2D ) {
     ctx.globalAlpha = this.state === `fleeing` ? 0.6 : 1
     this.drawBody( ctx, this.#getColor() )
+    this.#drawHeldToy( ctx )
     ctx.globalAlpha = 1
   }
 
@@ -199,5 +222,16 @@ export default class Kid extends Entity {
     if (this.stunTime) return COLORS.stunned
 
     return COLORS[ this.state ]
+  }
+
+  /** Placeholder: a thin stick in the toy's color next to the body. */
+  #drawHeldToy( ctx:CanvasRenderingContext2D ) {
+    const toy = this.inventory.selected
+    if (!toy) return
+
+    const corner = snapToPixels( ctx, this.x + this.radius, this.y - this.radius - 2 )
+
+    ctx.fillStyle = toy.definition.color
+    ctx.fillRect( corner.x, corner.y, 2, 6 )
   }
 }
