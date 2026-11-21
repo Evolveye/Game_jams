@@ -7,7 +7,8 @@
     "module": "esnext",
     "types": ["svelte", "vite/client"],
     "allowArbitraryExtensions": true,
-    "noEmit": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./node_modules/.tmp/app",
     /**
      * Typecheck JS in `.svelte` and `.js` files by default.
      * Disable checkJs if you'd like to use dynamic types in JS.

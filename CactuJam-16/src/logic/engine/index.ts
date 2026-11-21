@@ -15,3 +15,6 @@ export { default as EventBus } from "./EventBus"
 
 export * from "./Timers"
 export { default as Timers } from "./Timers"
+
+export * from "./Sprite"
+export { default as Sprite } from "./Sprite"

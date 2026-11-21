@@ -1,11 +1,13 @@
 import type { GameEvents } from "../Game"
 import type Game from "../Game"
+import Kid from "../entities/kids/Kid"
+import ToyPickup from "../entities/toys/ToyPickup"
+import type { ToyKind } from "../entities/toys/toys"
 import type { Listener } from "./engine"
-import type { Enemy, EnemyKind, ToyKind } from "./types"
+import type { Point } from "./world"
 
 export type LevelScript = (level:Level) => Promise<void>
 
-/** CSS of the debug log parts, applied with `%c` in `console.debug`. */
 const DEBUG_STYLES = {
   badge: `background: rgba(232, 200, 114, 0.15); color: #c9a95c; padding: 1px 6px; border-radius: 3px;`,
   method: `color: #60a5fa; font-weight: bold;`,
@@ -13,10 +15,10 @@ const DEBUG_STYLES = {
 }
 
 export default class Level {
-  /** Logs every call the script makes on the level, and when the awaited ones finish. */
   debug = true
 
-  enemies = new Set<Enemy>()
+  kids = new Set<Kid>()
+  toys = new Set<ToyPickup>()
   #game: null | Game = null
   #abortCtrl = new AbortController()
 
@@ -37,7 +39,9 @@ export default class Level {
 
     this.#game = game
     this.#abortCtrl = abortCtrl
-    this.enemies.clear()
+    this.kids.clear()
+    this.toys.clear()
+    game.view.setSpeech( null )
 
     await this.script( this.debug ? this.#createDebugProxy() : this )
     if (abortCtrl.signal.aborted) return false
@@ -48,6 +52,18 @@ export default class Level {
 
   abort() {
     this.#abortCtrl.abort()
+  }
+
+  update( seconds:number ) {
+    for (const toy of this.toys) {
+      toy.update()
+      if (toy.isTaken) this.toys.delete( toy )
+    }
+
+    for (const kid of this.kids) {
+      kid.update( seconds )
+      if (kid.isGone) this.#removeKid( kid )
+    }
   }
 
   wait( seconds:number ) {
@@ -62,48 +78,73 @@ export default class Level {
     this.#runningGame.events.on( name, listener, this.#abortCtrl.signal )
   }
 
-  async say( text:string, seconds = 2 ) {
-    console.info( `💬 ${text}` )
-    this.#runningGame.events.emit( `say`, { text } )
+  async say( text:string, seconds = 2.5 ) {
+    const game = this.#runningGame
+
+    game.view.setSpeech( text )
+    game.events.emit( `say`, { text } )
 
     await this.wait( seconds )
+
+    if (game.view.getSpeech() === text) game.view.setSpeech( null )
+  }
+
+  placePlayer( x:number, y:number ) {
+    this.#runningGame.player.placeAt( x, y )
+  }
+
+  walkPlayerTo( x:number, y:number, speed?:number ) {
+    return this.#untilAborted( this.#runningGame.player.walkTo({ x, y }, speed ) )
   }
 
   giveToy( kind:ToyKind ) {
     const game = this.#runningGame
 
-    game.toys.push( kind )
-    game.events.emit( `toyGiven`, { kind } )
+    game.player.addToy( kind )
+    game.events.emit( `toyReceived`, { kind } )
   }
 
-  spawn( kinds:EnemyKind[] ) {
+  placeToy( kind:ToyKind, x:number, y:number ) {
+    this.toys.add( new ToyPickup( this.#runningGame, kind, x, y ) )
+  }
+
+  spawnKids( spots:Point[] ) {
     const game = this.#runningGame
-    const margin = 16
 
-    for (const kind of kinds) {
-      const enemy = {
-        kind,
-        x: margin + Math.random() * (game.world.width - margin * 2),
-        y: margin + Math.random() * (game.world.height - margin * 2),
-      }
+    for (const { x, y } of spots) {
+      const kid = new Kid( game, x, y )
 
-      this.enemies.add( enemy )
-      game.events.emit( `enemySpawned`, { enemy } )
+      this.kids.add( kid )
+      game.events.emit( `kidSpawned`, { kid } )
     }
   }
 
-  removeEnemy( enemy:Enemy ) {
-    if (!this.enemies.delete( enemy )) return
-
-    const game = this.#runningGame
-
-    game.events.emit( `enemyGone`, { enemy } )
-    if (!this.enemies.size) game.events.emit( `allEnemiesGone` )
+  angerKids() {
+    for (const kid of this.kids) kid.becomeHostile()
   }
 
   async callForDinner() {
-    this.enemies.clear()
+    for (const kid of this.kids) kid.flee()
     await this.say( `OBIAD!`, 3 )
+  }
+
+  #removeKid( kid:Kid ) {
+    if (!this.kids.delete( kid )) return
+
+    const game = this.#runningGame
+
+    game.events.emit( `kidGone`, { kid } )
+    if (!this.kids.size) game.events.emit( `allKidsGone` )
+  }
+
+  #untilAborted<Value>( promise:Promise<Value> ) {
+    const signal = this.#abortCtrl.signal
+
+    return new Promise<Value>( resolve => {
+      promise.then( value => {
+        if (!signal.aborted) resolve( value )
+      } )
+    } )
   }
 
   #createDebugProxy() {

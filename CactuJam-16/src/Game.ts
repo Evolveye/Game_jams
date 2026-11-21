@@ -1,8 +1,11 @@
 import { flushSync, mount } from "svelte"
 import GameView from "./components/Game.svelte"
+import type Kid from "./entities/kids/Kid"
+import Player from "./entities/Player"
+import type { ToyKind } from "./entities/toys/toys"
 import LEVELS from "./levels"
 import type Level from "./logic/Level"
-import type { Enemy, ToyKind } from "./logic/types"
+import { SANDBOX, WORLD } from "./logic/world"
 import {
   Controls, EventBus, Keys, Loop, Renderer, Timers,
   type ActionHandlers, type ActionOf
@@ -10,10 +13,13 @@ import {
 
 export type GameEvents = {
   say: { text:string }
-  toyGiven: { kind:ToyKind }
-  enemySpawned: { enemy:Enemy }
-  enemyGone: { enemy:Enemy }
-  allEnemiesGone: void
+  toyReceived: { kind:ToyKind }
+  kidSpawned: { kid:Kid }
+  kidHit: { kid:Kid }
+  kidFled: { kid:Kid }
+  kidGone: { kid:Kid }
+  allKidsGone: void
+  playerHit: void
 }
 
 export default class Game {
@@ -30,18 +36,13 @@ export default class Game {
 
   #isPaused = false
   #actionHandlers: ActionHandlers<ActionOf<typeof Game.controls>> = {
-    moveUp: () => {},
-    moveDown: () => {},
-    moveLeft: () => {},
-    moveRight: () => {},
-    useToy: () => {},
-    nextToy: () => {},
-    prevToy: () => {},
+    useToy: () => this.player.useToy(),
+    nextToy: () => this.player.cycleToy( 1 ),
+    prevToy: () => this.player.cycleToy( -1 ),
   }
 
-  world = { width:320, height:180 }
-  player = { speed:2, x:this.world.width / 2, y:this.world.height / 2 }
-  toys: ToyKind[] = []
+  world = WORLD
+  player = new Player( this )
   level: null | Level = null
 
   root: HTMLElement
@@ -68,8 +69,8 @@ export default class Game {
   }
 
   start() {
-    this.loop.startLoop( (timeMultiplier, { timeDelta }) => {
-      this.update( timeMultiplier, timeDelta / 1000 )
+    this.loop.startLoop( (_timeMultiplier, { timeDelta }) => {
+      this.update( timeDelta / 1000 )
       this.draw()
     } )
   }
@@ -88,7 +89,7 @@ export default class Game {
     } )
   }
 
-  update( timeMultiplier:number, seconds:number ) {
+  update( seconds:number ) {
     Keys.update()
 
     if (Game.controls.isPressed( `pause` )) this.#isPaused = !this.#isPaused
@@ -96,48 +97,34 @@ export default class Game {
 
     this.timers.update( seconds )
 
-    Game.controls.runPressedHandlers( this.#actionHandlers )
-    this.movePlayer( timeMultiplier )
-    this.chaseOffEnemies()
-  }
-
-  /** Placeholder: touching a kid chases it off. */
-  chaseOffEnemies() {
-    const level = this.level
-    if (!level) return
-
-    for (const enemy of [ ...level.enemies ]) {
-      if (Math.hypot( enemy.x - this.player.x, enemy.y - this.player.y ) > 8) continue
-      level.removeEnemy( enemy )
+    this.player.moveInput = {
+      x: Game.controls.getAxis( `moveLeft`, `moveRight` ),
+      y: Game.controls.getAxis( `moveUp`, `moveDown` ),
     }
-  }
 
-  movePlayer( timeMultiplier:number ) {
-    const x = Game.controls.getAxis( `moveLeft`, `moveRight` )
-    const y = Game.controls.getAxis( `moveUp`, `moveDown` )
-    const length = Math.hypot( x, y )
-    if (!length) return
-
-    const step = this.player.speed * timeMultiplier / length
-
-    this.player.x += x * step
-    this.player.y += y * step
+    Game.controls.runPressedHandlers( this.#actionHandlers )
+    this.player.update( seconds )
+    this.level?.update( seconds )
   }
 
   draw() {
     const { ctx } = this.renderer
     this.renderer.beginFrame( `#000` )
 
-    // Sandbox
+    // Grass
+    ctx.fillStyle = `#4d7c3a`
+    ctx.fillRect( WORLD.x, WORLD.y, WORLD.width, WORLD.height )
+
+    // Sandbox: wooden frame with sand inside
+    ctx.fillStyle = `#8b5a2b`
+    ctx.fillRect( SANDBOX.x - 3, SANDBOX.y - 3, SANDBOX.width + 6, SANDBOX.height + 6 )
     ctx.fillStyle = `#e8c872`
-    ctx.fillRect( 0, 0, this.world.width, this.world.height )
+    ctx.fillRect( SANDBOX.x, SANDBOX.y, SANDBOX.width, SANDBOX.height )
 
-    // Enemies
-    ctx.fillStyle = `#ef4444`
-    for (const enemy of this.level?.enemies ?? []) ctx.fillRect( Math.round( enemy.x ) - 4, Math.round( enemy.y ) - 4, 8, 8 )
+    // Entities lower on screen are drawn on top.
+    const entities = [ ...this.level?.toys ?? [], ...this.level?.kids ?? [], this.player ]
 
-    // Player
-    ctx.fillStyle = `#3b82f6`
-    ctx.fillRect( Math.round( this.player.x ) - 4, Math.round( this.player.y ) - 4, 8, 8 )
+    entities.sort( (a, b) => a.y - b.y )
+    for (const entity of entities) entity.draw( ctx )
   }
 }
