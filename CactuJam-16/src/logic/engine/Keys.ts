@@ -17,9 +17,6 @@ export type KeyCode =
   | `Minus` | `Equal` | `BracketLeft` | `BracketRight` | `Backslash` | `Semicolon` | `Quote` | `Backquote` | `Comma` | `Period` | `Slash`
   | `NumpadEnter` | `NumpadAdd` | `NumpadSubtract` | `NumpadMultiply` | `NumpadDivide` | `NumpadDecimal`
 
-/** Keys whose default browser behaviour (page scrolling) is blocked. */
-const BLOCKED_KEYS = new Set<string>([ `Space`, `ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight` ] satisfies KeyCode[])
-
 /**
  * Raw keyboard state, identified by `KeyboardEvent.code` (physical key position, layout independent).
  * Call `Keys.update()` once at the start of every frame.
@@ -28,11 +25,13 @@ export default class Keys {
   static #held = new Set<string>()
   static #pressedQueue = new Set<string>()
   static #pressedThisFrame = new Set<string>()
+  static #blockedCodes = new Set<string>()
   static #lastKey: null | string = null
 
   static {
     window.addEventListener( `keydown`, event => {
-      if (BLOCKED_KEYS.has( event.code )) event.preventDefault()
+      // Also blocks browser shortcuts with these keys, e.g. Ctrl+S while moving down.
+      if (this.#blockedCodes.has( event.code )) event.preventDefault()
       if (event.repeat) return
 
       this.#lastKey = event.code
@@ -62,5 +61,13 @@ export default class Keys {
   /** True only in the frame in which any of the keys went down. */
   static isPressed( codes:readonly KeyCode[] ) {
     return codes.some( code => this.#pressedThisFrame.has( code ) )
+  }
+
+  /**
+   * Blocks the browser's default action of the keys (scrolling, Ctrl+S, …) while the page is focused.
+   * Browsers do not let pages block some shortcuts, e.g. Ctrl+W, Ctrl+T or Ctrl+N.
+   */
+  static blockDefault( codes:readonly KeyCode[] ) {
+    for (const code of codes) this.#blockedCodes.add( code )
   }
 }

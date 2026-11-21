@@ -28,6 +28,7 @@ export default class Game {
     moveDown: [ `KeyS`, `ArrowDown` ],
     moveLeft: [ `KeyA`, `ArrowLeft` ],
     moveRight: [ `KeyD`, `ArrowRight` ],
+    switchPace: [ `ShiftLeft`, `ShiftRight` ],
     useToy: [ `Space`, `KeyJ` ],
     nextToy: [ `KeyE` ],
     prevToy: [ `KeyQ` ],
@@ -101,6 +102,7 @@ export default class Game {
       x: Game.controls.getAxis( `moveLeft`, `moveRight` ),
       y: Game.controls.getAxis( `moveUp`, `moveDown` ),
     }
+    this.player.isPaceSwitched = Game.controls.isHeld( `switchPace` )
 
     Game.controls.runPressedHandlers( this.#actionHandlers )
     this.player.update( seconds )

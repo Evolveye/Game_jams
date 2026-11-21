@@ -1,3 +1,5 @@
+import { snapToPixels } from "./Renderer"
+
 /** One animation: an image with a grid of frames, plus playback settings. */
 export type AnimationConfig = {
   src: string
@@ -103,7 +105,9 @@ export default class Sprite<Name extends string> {
     const drawHeight = height ?? sourceHeight
 
     ctx.save()
-    ctx.translate( Math.round( x ), Math.round( y ) )
+    const position = snapToPixels( ctx, x, y )
+
+    ctx.translate( position.x, position.y )
     ctx.scale( (scale?.x ?? 1) * (this.flip.x ? -1 : 1), (scale?.y ?? 1) * (this.flip.y ? -1 : 1) )
     ctx.drawImage(
       image,

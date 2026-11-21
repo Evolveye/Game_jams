@@ -1,11 +1,12 @@
 import type Game from "../Game"
-import type { Point } from "../logic/world"
+import { WORLD, type Point, type Rect } from "../logic/world"
 import Entity from "./Entity"
 import { FIST, TOY_SWINGS, type SwingStats, type ToyKind } from "./toys/toys"
 
 /** Player tuning, in world units and seconds. */
 const STATS = {
-  walkSpeed: 70,
+  runSpeed: 70,
+  walkSpeed: 30,
   swingDuration: 0.15,
   stunDuration: 0.35,
   invulnerableDuration: 0.8,
@@ -20,7 +21,11 @@ type AutoWalk = { target:Point, speed:number, resolve:() => void }
 export default class Player extends Entity {
   /** Movement input for this frame (normalized axes), set by the game. */
   moveInput: Point = { x:0, y:0 }
+  /** Switch-pace input for this frame: runs when calm, walks during a fight. Set by the game. */
+  isPaceSwitched = false
   facing: Point = { x:1, y:0 }
+  /** Area the player cannot leave; `null` lets them walk off the playground. Set by level scripts. */
+  bounds: null | Rect = WORLD
 
   toys: ToyKind[] = []
   heldToy: null | ToyKind = null
@@ -39,6 +44,15 @@ export default class Player extends Entity {
     return (this.heldToy && TOY_SWINGS[ this.heldToy ]) || FIST
   }
 
+  /** True while any kid is hostile. Calm means walking by default, a fight means running. */
+  get #isFighting() {
+    for (const kid of this.game.level?.kids ?? []) {
+      if (kid.state === `hostile`) return true
+    }
+
+    return false
+  }
+
   update( seconds:number ) {
     this.stunTime = Math.max( 0, this.stunTime - seconds )
     this.invulnerableTime = Math.max( 0, this.invulnerableTime - seconds )
@@ -47,11 +61,11 @@ export default class Player extends Entity {
 
     this.applyVelocity( seconds )
 
-    // Scripted walking ignores input and may start off-screen, so it skips the world bounds.
+    // Scripted walking ignores input and may start off-screen, so it skips the bounds.
     if (this.#autoWalk) return this.#continueAutoWalk( seconds )
     if (!this.stunTime) this.#steer( seconds )
 
-    this.keepInside()
+    if (this.bounds) this.keepInside( this.bounds )
   }
 
   /** Puts the player at a spot, resetting movement and any scripted walk. */
@@ -126,9 +140,13 @@ export default class Player extends Entity {
     const length = Math.hypot( x, y )
     if (!length) return
 
+    // Switching pace flips the default: run when calm, walk during a fight.
+    const isRunning = this.#isFighting !== this.isPaceSwitched
+    const speed = isRunning ? STATS.runSpeed : STATS.walkSpeed
+
     this.facing = { x:x / length, y:y / length }
-    this.x += this.facing.x * STATS.walkSpeed * seconds
-    this.y += this.facing.y * STATS.walkSpeed * seconds
+    this.x += this.facing.x * speed * seconds
+    this.y += this.facing.y * speed * seconds
   }
 
   #continueAutoWalk( seconds:number ) {

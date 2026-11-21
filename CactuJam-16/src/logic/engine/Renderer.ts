@@ -45,6 +45,8 @@ export default class Renderer {
   }
 
   beginFrame( backgroundColor?:string ) {
+    // Drops the previous frame's clip (a no-op on the first frame).
+    this.ctx.restore()
     this.ctx.setTransform( 1, 0, 0, 1, 0, 0 )
 
     if (backgroundColor) {
@@ -53,9 +55,29 @@ export default class Renderer {
     } else this.ctx.clearRect( 0, 0, this.canvas.width, this.canvas.height )
 
     this.ctx.setTransform( this.scale, 0, 0, this.scale, this.offset.x, this.offset.y )
+
+    // Anything outside the world (e.g. a kid running away) must not be drawn over the letterbox bars.
+    this.ctx.save()
+    this.ctx.beginPath()
+    this.ctx.rect( 0, 0, this.worldSize.width, this.worldSize.height )
+    this.ctx.clip()
   }
 
   destroy() {
     this.#resizeObserver.disconnect()
+  }
+}
+
+/**
+ * Rounds a point to whole device pixels under the current canvas transform.
+ * Rounding to whole world pixels instead would make diagonal movement zig-zag in big steps,
+ * because both axes cross their rounding points in different frames.
+ */
+export function snapToPixels( ctx:CanvasRenderingContext2D, x:number, y:number ) {
+  const { a:scaleX, d:scaleY, e:offsetX, f:offsetY } = ctx.getTransform()
+
+  return {
+    x: (Math.round( x * scaleX + offsetX ) - offsetX) / scaleX,
+    y: (Math.round( y * scaleY + offsetY ) - offsetY) / scaleY,
   }
 }

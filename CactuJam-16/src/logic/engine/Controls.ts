@@ -11,6 +11,9 @@ export default class Controls<Action extends string> {
 
   constructor( bindings:Bindings<Action> ) {
     this.#bindings = structuredClone( bindings )
+
+    // Game keys must not trigger browser actions (scrolling, Ctrl+S, …).
+    for (const codes of Object.values<KeyCode[]>( this.#bindings )) Keys.blockDefault( codes )
   }
 
   isHeld( action:Action ) {
@@ -37,5 +40,6 @@ export default class Controls<Action extends string> {
 
   rebind( action:Action, codes:KeyCode[] ) {
     this.#bindings[ action ] = [ ...codes ]
+    Keys.blockDefault( codes )
   }
 }

@@ -1,5 +1,5 @@
 import type Game from "../../Game"
-import { WORLD, type Point } from "../../logic/world"
+import { SANDBOX, WORLD, type Point } from "../../logic/world"
 import Entity from "../Entity"
 import type { SwingStats } from "../toys/toys"
 
@@ -106,7 +106,7 @@ export default class Kid extends Entity {
     if (!this.stunTime && this.state === `hostile`) this.#fight( seconds )
 
     this.#avoidOthers()
-    this.keepInside()
+    this.keepInside( SANDBOX )
   }
 
   draw( ctx:CanvasRenderingContext2D ) {
@@ -127,10 +127,13 @@ export default class Kid extends Entity {
     const { idleTime, wanderRange } = STATS
 
     this.#idleTime = idleTime.min + Math.random() * (idleTime.max - idleTime.min)
-    this.#wanderTarget = {
+    const wanderSpot = {
       x: this.#home.x + (Math.random() - 0.5) * wanderRange.x * 2,
       y: this.#home.y + (Math.random() - 0.5) * wanderRange.y * 2,
     }
+
+    // A spot beyond the border could never be reached, so the kid would never rest.
+    this.#wanderTarget = this.clampInside( wanderSpot, SANDBOX )
   }
 
   /** Chases the player, winds up, then pushes if the player is still in reach. */

@@ -1,4 +1,5 @@
 import type Game from "../Game"
+import { snapToPixels } from "../logic/engine"
 import { WORLD, type Point, type Rect } from "../logic/world"
 
 /** How fast knockback slows down (higher = shorter slide). */
@@ -80,16 +81,43 @@ export default abstract class Entity {
     this.y -= direction.y * gap
   }
 
+  /** Closest point to the given one where this entity's whole body fits inside the area. */
+  clampInside( point:Point, area:Rect = WORLD ) {
+    return {
+      x: Math.min( Math.max( point.x, area.x + this.radius ), area.x + area.width - this.radius ),
+      y: Math.min( Math.max( point.y, area.y + this.radius ), area.y + area.height - this.radius ),
+    }
+  }
+
   keepInside( area:Rect = WORLD ) {
-    this.x = Math.min( Math.max( this.x, area.x + this.radius ), area.x + area.width - this.radius )
-    this.y = Math.min( Math.max( this.y, area.y + this.radius ), area.y + area.height - this.radius )
+    const { x, y } = this.clampInside( this, area )
+
+    this.x = x
+    this.y = y
+  }
+
+  /** True when the whole body is inside the area. */
+  isInside( area:Rect ) {
+    return (
+      this.x - this.radius >= area.x && this.x + this.radius <= area.x + area.width &&
+      this.y - this.radius >= area.y && this.y + this.radius <= area.y + area.height
+    )
+  }
+
+  /** True when no part of the body is inside the area. */
+  isOutside( area:Rect ) {
+    return (
+      this.x + this.radius <= area.x || this.x - this.radius >= area.x + area.width ||
+      this.y + this.radius <= area.y || this.y - this.radius >= area.y + area.height
+    )
   }
 
   /** Placeholder body: a square the size of the entity. */
   drawBody( ctx:CanvasRenderingContext2D, color:string ) {
     const size = this.radius * 2
+    const corner = snapToPixels( ctx, this.x - this.radius, this.y - this.radius )
 
     ctx.fillStyle = color
-    ctx.fillRect( Math.round( this.x - this.radius ), Math.round( this.y - this.radius ), size, size )
+    ctx.fillRect( corner.x, corner.y, size, size )
   }
 }

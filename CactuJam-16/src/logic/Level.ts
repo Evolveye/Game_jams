@@ -4,9 +4,14 @@ import Kid from "../entities/kids/Kid"
 import ToyPickup from "../entities/toys/ToyPickup"
 import type { ToyKind } from "../entities/toys/toys"
 import type { Listener } from "./engine"
-import type { Point } from "./world"
+import { WORLD, type Point, type Rect } from "./world"
 
 export type LevelScript = (level:Level) => Promise<void>
+
+type Condition = {
+  isMet: () => boolean
+  resolve: () => void
+}
 
 const DEBUG_STYLES = {
   badge: `background: rgba(232, 200, 114, 0.15); color: #c9a95c; padding: 1px 6px; border-radius: 3px;`,
@@ -19,6 +24,7 @@ export default class Level {
 
   kids = new Set<Kid>()
   toys = new Set<ToyPickup>()
+  #conditions = new Set<Condition>()
   #game: null | Game = null
   #abortCtrl = new AbortController()
 
@@ -32,6 +38,11 @@ export default class Level {
     return this.#game
   }
 
+  /** The player, for conditions in the script, e.g. `level.player.isInside( SANDBOX )`. */
+  get player() {
+    return this.#runningGame.player
+  }
+
   async run( game:Game ) {
     this.abort()
 
@@ -41,6 +52,8 @@ export default class Level {
     this.#abortCtrl = abortCtrl
     this.kids.clear()
     this.toys.clear()
+    this.#conditions.clear()
+    game.player.bounds = WORLD
     game.view.setSpeech( null )
 
     await this.script( this.debug ? this.#createDebugProxy() : this )
@@ -64,6 +77,13 @@ export default class Level {
       kid.update( seconds )
       if (kid.isGone) this.#removeKid( kid )
     }
+
+    for (const condition of this.#conditions) {
+      if (!condition.isMet()) continue
+
+      this.#conditions.delete( condition )
+      condition.resolve()
+    }
   }
 
   wait( seconds:number ) {
@@ -72,6 +92,20 @@ export default class Level {
 
   waitFor<Name extends keyof GameEvents>( name:Name, predicate?:(payload:GameEvents[ Name ]) => boolean ) {
     return this.#runningGame.events.once( name, this.#abortCtrl.signal, predicate )
+  }
+
+  /** Waits until the condition is true; it is checked once per frame. */
+  waitUntil( isMet:() => boolean ) {
+    const signal = this.#abortCtrl.signal
+
+    return new Promise<void>( resolve => {
+      if (signal.aborted) return
+
+      const condition = { isMet, resolve }
+
+      this.#conditions.add( condition )
+      signal.addEventListener( `abort`, () => this.#conditions.delete( condition ), { once:true } )
+    } )
   }
 
   on<Name extends keyof GameEvents>( name:Name, listener:Listener<GameEvents[ Name ]> ) {
@@ -95,6 +129,11 @@ export default class Level {
 
   walkPlayerTo( x:number, y:number, speed?:number ) {
     return this.#untilAborted( this.#runningGame.player.walkTo({ x, y }, speed ) )
+  }
+
+  /** Keeps the player inside the area; `null` lets them walk off the playground. */
+  confinePlayer( area:null | Rect ) {
+    this.#runningGame.player.bounds = area
   }
 
   giveToy( kind:ToyKind ) {
@@ -123,9 +162,13 @@ export default class Level {
     for (const kid of this.kids) kid.becomeHostile()
   }
 
+  /** Mom calls for dinner: kids run home, and the day ends once the player walks off the playground. */
   async callForDinner() {
     for (const kid of this.kids) kid.flee()
+
+    this.confinePlayer( null )
     await this.say( `OBIAD!`, 3 )
+    await this.waitUntil( () => this.player.isOutside( WORLD ) )
   }
 
   #removeKid( kid:Kid ) {
