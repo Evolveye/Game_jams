@@ -88,7 +88,7 @@ export default class Game {
     Keys.listenToPointer( this.view.getCanvas() )
 
     this.events.on( `kidFled`, ({ kid }) => {
-      if (kid.health <= 0) this.stats.kidsBeaten++
+      if (kid.health.isEmpty) this.stats.kidsBeaten++
     } )
     this.events.on( `playerHit`, () => this.stats.hitsTaken++ )
 
@@ -118,6 +118,9 @@ export default class Game {
       // Only when something changed: a new, removed or selected item, or one recharging.
       const inventorySlots = this.player.inventory.getChangedSlots()
       if (inventorySlots) this.view.setInventory( inventorySlots )
+
+      const playerHealth = this.player.health.getChangedData()
+      if (playerHealth) this.view.setPlayerHealth( playerHealth )
     } )
   }
 
@@ -133,7 +136,7 @@ export default class Game {
   /** Tells the day's story (if any), then plays the day. After the last day: the summary. */
   startDay( index:number, { withStory = true } = {} ) {
     const level = LEVELS[ index ]
-    if (!level) return this.scenes.openOverlay( new GameOverScene( this, `Koniec!`, `Piaskownica jest twoja.` ) )
+    if (!level) return this.scenes.openOverlay( new GameOverScene( this, `Koniec!`, `Piaskownica jest twoja.`, { label:`Zagraj jeszcze raz`, action:() => this.startNewRun() } ) )
 
     const playDay = () => this.scenes.switchTo( new GameplayScene( this, index ) )
 

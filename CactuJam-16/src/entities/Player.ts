@@ -1,11 +1,14 @@
 import type Game from "../Game"
 import { WORLD, type Point, type Rect } from "../logic/world"
 import Entity from "./Entity"
+import Health from "./Health"
 import Inventory from "./items/Inventory"
 import type Item from "./items/Item"
+import type { SwingStats } from "./items/items"
 
 /** Player tuning, in world units and seconds. */
 const STATS = {
+  health: 5,
   runSpeed: 70,
   walkSpeed: 30,
   swingDuration: 0.15,
@@ -36,6 +39,8 @@ export default class Player extends Entity {
 
   /** Kept between days. The fist is always there, toys are added when picked up. */
   inventory = new Inventory([ `fist` ])
+  /** Filled up at the start of every day. */
+  health = new Health( STATS.health )
 
   stunTime = 0
   invulnerableTime = 0
@@ -62,6 +67,7 @@ export default class Player extends Entity {
     this.invulnerableTime = Math.max( 0, this.invulnerableTime - seconds )
     this.swingTime = Math.max( 0, this.swingTime - seconds )
     this.inventory.update( seconds )
+    this.health.update( seconds )
 
     this.applyVelocity( seconds )
 
@@ -116,11 +122,12 @@ export default class Player extends Entity {
     }
   }
 
-  /** Hit by a kid: knocked back, stunned for a moment, then briefly invulnerable. */
-  takeHit( direction:Point, strength:number ) {
+  /** Hit by a kid's swing: hurt and knocked back as hard as its toy hits, stunned, then briefly invulnerable. */
+  takeHit( direction:Point, swing:SwingStats ) {
     if (this.invulnerableTime || this.#autoWalk) return
 
-    this.push( direction, strength )
+    this.health.damage( swing.damage )
+    this.push( direction, swing.knockback )
     this.stunTime = STATS.stunDuration
     this.invulnerableTime = STATS.invulnerableDuration
     this.game.events.emit( `playerHit` )

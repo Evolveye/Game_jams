@@ -1,9 +1,13 @@
 import type Game from "../Game"
 import { snapToPixels } from "../logic/engine"
 import { WORLD, type Point, type Rect } from "../logic/world"
+import type Health from "./Health"
 
 /** How fast knockback slows down (higher = shorter slide). */
 const KNOCKBACK_DAMPING = 10
+
+/** Health pips over an entity, in world units. */
+const HEALTH_PIPS = { width:2, height:2, gap:1, offset:5, colors:{ full:`#4ade80`, empty:`#57534e`, frame:`#1c1917` } }
 
 /** Something standing on the playground: a position, a round body, and knockback velocity. */
 export default abstract class Entity {
@@ -119,5 +123,23 @@ export default abstract class Entity {
 
     ctx.fillStyle = color
     ctx.fillRect( corner.x, corner.y, size, size )
+  }
+
+  /** Health as pips over the body, one per point: filled ones are left, dark ones are lost. */
+  drawHealthPips( ctx:CanvasRenderingContext2D, health:Health, opacity = 1 ) {
+    const { width, height, gap, offset, colors } = HEALTH_PIPS
+    const rowWidth = health.max * (width + gap) - gap
+    const corner = snapToPixels( ctx, this.x - rowWidth / 2, this.y - this.radius - offset )
+
+    ctx.globalAlpha = opacity
+    ctx.fillStyle = colors.frame
+    ctx.fillRect( corner.x - 1, corner.y - 1, rowWidth + 2, height + 2 )
+
+    for (let i = 0; i < health.max; i++) {
+      ctx.fillStyle = i < health.current ? colors.full : colors.empty
+      ctx.fillRect( corner.x + i * (width + gap), corner.y, width, height )
+    }
+
+    ctx.globalAlpha = 1
   }
 }

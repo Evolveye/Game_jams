@@ -2,8 +2,9 @@ import type Game from "../../Game"
 import { snapToPixels } from "../../logic/engine"
 import { SANDBOX, WORLD, type Point } from "../../logic/world"
 import Entity from "../Entity"
+import Health from "../Health"
 import Inventory from "../items/Inventory"
-import type { SwingStats } from "../items/items"
+import { FIST_SWING, type SwingStats } from "../items/items"
 
 /**
  * - `playing`: wanders around its spot in the sandbox, harmless
@@ -21,11 +22,17 @@ const STATS = {
   wanderRange: { x:30, y:20 },
   idleTime: { min:1, max:3 },
   stunDuration: 0.4,
-  attackReach: 2,
+  /** How far inside its swing's reach the kid walks before winding up. */
+  approachMargin: 1,
+  /** How far beyond the reach the player can step during the windup and still get hit. */
+  hitLeeway: 1,
   attackWindup: 0.35,
+  /** Shortest pause between attacks; a slower toy makes it longer. */
   attackCooldown: 1.1,
-  attackKnockback: 130,
 }
+
+/** Health pips show for a while after a hit, then fade out. */
+const HEALTH_PIPS_TIME = { visible:2, fade:0.5 }
 
 /** Placeholder colors for each state. */
 const COLORS = {
@@ -42,7 +49,7 @@ const EXIT_MARGIN = 12
 /** A kid in the sandbox. Peaceful until something makes it hostile. */
 export default class Kid extends Entity {
   state: KidState = `playing`
-  health = STATS.health
+  health = new Health( STATS.health )
   isGone = false
   /** Toys the kid holds. A beaten kid drops them. */
   inventory = new Inventory()
@@ -88,13 +95,13 @@ export default class Kid extends Entity {
     this.windupTime = 0
     this.game.events.emit( `kidHit`, { kid:this } )
 
-    if (this.state === `hostile`) this.health -= swing.damage
+    if (this.state === `hostile`) this.health.damage( swing.damage )
 
     // A kid holding toys defends them instead of running away.
     if (this.state === `playing` && this.inventory.items.length) this.becomeHostile()
 
-    if (this.health <= 0) this.dropToys()
-    if (this.state === `playing` || this.health <= 0) this.flee()
+    if (this.health.isEmpty) this.dropToys()
+    if (this.state === `playing` || this.health.isEmpty) this.flee()
   }
 
   /** Leaves every held toy on the ground where the kid stands. */
@@ -122,6 +129,7 @@ export default class Kid extends Entity {
   update( seconds:number ) {
     this.stunTime = Math.max( 0, this.stunTime - seconds )
     this.cooldownTime = Math.max( 0, this.cooldownTime - seconds )
+    this.health.update( seconds )
 
     this.applyVelocity( seconds )
 
@@ -139,6 +147,11 @@ export default class Kid extends Entity {
     this.drawBody( ctx, this.#getColor() )
     this.#drawHeldToy( ctx )
     ctx.globalAlpha = 1
+
+    // Only enemies show health, and only for a while after a hit.
+    const { visible, fade } = HEALTH_PIPS_TIME
+    const healthOpacity = Math.min( 1, (visible - this.health.secondsSinceChange) / fade )
+    if (this.state === `hostile` && healthOpacity > 0) this.drawHealthPips( ctx, this.health, healthOpacity )
   }
 
   /** Wanders between random spots near home, resting for a while at each one. */
@@ -162,23 +175,24 @@ export default class Kid extends Entity {
     this.#wanderTarget = this.clampInside( wanderSpot, SANDBOX )
   }
 
-  /** Chases the player, winds up, then pushes if the player is still in reach. */
+  /** Chases the player, winds up, then swings the held toy (or a fist) if the player is still in reach. */
   #fight( seconds:number ) {
     const player = this.game.player
+    const swing = this.#getSwing()
 
     if (this.windupTime > 0) {
       this.windupTime -= seconds
       if (this.windupTime > 0) return
 
-      if (this.measureGapTo( player ) <= STATS.attackReach * 2) {
-        player.takeHit( this.getDirectionTo( player ), STATS.attackKnockback )
+      if (this.measureGapTo( player ) <= swing.reach + STATS.hitLeeway) {
+        player.takeHit( this.getDirectionTo( player ), swing )
       }
 
-      this.cooldownTime = STATS.attackCooldown
+      this.cooldownTime = Math.max( STATS.attackCooldown, swing.cooldown )
       return
     }
 
-    if (this.measureGapTo( player ) > STATS.attackReach) {
+    if (this.measureGapTo( player ) > swing.reach - STATS.approachMargin) {
       this.moveTowards( player, this.#chaseSpeed, seconds )
       return
     }
@@ -215,6 +229,11 @@ export default class Kid extends Entity {
 
       return distance < nearestDistance ? exit : nearest
     } )
+  }
+
+  /** How the kid hits: with the toy in hand, or bare-handed when it holds none that can be swung. */
+  #getSwing(): SwingStats {
+    return this.inventory.selected?.definition.swing ?? FIST_SWING
   }
 
   #getColor() {

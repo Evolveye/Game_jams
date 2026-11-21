@@ -4,6 +4,7 @@ import Inventory from "../entities/items/Inventory"
 import type { ItemKind } from "../entities/items/items"
 import LEVELS from "../levels"
 import type { Scene } from "../logic/engine"
+import GameOverScene from "./GameOverScene"
 import PauseScene from "./PauseScene"
 
 /** What the day started with, so it can be played again from the start. */
@@ -30,6 +31,9 @@ export default class GameplayScene implements Scene {
       stats: { ...game.stats },
     }
 
+    // Every day starts with full health.
+    game.player.health.fill()
+
     game.view.setScreen( null )
     game.level = level
 
@@ -48,8 +52,13 @@ export default class GameplayScene implements Scene {
   }
 
   update( seconds:number ) {
-    if (this.#game.controls.isPressed( `pause` )) return this.#game.scenes.openOverlay( new PauseScene( this.#game, this ) )
-    this.#game.updateWorld( seconds )
+    const game = this.#game
+    if (game.controls.isPressed( `pause` )) return game.scenes.openOverlay( new PauseScene( game, this ) )
+
+    game.updateWorld( seconds )
+
+    // Out of hearts: the day is lost, the world freezes below the summary.
+    if (game.player.health.isEmpty) game.scenes.openOverlay( new GameOverScene( game, `Ała!`, `Mama zabrała cię do domu.`, { label:`Zacznij dzień od nowa`, action:() => this.restartDay() } ) )
   }
 
   draw() {

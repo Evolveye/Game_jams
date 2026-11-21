@@ -10,6 +10,7 @@
   import Brief, { type BriefEntry } from "./Brief.svelte"
   import Inventory, { type InventorySlot } from "./Inventory.svelte"
   import MenuScreen from "./MenuScreen.svelte"
+  import PlayerHealth, { type PlayerHealthData } from "./PlayerHealth.svelte"
   import SlideScreen from "./SlideScreen.svelte"
   import Speech, { type SpeechData } from "./ui/Speech.svelte"
 
@@ -25,6 +26,8 @@
   let nextBriefEntryId = 0
   // Raw: always replaced as a whole when the inventory changes, never edited in place.
   let inventorySlots = $state.raw<InventorySlot[]>([])
+  // Raw: replaced as a whole when health changes.
+  let playerHealth = $state.raw<null | PlayerHealthData>( null )
   // Raw: replaced as a whole by the game's scenes.
   let screen = $state.raw<null | Screen>( null )
   let overlay = $state.raw<null | MenuScreenData>( null )
@@ -57,6 +60,11 @@
     inventorySlots = slots
   }
 
+  /** Shows the player's health over the game. */
+  export function setPlayerHealth( health:PlayerHealthData ) {
+    playerHealth = health
+  }
+
   /** Covers the game with a menu or a story slide; `null` shows the gameplay. */
   export function setScreen( newScreen:null | Screen ) {
     screen = newScreen
@@ -73,7 +81,15 @@
     <canvas class="game-canvas" bind:this={canvas}></canvas>
 
     <div class="hud">
-      <Inventory slots={inventorySlots} />
+      {#if playerHealth}
+        <div class="hud-health">
+          <PlayerHealth {...playerHealth} />
+        </div>
+      {/if}
+
+      <div class="hud-inventory">
+        <Inventory slots={inventorySlots} />
+      </div>
 
       {#if speech}
         <div class="subtitle">
@@ -134,12 +150,26 @@
     pointer-events: none;
   }
 
-  /* Centered within 80% of the width, so long lines wrap there and not at half the screen. */
+  .hud-health {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+  }
+
+  /* In the bottom-left corner, beside the subtitles in the middle. */
+  .hud-inventory {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+  }
+
+  /* Centered within 80% of the width, so long lines wrap there and not at half the screen.
+     Kept above the inventory row, so a long line never covers it. */
   .subtitle {
     position: absolute;
     left: 10%;
     right: 10%;
-    bottom: 6%;
+    bottom: max(6%, 84px);
     display: flex;
     justify-content: center;
   }

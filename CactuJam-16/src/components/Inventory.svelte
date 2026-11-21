@@ -42,9 +42,6 @@
 
 <style>
   .inventory {
-    position: absolute;
-    top: 10px;
-    left: 10px;
     display: flex;
     gap: 6px;
     margin: 0;

@@ -1,9 +1,9 @@
 import type Game from "../Game"
 import type { Scene } from "../logic/engine"
 import MenuScene from "./MenuScene"
-import OptionsMenu from "./OptionsMenu"
+import OptionsMenu, { type MenuOption } from "./OptionsMenu"
 
-/** End of a run with its summary, over the last frame of the gameplay. */
+/** End of a run (won, or lost on a day) with its summary, over the last frame of the gameplay. */
 export default class GameOverScene implements Scene {
   isOverlay = true
 
@@ -12,12 +12,13 @@ export default class GameOverScene implements Scene {
   #title: string
   #subtitle: string
 
-  constructor( game:Game, title:string, subtitle:string ) {
+  /** `retry` is the main action (play the run or the day again), shown above the way back to the menu. */
+  constructor( game:Game, title:string, subtitle:string, retry:Omit<MenuOption, `variant`> ) {
     this.#game = game
     this.#title = title
     this.#subtitle = subtitle
     this.#menu = new OptionsMenu([
-      { label:`Zagraj jeszcze raz`, action:() => game.startNewRun() },
+      { ...retry, variant:`primary` },
       { label:`Menu główne`, action:() => game.scenes.switchTo( new MenuScene( game ) ) },
     ], () => this.#show() )
   }
