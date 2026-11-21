@@ -20,6 +20,7 @@
 
 <script lang="ts">
   import { tick } from "svelte"
+  import KeyCaps from "./ui/KeyCaps.svelte"
 
   /** Entries in the order they were added, the newest last. */
   let { title, entries }:{
@@ -56,13 +57,7 @@
     {#if typeof part === `string`}
       {part}
     {:else}
-      {#each part.keys as key, index}
-        {#if index}
-          <span class="key-separator">/</span>
-        {/if}
-
-        <kbd class="key">{key}</kbd>
-      {/each}
+      <KeyCaps keys={part.keys} />
     {/if}
   {/each}
 {/snippet}
@@ -177,27 +172,5 @@
     font-weight: bold;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-  }
-
-  /* Keys look like keyboard keys. */
-  .key {
-    display: inline-block;
-    margin: 0 1px;
-    padding: 0 5px;
-    border: 1px solid #a16207;
-    border-bottom-width: 3px;
-    border-radius: 4px;
-    background: #e8c872;
-    color: #1c1917;
-    font-family: ui-monospace, Consolas, monospace;
-    font-size: 0.85em;
-    font-style: normal;
-    font-weight: bold;
-    line-height: 1.4;
-  }
-
-  .key-separator {
-    margin: 0 3px;
-    color: #78716c;
   }
 </style>

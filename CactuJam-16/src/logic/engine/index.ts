@@ -18,3 +18,6 @@ export { default as Timers } from "./Timers"
 
 export * from "./Sprite"
 export { default as Sprite } from "./Sprite"
+
+export * from "./SceneManager"
+export { default as SceneManager } from "./SceneManager"

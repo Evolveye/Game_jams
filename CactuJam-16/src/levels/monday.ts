@@ -1,6 +1,21 @@
+import playgroundImage from "../assets/slides/playground.svg"
 import Level from "../logic/Level"
-import { KID } from "../logic/speakers"
+import { KID, PLAYER } from "../logic/speakers"
 import { SANDBOX, WORLD } from "../logic/world"
+import type { Shot } from "../scenes/SlidesScene"
+
+/** Story before the day. */
+const STORY:Shot[] = [
+  {
+    image: playgroundImage,
+    title: `Poniedziałek`,
+    lines: [
+      { text:`Pierwszy dzień wakacji. Słońce, ciepły piasek i jedna myśl: piaskownica.` },
+      { text:`To jest MOJA piaskownica. Od zawsze. Każdy na podwórku o tym wie.`, speaker:PLAYER },
+      { text:`Wczoraj zostawiłem w niej łopatkę. Dziś idę ją odebrać.`, speaker:PLAYER },
+    ],
+  },
+]
 
 
 export default new Level( `Poniedziałek`, async level => {
@@ -95,4 +110,4 @@ export default new Level( `Poniedziałek`, async level => {
 
   level.note( `Mama woła na obiad. Wyjdź z placu zabaw, żeby wrócić do domu.` )
   await level.callForDinner()
-})
+}, STORY )

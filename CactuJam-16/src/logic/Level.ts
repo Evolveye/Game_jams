@@ -4,6 +4,7 @@ import type { BriefTextPart } from "../components/Brief.svelte"
 import type { ToyKind } from "../entities/items/items"
 import ToyPickup from "../entities/items/ToyPickup"
 import Kid from "../entities/kids/Kid"
+import type { Shot } from "../scenes/SlidesScene"
 import type { ActionOf, Listener } from "./engine"
 import { MOM, PLAYER, type Speaker } from "./speakers"
 import { WORLD, type Point, type Rect } from "./world"
@@ -39,6 +40,8 @@ export default class Level {
   constructor(
     readonly name: string,
     readonly script: LevelScript,
+    /** Story shown before the day starts. */
+    readonly story: Shot[] = [],
   ) {}
 
   get #runningGame() {

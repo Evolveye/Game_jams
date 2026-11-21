@@ -1,9 +1,17 @@
+<script module lang="ts">
+  import type { MenuScreenData } from "./MenuScreen.svelte"
+  import type { SlideScreenData } from "./SlideScreen.svelte"
+
+  /** A screen covering the whole game (gameplay shows when there is none). */
+  export type Screen = ({ kind:`menu` } & MenuScreenData) | ({ kind:`slide` } & SlideScreenData)
+</script>
+
 <script lang="ts">
   import Brief, { type BriefEntry } from "./Brief.svelte"
   import Inventory, { type InventorySlot } from "./Inventory.svelte"
-
-  /** A line under the game. `label` (e.g. who speaks) is shown above the text. */
-  type Speech = { text:string, label?:string, color?:string }
+  import MenuScreen from "./MenuScreen.svelte"
+  import SlideScreen from "./SlideScreen.svelte"
+  import Speech, { type SpeechData } from "./ui/Speech.svelte"
 
   /** Title of the journal next to the game. */
   let { briefTitle }:{
@@ -12,11 +20,14 @@
 
   let canvas: HTMLCanvasElement
   // Raw (not proxied): `say()` compares the stored object with its own by identity to know whether to hide it.
-  let speech = $state.raw<null | Speech>( null )
+  let speech = $state.raw<null | SpeechData>( null )
   let briefEntries = $state<BriefEntry[]>([])
   let nextBriefEntryId = 0
   // Raw: always replaced as a whole when the inventory changes, never edited in place.
   let inventorySlots = $state.raw<InventorySlot[]>([])
+  // Raw: replaced as a whole by the game's scenes.
+  let screen = $state.raw<null | Screen>( null )
+  let overlay = $state.raw<null | MenuScreenData>( null )
 
   export function getCanvas() {
     return canvas
@@ -27,7 +38,7 @@
   }
 
   /** Shows a subtitle, or hides it with `null`. */
-  export function setSpeech( newSpeech:null | Speech ) {
+  export function setSpeech( newSpeech:null | SpeechData ) {
     speech = newSpeech
   }
 
@@ -36,9 +47,24 @@
     briefEntries.push({ ...entry, id:nextBriefEntryId++ })
   }
 
+  /** Empties the journal, e.g. for a new run. */
+  export function clearBrief() {
+    briefEntries = []
+  }
+
   /** Shows the player's items over the game. */
   export function setInventory( slots:InventorySlot[] ) {
     inventorySlots = slots
+  }
+
+  /** Covers the game with a menu or a story slide; `null` shows the gameplay. */
+  export function setScreen( newScreen:null | Screen ) {
+    screen = newScreen
+  }
+
+  /** Shows a menu over the game, which stays visible below it (pause, game over); `null` hides it. */
+  export function setOverlay( newOverlay:null | MenuScreenData ) {
+    overlay = newOverlay
   }
 </script>
 
@@ -50,18 +76,25 @@
       <Inventory slots={inventorySlots} />
 
       {#if speech}
-        <p class="speech" style:color={speech.color}>
-          {#if speech.label}
-            <span class="speech-label">{speech.label}</span>
-          {/if}
-          {speech.text}
-        </p>
+        <div class="subtitle">
+          <Speech {...speech} />
+        </div>
       {/if}
     </div>
   </div>
 
   <Brief title={briefTitle} entries={briefEntries} />
 </div>
+
+{#if screen?.kind === `menu`}
+  <MenuScreen menu={screen} />
+{:else if screen?.kind === `slide`}
+  <SlideScreen slide={screen} />
+{/if}
+
+{#if overlay}
+  <MenuScreen menu={overlay} isOverlay />
+{/if}
 
 <style>
   .layout {
@@ -101,27 +134,13 @@
     pointer-events: none;
   }
 
-  .speech {
+  /* Centered within 80% of the width, so long lines wrap there and not at half the screen. */
+  .subtitle {
     position: absolute;
-    left: 50%;
+    left: 10%;
+    right: 10%;
     bottom: 6%;
-    transform: translateX(-50%);
-    margin: 0;
-    padding: 0.4em 1em;
-    max-width: 80%;
-    border-radius: 0.4em;
-    background: rgba(0, 0, 0, 0.65);
-    color: #fff;
-    font-size: clamp(14px, 2.4vw, 28px);
-    font-weight: bold;
-    text-align: center;
-  }
-
-  .speech-label {
-    display: block;
-    font-family: var(--font-title);
-    font-size: 0.7em;
-    font-weight: normal;
-    letter-spacing: 0.05em;
+    display: flex;
+    justify-content: center;
   }
 </style>

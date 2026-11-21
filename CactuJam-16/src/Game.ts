@@ -7,8 +7,12 @@ import LEVELS from "./levels"
 import type Level from "./logic/Level"
 import type { Speaker } from "./logic/speakers"
 import { SANDBOX, WORLD } from "./logic/world"
+import GameOverScene from "./scenes/GameOverScene"
+import GameplayScene from "./scenes/GameplayScene"
+import MenuScene from "./scenes/MenuScene"
+import SlidesScene from "./scenes/SlidesScene"
 import {
-  Controls, EventBus, Keys, Loop, Renderer, Timers,
+  Controls, EventBus, Keys, Loop, Renderer, SceneManager, Timers,
   type ActionHandlers, type ActionOf
 } from "./logic/engine"
 
@@ -23,6 +27,21 @@ export type GameEvents = {
   playerHit: void
 }
 
+/** Counted during a run, shown in the summary at its end. */
+export type GameStats = {
+  playSeconds: number
+  kidsBeaten: number
+  hitsTaken: number
+  daysCompleted: number
+}
+
+const NEW_RUN_STATS:GameStats = {
+  playSeconds: 0,
+  kidsBeaten: 0,
+  hitsTaken: 0,
+  daysCompleted: 0,
+}
+
 export default class Game {
   static controls = new Controls({
     moveUp: [ `KeyW`, `ArrowUp` ],
@@ -34,9 +53,9 @@ export default class Game {
     nextToy: [ `KeyE`, `WheelDown` ],
     prevToy: [ `KeyQ`, `WheelUp` ],
     pause: [ `Escape`, `KeyP` ],
+    confirm: [ `Enter`, `Space` ],
   })
 
-  #isPaused = false
   #actionHandlers: ActionHandlers<ActionOf<typeof Game.controls>> = {
     useToy: () => {
       // A click aims at the cursor (within a small angle in front), keys swing straight ahead.
@@ -52,10 +71,12 @@ export default class Game {
   world = WORLD
   player = new Player( this )
   level: null | Level = null
+  stats:GameStats = { ...NEW_RUN_STATS }
 
   root: HTMLElement
   events = new EventBus<GameEvents>()
   timers = new Timers()
+  scenes = new SceneManager()
   loop = new Loop()
   view: ReturnType<Game[`mountView`]>
   renderer: Renderer
@@ -66,8 +87,13 @@ export default class Game {
     this.renderer = new Renderer( this.view.getCanvas(), this.world )
     Keys.listenToPointer( this.view.getCanvas() )
 
+    this.events.on( `kidFled`, ({ kid }) => {
+      if (kid.health <= 0) this.stats.kidsBeaten++
+    } )
+    this.events.on( `playerHit`, () => this.stats.hitsTaken++ )
+
     this.start()
-    this.runLevel( 0 )
+    this.scenes.switchTo( new MenuScene( this ) )
   }
 
   /** Shared controls, also reachable from code that only has the game instance (e.g. level scripts). */
@@ -84,8 +110,10 @@ export default class Game {
 
   start() {
     this.loop.startLoop( (_timeMultiplier, { timeDelta }) => {
-      this.update( timeDelta / 1000 )
-      this.draw()
+      Keys.update()
+
+      this.scenes.update( timeDelta / 1000 )
+      this.scenes.draw()
 
       // Only when something changed: a new, removed or selected item, or one recharging.
       const inventorySlots = this.player.inventory.getChangedSlots()
@@ -93,26 +121,29 @@ export default class Game {
     } )
   }
 
-  runLevel( index:number ) {
-    const level = LEVELS[ index ]
-    if (!level) return console.info( `All days complete!` )
+  /** Starts a new run: a fresh player, journal and stats, then the first day. */
+  startNewRun() {
+    this.player = new Player( this )
+    this.stats = { ...NEW_RUN_STATS }
+    this.view.clearBrief()
 
-    this.level?.abort()
-    this.level = level
-
-    console.info( `Day ${index + 1}: ${level.name}` )
-
-    level.run( this ).then( isCompleted => {
-      if (isCompleted) this.runLevel( index + 1 )
-    } )
+    this.startDay( 0 )
   }
 
-  update( seconds:number ) {
-    Keys.update()
+  /** Tells the day's story (if any), then plays the day. After the last day: the summary. */
+  startDay( index:number, { withStory = true } = {} ) {
+    const level = LEVELS[ index ]
+    if (!level) return this.scenes.openOverlay( new GameOverScene( this, `Koniec!`, `Piaskownica jest twoja.` ) )
 
-    if (Game.controls.isPressed( `pause` )) this.#isPaused = !this.#isPaused
-    if (this.#isPaused) return
+    const playDay = () => this.scenes.switchTo( new GameplayScene( this, index ) )
 
+    if (withStory && level.story.length) this.scenes.switchTo( new SlidesScene( this, level.story, playDay ) )
+    else playDay()
+  }
+
+  /** One frame of the playing world: level timers, player input and movement, kids and toys. */
+  updateWorld( seconds:number ) {
+    this.stats.playSeconds += seconds
     this.timers.update( seconds )
 
     this.player.moveInput = {
@@ -126,7 +157,7 @@ export default class Game {
     this.level?.update( seconds )
   }
 
-  draw() {
+  drawWorld() {
     const { ctx } = this.renderer
     this.renderer.beginFrame( `#000` )
 
