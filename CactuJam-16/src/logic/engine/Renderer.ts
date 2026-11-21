@@ -25,7 +25,6 @@ export default class Renderer {
     this.resize()
   }
 
-  /** Matches the canvas resolution to its on-screen size in device pixels and fits the world into it. */
   resize() {
     const pixelRatio = window.devicePixelRatio
     const width = Math.round( this.canvas.clientWidth * pixelRatio )
@@ -42,14 +41,9 @@ export default class Renderer {
     this.offset.x = Math.round( (width - this.worldSize.width * this.scale) / 2 )
     this.offset.y = Math.round( (height - this.worldSize.height * this.scale) / 2 )
 
-    // Changing the canvas size resets the context state.
     this.ctx.imageSmoothingEnabled = false
   }
 
-  /**
-   * Clears the whole canvas (transparent, so layers below stay visible, or filled with a color)
-   * and sets the transform, so everything drawn afterwards uses world units.
-   */
   beginFrame( backgroundColor?:string ) {
     this.ctx.setTransform( 1, 0, 0, 1, 0, 0 )
 
@@ -61,7 +55,6 @@ export default class Renderer {
     this.ctx.setTransform( this.scale, 0, 0, this.scale, this.offset.x, this.offset.y )
   }
 
-  /** Stops tracking the canvas size. The canvas itself belongs to the caller. */
   destroy() {
     this.#resizeObserver.disconnect()
   }
