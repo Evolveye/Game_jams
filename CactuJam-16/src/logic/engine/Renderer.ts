@@ -63,6 +63,18 @@ export default class Renderer {
     this.ctx.clip()
   }
 
+  /** Converts a point on the screen (e.g. the mouse, in client coordinates) to world units. */
+  toWorld( clientX:number, clientY:number ) {
+    const rect = this.canvas.getBoundingClientRect()
+    const canvasX = (clientX - rect.left) * (this.canvas.width / rect.width)
+    const canvasY = (clientY - rect.top) * (this.canvas.height / rect.height)
+
+    return {
+      x: (canvasX - this.offset.x) / this.scale,
+      y: (canvasY - this.offset.y) / this.scale,
+    }
+  }
+
   destroy() {
     this.#resizeObserver.disconnect()
   }

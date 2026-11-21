@@ -1,6 +1,6 @@
 import type Game from "../../Game"
 import Entity from "../Entity"
-import { TOY_COLORS, type ToyKind } from "./toys"
+import { ITEMS, type ToyKind } from "./items"
 
 /** A toy lying in the sandbox. The player picks it up by walking over it. */
 export default class ToyPickup extends Entity {
@@ -16,11 +16,11 @@ export default class ToyPickup extends Entity {
     if (this.isTaken || this.measureGapTo( this.game.player ) > 0) return
 
     this.isTaken = true
-    this.game.player.addToy( this.kind )
+    this.game.player.inventory.add( this.kind )
     this.game.events.emit( `toyReceived`, { kind:this.kind } )
   }
 
   draw( ctx:CanvasRenderingContext2D ) {
-    this.drawBody( ctx, TOY_COLORS[ this.kind ] )
+    this.drawBody( ctx, ITEMS[ this.kind ].color )
   }
 }

@@ -1,8 +1,8 @@
 import { flushSync, mount } from "svelte"
 import GameView from "./components/Game.svelte"
+import type { ToyKind } from "./entities/items/items"
 import type Kid from "./entities/kids/Kid"
 import Player from "./entities/Player"
-import type { ToyKind } from "./entities/toys/toys"
 import LEVELS from "./levels"
 import type Level from "./logic/Level"
 import type { Speaker } from "./logic/speakers"
@@ -30,17 +30,23 @@ export default class Game {
     moveLeft: [ `KeyA`, `ArrowLeft` ],
     moveRight: [ `KeyD`, `ArrowRight` ],
     switchPace: [ `ShiftLeft`, `ShiftRight` ],
-    useToy: [ `Space`, `KeyJ` ],
-    nextToy: [ `KeyE` ],
-    prevToy: [ `KeyQ` ],
+    useToy: [ `Space`, `MouseLeft` ],
+    nextToy: [ `KeyE`, `WheelDown` ],
+    prevToy: [ `KeyQ`, `WheelUp` ],
     pause: [ `Escape`, `KeyP` ],
   })
 
   #isPaused = false
   #actionHandlers: ActionHandlers<ActionOf<typeof Game.controls>> = {
-    useToy: () => this.player.useToy(),
-    nextToy: () => this.player.cycleToy( 1 ),
-    prevToy: () => this.player.cycleToy( -1 ),
+    useToy: () => {
+      // A click aims at the cursor (within a small angle in front), keys swing straight ahead.
+      const pointer = Keys.pointer
+      const isClick = pointer && Keys.isPressed([ `MouseLeft` ])
+
+      this.player.useToy( isClick ? this.renderer.toWorld( pointer.clientX, pointer.clientY ) : undefined )
+    },
+    nextToy: () => this.player.inventory.select( 1 ),
+    prevToy: () => this.player.inventory.select( -1 ),
   }
 
   world = WORLD
@@ -58,6 +64,7 @@ export default class Game {
     this.root = root
     this.view = this.mountView()
     this.renderer = new Renderer( this.view.getCanvas(), this.world )
+    Keys.listenToPointer( this.view.getCanvas() )
 
     this.start()
     this.runLevel( 0 )
@@ -79,6 +86,10 @@ export default class Game {
     this.loop.startLoop( (_timeMultiplier, { timeDelta }) => {
       this.update( timeDelta / 1000 )
       this.draw()
+
+      // Only when something changed: a new, removed or selected item, or one recharging.
+      const inventorySlots = this.player.inventory.getChangedSlots()
+      if (inventorySlots) this.view.setInventory( inventorySlots )
     } )
   }
 

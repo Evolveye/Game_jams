@@ -43,6 +43,7 @@ export default new Level( `Poniedziałek`, async level => {
   level.on( `toyReceived`, () => {
     level.say( `No to teraz pogadamy.` )
     level.note( `Łopatka sięga dalej i odpycha mocniej niż pięść.` )
+    level.note( level.getKeys( `prevToy` ), `, `, level.getKeys( `nextToy` ), ` — zmiana przedmiotu` )
   } )
 
   await firstKidFled

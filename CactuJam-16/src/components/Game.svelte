@@ -1,17 +1,22 @@
 <script lang="ts">
   import Brief, { type BriefEntry } from "./Brief.svelte"
+  import Inventory, { type InventorySlot } from "./Inventory.svelte"
 
   /** A line under the game. `label` (e.g. who speaks) is shown above the text. */
   type Speech = { text:string, label?:string, color?:string }
 
   /** Title of the journal next to the game. */
-  let { briefTitle }:{ briefTitle:string } = $props()
+  let { briefTitle }:{
+    briefTitle: string
+  } = $props()
 
   let canvas: HTMLCanvasElement
   // Raw (not proxied): `say()` compares the stored object with its own by identity to know whether to hide it.
   let speech = $state.raw<null | Speech>( null )
   let briefEntries = $state<BriefEntry[]>([])
   let nextBriefEntryId = 0
+  // Raw: always replaced as a whole when the inventory changes, never edited in place.
+  let inventorySlots = $state.raw<InventorySlot[]>([])
 
   export function getCanvas() {
     return canvas
@@ -30,6 +35,11 @@
   export function addBriefEntry( entry:Omit<BriefEntry, `id`> ) {
     briefEntries.push({ ...entry, id:nextBriefEntryId++ })
   }
+
+  /** Shows the player's items over the game. */
+  export function setInventory( slots:InventorySlot[] ) {
+    inventorySlots = slots
+  }
 </script>
 
 <div class="layout">
@@ -37,6 +47,8 @@
     <canvas class="game-canvas" bind:this={canvas}></canvas>
 
     <div class="hud">
+      <Inventory slots={inventorySlots} />
+
       {#if speech}
         <p class="speech" style:color={speech.color}>
           {#if speech.label}
@@ -78,6 +90,11 @@
     inset: 0;
     width: 100%;
     height: 100%;
+  }
+
+  /* Clicks aim, so the cursor shows where. */
+  .game-canvas {
+    cursor: crosshair;
   }
 
   .hud {

@@ -1,9 +1,9 @@
 import type { GameEvents } from "../Game"
 import type Game from "../Game"
 import type { BriefTextPart } from "../components/Brief.svelte"
+import type { ToyKind } from "../entities/items/items"
+import ToyPickup from "../entities/items/ToyPickup"
 import Kid from "../entities/kids/Kid"
-import ToyPickup from "../entities/toys/ToyPickup"
-import type { ToyKind } from "../entities/toys/toys"
 import type { ActionOf, Listener } from "./engine"
 import { MOM, PLAYER, type Speaker } from "./speakers"
 import { WORLD, type Point, type Rect } from "./world"
@@ -162,7 +162,7 @@ export default class Level {
   giveToy( kind:ToyKind ) {
     const game = this.#runningGame
 
-    game.player.addToy( kind )
+    game.player.inventory.add( kind )
     game.events.emit( `toyReceived`, { kind } )
   }
 

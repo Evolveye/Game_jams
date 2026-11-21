@@ -1,7 +1,8 @@
 import type Game from "../Game"
 import { WORLD, type Point, type Rect } from "../logic/world"
 import Entity from "./Entity"
-import { FIST, TOY_SWINGS, type SwingStats, type ToyKind } from "./toys/toys"
+import Inventory from "./items/Inventory"
+import type Item from "./items/Item"
 
 /** Player tuning, in world units and seconds. */
 const STATS = {
@@ -12,8 +13,14 @@ const STATS = {
   invulnerableDuration: 0.8,
 }
 
-/** Smallest dot product between facing and the direction to a kid, so only kids in front get hit. */
-const HIT_CONE = 0.3
+/** While moving: largest angle between the walking direction and an aimed swing (to each side). */
+const MAX_AIM_ANGLE = Math.PI / 6
+
+/**
+ * Largest angle between the swing direction and a kid that still gets hit (to each side).
+ * Together with the aim angle, everything hittable stays in front of the walking direction.
+ */
+const HIT_ANGLE = Math.PI / 4
 
 type AutoWalk = { target:Point, speed:number, resolve:() => void }
 
@@ -27,21 +34,18 @@ export default class Player extends Entity {
   /** Area the player cannot leave; `null` lets them walk off the playground. Set by level scripts. */
   bounds: null | Rect = WORLD
 
-  toys: ToyKind[] = []
-  heldToy: null | ToyKind = null
+  /** Kept between days. The fist is always there, toys are added when picked up. */
+  inventory = new Inventory([ `fist` ])
 
   stunTime = 0
   invulnerableTime = 0
   swingTime = 0
-  cooldownTime = 0
+  #swungItem: null | Item = null
+  #swingDirection: Point = { x:1, y:0 }
   #autoWalk: null | AutoWalk = null
 
   constructor( game:Game ) {
     super( game, 0, 0, 4 )
-  }
-
-  get #swing(): SwingStats {
-    return (this.heldToy && TOY_SWINGS[ this.heldToy ]) || FIST
   }
 
   /** True while any kid is hostile. Calm means walking by default, a fight means running. */
@@ -57,7 +61,7 @@ export default class Player extends Entity {
     this.stunTime = Math.max( 0, this.stunTime - seconds )
     this.invulnerableTime = Math.max( 0, this.invulnerableTime - seconds )
     this.swingTime = Math.max( 0, this.swingTime - seconds )
-    this.cooldownTime = Math.max( 0, this.cooldownTime - seconds )
+    this.inventory.update( seconds )
 
     this.applyVelocity( seconds )
 
@@ -84,34 +88,29 @@ export default class Player extends Entity {
     } )
   }
 
-  addToy( kind:ToyKind ) {
-    if (!this.toys.includes( kind )) this.toys.push( kind )
-    this.heldToy = kind
-  }
+  /**
+   * Swings the selected item and hits every kid in reach in front of the swing.
+   * Without a target it swings straight ahead. An aimed swing (e.g. at the mouse) goes anywhere
+   * while standing, but only within a small angle in front of the walking direction while moving.
+   */
+  useToy( target?:Point ) {
+    if (this.#autoWalk || this.stunTime) return
 
-  cycleToy( step:number ) {
-    if (!this.toys.length) return
+    const item = this.inventory.selected
+    const swing = item?.swing()
+    if (!item || !swing) return
 
-    const index = this.heldToy ? this.toys.indexOf( this.heldToy ) : -1
-    const count = this.toys.length
-
-    this.heldToy = this.toys[ (index + step + count) % count ] ?? null
-  }
-
-  /** Swings the held toy (or a fist) and hits every kid in reach in front of the player. */
-  useToy() {
-    if (this.#autoWalk || this.stunTime || this.cooldownTime) return
-
-    const swing = this.#swing
+    const swingDirection = target ? this.#aim( target ) : this.facing
 
     this.swingTime = STATS.swingDuration
-    this.cooldownTime = swing.cooldown
+    this.#swungItem = item
+    this.#swingDirection = swingDirection
 
     for (const kid of this.game.level?.kids ?? []) {
       if (this.measureGapTo( kid ) > swing.reach) continue
 
       const direction = this.getDirectionTo( kid )
-      if (direction.x * this.facing.x + direction.y * this.facing.y < HIT_CONE) continue
+      if (direction.x * swingDirection.x + direction.y * swingDirection.y < Math.cos( HIT_ANGLE )) continue
 
       kid.takeHit( direction, swing )
     }
@@ -160,16 +159,43 @@ export default class Player extends Entity {
     autoWalk.resolve()
   }
 
-  /** Placeholder swing: a line from the body towards the facing direction. */
-  #drawSwing( ctx:CanvasRenderingContext2D ) {
-    const swing = this.#swing
-    const length = this.radius + swing.reach
+  /**
+   * Direction of a swing aimed at the target. Standing still, the player turns to the target freely.
+   * While moving, the direction is turned back to the edge of the aim angle if it points too far to the side.
+   */
+  #aim( target:Point ) {
+    if (target.x === this.x && target.y === this.y) return this.facing
 
-    ctx.strokeStyle = swing.color
+    const isMoving = this.moveInput.x !== 0 || this.moveInput.y !== 0
+
+    if (!isMoving) {
+      this.facing = this.getDirectionTo( target )
+      return this.facing
+    }
+
+    const facingAngle = Math.atan2( this.facing.y, this.facing.x )
+    const targetAngle = Math.atan2( target.y - this.y, target.x - this.x )
+
+    // Shortest signed turn from facing to the target, between -π and π.
+    const turn = Math.atan2( Math.sin( targetAngle - facingAngle ), Math.cos( targetAngle - facingAngle ) )
+    const limitedTurn = Math.min( Math.max( turn, -MAX_AIM_ANGLE ), MAX_AIM_ANGLE )
+
+    return { x:Math.cos( facingAngle + limitedTurn ), y:Math.sin( facingAngle + limitedTurn ) }
+  }
+
+  /** Placeholder swing: a line from the body in the swing direction. */
+  #drawSwing( ctx:CanvasRenderingContext2D ) {
+    const definition = this.#swungItem?.definition
+    if (!definition?.swing) return
+
+    const length = this.radius + definition.swing.reach
+    const direction = this.#swingDirection
+
+    ctx.strokeStyle = definition.color
     ctx.lineWidth = 2
     ctx.beginPath()
     ctx.moveTo( this.x, this.y )
-    ctx.lineTo( this.x + this.facing.x * length, this.y + this.facing.y * length )
+    ctx.lineTo( this.x + direction.x * length, this.y + direction.y * length )
     ctx.stroke()
   }
 }

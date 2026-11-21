@@ -22,7 +22,10 @@
   import { tick } from "svelte"
 
   /** Entries in the order they were added, the newest last. */
-  let { title, entries }:{ title:string, entries:BriefEntry[] } = $props()
+  let { title, entries }:{
+    title: string,
+    entries: BriefEntry[]
+  } = $props()
 
   let list = $state<HTMLElement>()
 

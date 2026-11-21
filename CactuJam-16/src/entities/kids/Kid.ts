@@ -1,7 +1,8 @@
 import type Game from "../../Game"
 import { SANDBOX, WORLD, type Point } from "../../logic/world"
 import Entity from "../Entity"
-import type { SwingStats } from "../toys/toys"
+import Inventory from "../items/Inventory"
+import type { SwingStats } from "../items/items"
 
 /**
  * - `playing`: wanders around its spot in the sandbox, harmless
@@ -42,6 +43,8 @@ export default class Kid extends Entity {
   state: KidState = `playing`
   health = STATS.health
   isGone = false
+  /** Toys the kid holds, e.g. ones taken from the player. Empty for now. */
+  inventory = new Inventory()
 
   stunTime = 0
   windupTime = 0

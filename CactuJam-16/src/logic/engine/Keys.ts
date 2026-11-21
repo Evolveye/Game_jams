@@ -16,6 +16,8 @@ export type KeyCode =
   | `Home` | `End` | `PageUp` | `PageDown`
   | `Minus` | `Equal` | `BracketLeft` | `BracketRight` | `Backslash` | `Semicolon` | `Quote` | `Backquote` | `Comma` | `Period` | `Slash`
   | `NumpadEnter` | `NumpadAdd` | `NumpadSubtract` | `NumpadMultiply` | `NumpadDivide` | `NumpadDecimal`
+  // Mouse, bound like keys. Wheel inputs are only ever "pressed", never held.
+  | `MouseLeft` | `MouseMiddle` | `MouseRight` | `WheelUp` | `WheelDown`
 
 /** Labels of keys whose code does not read well on its own. */
 const KEY_LABELS:Partial<Record<KeyCode, string>> = {
@@ -26,10 +28,25 @@ const KEY_LABELS:Partial<Record<KeyCode, string>> = {
   Escape: `Esc`,
   ControlLeft: `Ctrl`,
   ControlRight: `Ctrl`,
+  MouseLeft: `LPM`,
+  MouseMiddle: `ŚPM`,
+  MouseRight: `PPM`,
+  WheelUp: `Kółko ↑`,
+  WheelDown: `Kółko ↓`,
 }
 
+/** Mouse inputs by `MouseEvent.button`. */
+const MOUSE_BUTTONS:KeyCode[] = [ `MouseLeft`, `MouseMiddle`, `MouseRight` ]
+
+/** Scroll distance (in pixels) of one wheel step. Touchpads send many small events that add up to it. */
+const WHEEL_STEP = 50
+
+/** Pixels per line, for browsers that report wheel scrolling in lines. */
+const WHEEL_LINE_HEIGHT = 33
+
 /**
- * Raw keyboard state, identified by `KeyboardEvent.code` (physical key position, layout independent).
+ * Raw keyboard and mouse state. Keys are identified by `KeyboardEvent.code` (physical key position,
+ * layout independent), mouse inputs by their own codes (`MouseLeft`, `WheelUp`, …).
  * Call `Keys.update()` once at the start of every frame.
  */
 export default class Keys {
@@ -38,6 +55,8 @@ export default class Keys {
   static #pressedThisFrame = new Set<string>()
   static #blockedCodes = new Set<string>()
   static #lastKey: null | string = null
+  static #pointer: null | { clientX:number, clientY:number } = null
+  static #wheelDistance = 0
 
   static {
     window.addEventListener( `keydown`, event => {
@@ -52,10 +71,21 @@ export default class Keys {
 
     window.addEventListener( `keyup`, ({ code }) => this.#held.delete( code ) )
     window.addEventListener( `blur`, () => this.#held.clear() )
+
+    // Released anywhere, also outside the element that caught the press.
+    window.addEventListener( `mouseup`, ({ button }) => {
+      const code = MOUSE_BUTTONS[ button ]
+      if (code) this.#held.delete( code )
+    } )
   }
 
   static get lastKey() {
     return this.#lastKey
+  }
+
+  /** Last mouse position over the element passed to `listenToPointer()`, in client coordinates. */
+  static get pointer() {
+    return this.#pointer
   }
 
   /** Moves presses collected since the previous frame into the current frame. */
@@ -82,8 +112,47 @@ export default class Keys {
     for (const code of codes) this.#blockedCodes.add( code )
   }
 
+  /**
+   * Starts reading the mouse over the element (e.g. the game canvas): buttons, wheel and position.
+   * Only that element, so scrolling or clicking other parts of the page keeps working normally.
+   */
+  static listenToPointer( element:HTMLElement ) {
+    element.addEventListener( `mousedown`, event => {
+      const code = MOUSE_BUTTONS[ event.button ]
+      if (!code) return
+
+      event.preventDefault()
+      this.#held.add( code )
+      this.#pressedQueue.add( code )
+    } )
+
+    element.addEventListener( `mousemove`, ({ clientX, clientY }) => {
+      this.#pointer = { clientX, clientY }
+    } )
+
+    element.addEventListener( `wheel`, event => {
+      event.preventDefault()
+      this.#addWheelDistance( event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * WHEEL_LINE_HEIGHT : event.deltaY )
+    }, { passive:false } )
+
+    // The right button is free to be bound to an action.
+    element.addEventListener( `contextmenu`, event => event.preventDefault() )
+  }
+
   /** Short label of a key for players, e.g. `KeyW` → `W`, `ShiftLeft` → `Shift`, `ArrowUp` → `↑`. */
   static getLabel( code:KeyCode ) {
     return KEY_LABELS[ code ] ?? code.replace( /^(Key|Digit|Numpad)/, `` ).replace( /(Left|Right)$/, `` )
+  }
+
+  /** Turns accumulated scrolling into wheel presses, at most one per direction and frame. */
+  static #addWheelDistance( distance:number ) {
+    // Changing direction starts counting anew.
+    if (Math.sign( distance ) !== Math.sign( this.#wheelDistance )) this.#wheelDistance = 0
+
+    this.#wheelDistance += distance
+    if (Math.abs( this.#wheelDistance ) < WHEEL_STEP) return
+
+    this.#pressedQueue.add( this.#wheelDistance < 0 ? `WheelUp` : `WheelDown` )
+    this.#wheelDistance = 0
   }
 }
