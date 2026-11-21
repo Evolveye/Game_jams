@@ -17,6 +17,17 @@ export type KeyCode =
   | `Minus` | `Equal` | `BracketLeft` | `BracketRight` | `Backslash` | `Semicolon` | `Quote` | `Backquote` | `Comma` | `Period` | `Slash`
   | `NumpadEnter` | `NumpadAdd` | `NumpadSubtract` | `NumpadMultiply` | `NumpadDivide` | `NumpadDecimal`
 
+/** Labels of keys whose code does not read well on its own. */
+const KEY_LABELS:Partial<Record<KeyCode, string>> = {
+  ArrowUp: `↑`,
+  ArrowDown: `↓`,
+  ArrowLeft: `←`,
+  ArrowRight: `→`,
+  Escape: `Esc`,
+  ControlLeft: `Ctrl`,
+  ControlRight: `Ctrl`,
+}
+
 /**
  * Raw keyboard state, identified by `KeyboardEvent.code` (physical key position, layout independent).
  * Call `Keys.update()` once at the start of every frame.
@@ -69,5 +80,10 @@ export default class Keys {
    */
   static blockDefault( codes:readonly KeyCode[] ) {
     for (const code of codes) this.#blockedCodes.add( code )
+  }
+
+  /** Short label of a key for players, e.g. `KeyW` → `W`, `ShiftLeft` → `Shift`, `ArrowUp` → `↑`. */
+  static getLabel( code:KeyCode ) {
+    return KEY_LABELS[ code ] ?? code.replace( /^(Key|Digit|Numpad)/, `` ).replace( /(Left|Right)$/, `` )
   }
 }

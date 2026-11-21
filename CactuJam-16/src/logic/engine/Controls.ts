@@ -34,6 +34,22 @@ export default class Controls<Action extends string> {
     }
   }
 
+  getKeyLabel( ...actions:Action[] ) {
+    return this.getKeyLabels( ...actions ).join( ` / ` )
+  }
+
+  /** Key labels grouped by binding position, e.g. the moves give `[ "WASD", "↑←↓→" ]`. */
+  getKeyLabels( ...actions:Action[] ) {
+    const positionsCount = Math.max( ...actions.map( action => this.#bindings[ action ].length ) )
+    const positions = Array.from({ length:positionsCount }, (_, position) => {
+      const codes = actions.map( action => this.#bindings[ action ][ position ] ).filter( code => code !== undefined )
+      return codes.map( code => Keys.getLabel( code ) ).join( `` )
+    } )
+
+    // Two keys with the same label (left and right Shift) are shown once.
+    return [ ...new Set( positions ) ]
+  }
+
   getBindings( action:Action ) {
     return [ ...this.#bindings[ action ] ]
   }

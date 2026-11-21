@@ -1,12 +1,17 @@
 import type { GameEvents } from "../Game"
 import type Game from "../Game"
+import type { BriefTextPart } from "../components/Brief.svelte"
 import Kid from "../entities/kids/Kid"
 import ToyPickup from "../entities/toys/ToyPickup"
 import type { ToyKind } from "../entities/toys/toys"
-import type { Listener } from "./engine"
+import type { ActionOf, Listener } from "./engine"
+import { MOM, PLAYER, type Speaker } from "./speakers"
 import { WORLD, type Point, type Rect } from "./world"
 
 export type LevelScript = (level:Level) => Promise<void>
+
+/** `speaker` defaults to the player's kid, `seconds` is how long the subtitle stays. */
+export type SayOptions = { speaker?:Speaker, seconds?:number }
 
 type Condition = {
   isMet: () => boolean
@@ -55,6 +60,7 @@ export default class Level {
     this.#conditions.clear()
     game.player.bounds = WORLD
     game.view.setSpeech( null )
+    game.view.addBriefEntry({ variant:`heading`, source:`day`, text:this.name })
 
     await this.script( this.debug ? this.#createDebugProxy() : this )
     if (abortCtrl.signal.aborted) return false
@@ -112,15 +118,32 @@ export default class Level {
     this.#runningGame.events.on( name, listener, this.#abortCtrl.signal )
   }
 
-  async say( text:string, seconds = 2.5 ) {
+  /** Shows a line as a subtitle (and in the journal), then waits until it has been read. */
+  async say( text:string, { speaker = PLAYER, seconds = 2.5 }:SayOptions = {} ) {
     const game = this.#runningGame
+    const speech = { text, label:speaker.name, color:speaker.color }
 
-    game.view.setSpeech( text )
-    game.events.emit( `say`, { text } )
+    game.view.setSpeech( speech )
+    game.view.addBriefEntry({ variant:`quote`, source:speaker.id, ...speech })
+    game.events.emit( `say`, { text, speaker } )
 
     await this.wait( seconds )
 
-    if (game.view.getSpeech() === text) game.view.setSpeech( null )
+    // A newer line may have replaced this one in the meantime.
+    if (game.view.getSpeech() === speech) game.view.setSpeech( null )
+  }
+
+  /**
+   * Writes an instruction or goal into the journal next to the game.
+   * Parts are joined; keys from `getKeys()` are shown as keyboard keys.
+   */
+  note( ...parts:BriefTextPart[] ) {
+    this.#runningGame.view.addBriefEntry({ variant:`note`, source:`note`, text:parts })
+  }
+
+  /** Keys bound to game actions, as a `note()` part shown as keyboard keys: `Space` `J`, or `WASD` `↑←↓→` for the moves. */
+  getKeys( ...actions:ActionOf<typeof Game.controls>[] ) {
+    return { keys:this.#runningGame.controls.getKeyLabels( ...actions ) }
   }
 
   placePlayer( x:number, y:number ) {
@@ -167,7 +190,7 @@ export default class Level {
     for (const kid of this.kids) kid.flee()
 
     this.confinePlayer( null )
-    await this.say( `OBIAD!`, 3 )
+    await this.say( `OBIAD!`, { speaker:MOM, seconds:3 } )
     await this.waitUntil( () => this.player.isOutside( WORLD ) )
   }
 

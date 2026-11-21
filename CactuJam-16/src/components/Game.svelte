@@ -1,6 +1,17 @@
 <script lang="ts">
+  import Brief, { type BriefEntry } from "./Brief.svelte"
+
+  /** A line under the game. `label` (e.g. who speaks) is shown above the text. */
+  type Speech = { text:string, label?:string, color?:string }
+
+  /** Title of the journal next to the game. */
+  let { briefTitle }:{ briefTitle:string } = $props()
+
   let canvas: HTMLCanvasElement
-  let speech = $state<null | string>( null )
+  // Raw (not proxied): `say()` compares the stored object with its own by identity to know whether to hide it.
+  let speech = $state.raw<null | Speech>( null )
+  let briefEntries = $state<BriefEntry[]>([])
+  let nextBriefEntryId = 0
 
   export function getCanvas() {
     return canvas
@@ -10,20 +21,57 @@
     return speech
   }
 
-  export function setSpeech( text:null | string ) {
-    speech = text
+  /** Shows a subtitle, or hides it with `null`. */
+  export function setSpeech( newSpeech:null | Speech ) {
+    speech = newSpeech
+  }
+
+  /** Adds an entry to the journal next to the game. */
+  export function addBriefEntry( entry:Omit<BriefEntry, `id`> ) {
+    briefEntries.push({ ...entry, id:nextBriefEntryId++ })
   }
 </script>
 
-<canvas class="game-canvas" bind:this={canvas}></canvas>
+<div class="layout">
+  <div class="stage">
+    <canvas class="game-canvas" bind:this={canvas}></canvas>
 
-<div class="hud">
-  {#if speech}
-    <p class="speech">{speech}</p>
-  {/if}
+    <div class="hud">
+      {#if speech}
+        <p class="speech" style:color={speech.color}>
+          {#if speech.label}
+            <span class="speech-label">{speech.label}</span>
+          {/if}
+          {speech.text}
+        </p>
+      {/if}
+    </div>
+  </div>
+
+  <Brief title={briefTitle} entries={briefEntries} />
 </div>
 
 <style>
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr clamp(220px, 24vw, 360px);
+    height: 100%;
+  }
+
+  /* Portrait screens: the journal goes below the game. */
+  @media (max-aspect-ratio: 1/1) {
+    .layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr 30%;
+    }
+  }
+
+  .stage {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+  }
+
   .game-canvas,
   .hud {
     position: absolute;
@@ -50,5 +98,13 @@
     font-size: clamp(14px, 2.4vw, 28px);
     font-weight: bold;
     text-align: center;
+  }
+
+  .speech-label {
+    display: block;
+    font-family: var(--font-title);
+    font-size: 0.7em;
+    font-weight: normal;
+    letter-spacing: 0.05em;
   }
 </style>

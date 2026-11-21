@@ -5,6 +5,7 @@ import Player from "./entities/Player"
 import type { ToyKind } from "./entities/toys/toys"
 import LEVELS from "./levels"
 import type Level from "./logic/Level"
+import type { Speaker } from "./logic/speakers"
 import { SANDBOX, WORLD } from "./logic/world"
 import {
   Controls, EventBus, Keys, Loop, Renderer, Timers,
@@ -12,7 +13,7 @@ import {
 } from "./logic/engine"
 
 export type GameEvents = {
-  say: { text:string }
+  say: { text:string, speaker:Speaker }
   toyReceived: { kind:ToyKind }
   kidSpawned: { kid:Kid }
   kidHit: { kid:Kid }
@@ -62,8 +63,13 @@ export default class Game {
     this.runLevel( 0 )
   }
 
+  /** Shared controls, also reachable from code that only has the game instance (e.g. level scripts). */
+  get controls() {
+    return Game.controls
+  }
+
   mountView() {
-    const view = mount( GameView, { target:this.root } )
+    const view = mount( GameView, { target:this.root, props:{ briefTitle:`Dziennik` } } )
     flushSync()
 
     return view

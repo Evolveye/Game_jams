@@ -1,4 +1,12 @@
+@font-face {
+  font-family: "CactuFont";
+  src: url("./assets/fonts/cactu.woff2") format("woff2");
+  font-display: swap;
+}
+
 :root {
+  --font-title: "CactuFont", system-ui, sans-serif;
+
   color-scheme: dark;
   font-family: system-ui, sans-serif;
 }
