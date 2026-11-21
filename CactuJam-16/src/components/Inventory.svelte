@@ -5,7 +5,8 @@
   export type InventorySlot = {
     id: string
     label: string
-    color: string
+    /** Image URL. */
+    icon: string
     isSelected: boolean
     /** From 0 (just used) to 1 (ready to use again). */
     readiness: number
@@ -22,7 +23,7 @@
 <ol class="inventory">
   {#each slots as slot (slot.id)}
     <li class="slot" class:selected={slot.isSelected}>
-      <span class="swatch" style:background={slot.color}></span>
+      <img class="icon" src={slot.icon} alt="" />
       <span class="name">{slot.label}</span>
 
       {#if slot.stats.length}
@@ -70,10 +71,11 @@
     opacity: 1;
   }
 
-  .swatch {
-    width: 0.8em;
-    height: 0.8em;
-    border-radius: 2px;
+  /* Pixel art: scaled up without blurring. */
+  .icon {
+    width: 1.2em;
+    height: 1.2em;
+    image-rendering: pixelated;
   }
 
   .name {

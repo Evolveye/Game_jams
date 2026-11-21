@@ -21,3 +21,6 @@ export { default as Sprite } from "./Sprite"
 
 export * from "./SceneManager"
 export { default as SceneManager } from "./SceneManager"
+
+export * from "./Sounds"
+export { default as Sounds } from "./Sounds"

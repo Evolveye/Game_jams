@@ -1,5 +1,6 @@
-import playgroundImage from "../assets/slides/playground.svg"
+import playgroundImage from "../assets/slides/playground.png"
 import Level from "../logic/Level"
+import { SOUNDS } from "../logic/sounds"
 import { KID, PLAYER } from "../logic/speakers"
 import { SANDBOX, WORLD } from "../logic/world"
 import type { Shot } from "../scenes/SlidesScene"
@@ -9,6 +10,7 @@ const STORY:Shot[] = [
   {
     image: playgroundImage,
     title: `Poniedziałek`,
+    sound: SOUNDS.storyIntro,
     lines: [
       { text:`Pierwszy dzień wakacji. Słońce, ciepły piasek i jedna myśl: piaskownica.` },
       { text:`To jest MOJA piaskownica. Od zawsze. Każdy na podwórku o tym wie.`, speaker:PLAYER },

@@ -77,7 +77,7 @@ export default class Inventory {
     return this.items.map<InventorySlot>( (item, index) => ({
       id: item.kind,
       label: item.definition.name,
-      color: item.definition.color,
+      icon: item.definition.icon,
       isSelected: index === this.selectedIndex,
       readiness: item.readiness,
       stats: item.getStats(),

@@ -1,5 +1,6 @@
 import type Game from "../Game"
 import type { MenuScreenData, MenuScreenOption } from "../components/MenuScreen.svelte"
+import { SOUNDS } from "../logic/sounds"
 
 /** One menu entry: how it looks (label, button variant) and what picking it does. */
 export type MenuOption = MenuScreenOption & { action:() => void }
@@ -11,17 +12,19 @@ export type MenuTexts = Pick<MenuScreenData, `title` | `subtitle` | `rows` | `hi
 export default class OptionsMenu {
   options: MenuOption[]
   selectedIndex = 0
+  #game: Game
   #onChange: () => void
 
   /** `onChange` is called whenever the view needs updating (the selection moved). */
-  constructor( options:MenuOption[], onChange:() => void ) {
+  constructor( game:Game, options:MenuOption[], onChange:() => void ) {
+    this.#game = game
     this.options = options
     this.#onChange = onChange
   }
 
   /** Reads the keyboard; call once per frame. */
-  update( game:Game ) {
-    const { controls } = game
+  update() {
+    const { controls } = this.#game
 
     if (controls.isPressed( `moveUp` )) this.#select( this.selectedIndex - 1 )
     if (controls.isPressed( `moveDown` )) this.#select( this.selectedIndex + 1 )
@@ -29,7 +32,11 @@ export default class OptionsMenu {
   }
 
   pick( index:number ) {
-    this.options[ index ]?.action()
+    const option = this.options[ index ]
+    if (!option) return
+
+    this.#game.sounds.play( SOUNDS.menuConfirm )
+    option.action()
   }
 
   /** Data for the menu view. */
@@ -44,8 +51,8 @@ export default class OptionsMenu {
   }
 
   /** Keys for moving through the menu, as a hint under it. */
-  getHint( game:Game ) {
-    const { controls } = game
+  getHint() {
+    const { controls } = this.#game
     return `${controls.getKeyLabel( `moveUp`, `moveDown` )} — wybór · ${controls.getKeyLabel( `confirm` )} — zatwierdź`
   }
 
@@ -56,6 +63,7 @@ export default class OptionsMenu {
     if (wrappedIndex === this.selectedIndex) return
 
     this.selectedIndex = wrappedIndex
+    this.#game.sounds.play( SOUNDS.menuMove )
     this.#onChange()
   }
 }

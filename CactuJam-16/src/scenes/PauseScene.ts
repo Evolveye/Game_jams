@@ -13,7 +13,7 @@ export default class PauseScene implements Scene {
 
   constructor( game:Game, gameplay:GameplayScene ) {
     this.#game = game
-    this.#menu = new OptionsMenu([
+    this.#menu = new OptionsMenu( game, [
       { label:`Wznów`, action:() => game.scenes.closeOverlay() },
       { label:`Zacznij dzień od nowa`, action:() => gameplay.restartDay() },
       { label:`Menu główne`, action:() => game.scenes.switchTo( new MenuScene( game ) ) },
@@ -31,7 +31,7 @@ export default class PauseScene implements Scene {
   update() {
     // The pause key closes the menu again.
     if (this.#game.controls.isPressed( `pause` )) return this.#game.scenes.closeOverlay()
-    this.#menu.update( this.#game )
+    this.#menu.update()
   }
 
   #show() {
@@ -39,7 +39,7 @@ export default class PauseScene implements Scene {
 
     this.#game.view.setOverlay( this.#menu.getScreen({
       title: `Pauza`,
-      hint: `${this.#menu.getHint( this.#game )} · ${controls.getKeyLabel( `pause` )} — wznów`,
+      hint: `${this.#menu.getHint()} · ${controls.getKeyLabel( `pause` )} — wznów`,
     }) )
   }
 }

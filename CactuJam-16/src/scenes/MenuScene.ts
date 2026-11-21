@@ -9,7 +9,7 @@ export default class MenuScene implements Scene {
 
   constructor( game:Game ) {
     this.#game = game
-    this.#menu = new OptionsMenu([
+    this.#menu = new OptionsMenu( game, [
       { label:`Nowa gra`, variant:`primary`, action:() => game.startNewRun() },
     ], () => this.#show() )
   }
@@ -19,7 +19,7 @@ export default class MenuScene implements Scene {
   }
 
   update() {
-    this.#menu.update( this.#game )
+    this.#menu.update()
   }
 
   #show() {
@@ -28,7 +28,7 @@ export default class MenuScene implements Scene {
       ...this.#menu.getScreen({
         title: `To MOJA piaskownica!`,
         subtitle: `Gra na CactuJam 16`,
-        hint: this.#menu.getHint( this.#game ),
+        hint: this.#menu.getHint(),
       }),
     })
   }

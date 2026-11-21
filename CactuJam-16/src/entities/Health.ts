@@ -1,4 +1,5 @@
-import type { PlayerHealthData } from "../components/PlayerHealth.svelte"
+/** Current and maximum health, for views. */
+export type HealthData = { current:number, max:number }
 
 /** Health points of an entity. Composed into entities, e.g. `health = new Health( 3 )`. */
 export default class Health {
@@ -44,7 +45,7 @@ export default class Health {
   }
 
   /** Data for the health view. */
-  getData(): PlayerHealthData {
+  getData(): HealthData {
     return { current:this.current, max:this.max }
   }
 

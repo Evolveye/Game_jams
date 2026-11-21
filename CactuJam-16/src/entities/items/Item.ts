@@ -1,12 +1,16 @@
+import { Sprite } from "../../logic/engine"
 import { ITEMS, STAT_LABELS, type ItemKind } from "./items"
 
 /** One held item with its own state: a swing puts it on cooldown until it is ready again. */
 export default class Item {
   kind: ItemKind
   cooldownTime = 0
+  /** The item's icon, drawn in the holder's hand. */
+  sprite: Sprite<`icon`>
 
   constructor( kind:ItemKind ) {
     this.kind = kind
+    this.sprite = new Sprite({ icon:{ src:ITEMS[ kind ].icon } }, `icon` )
   }
 
   get definition() {

@@ -1,19 +1,18 @@
 <script module lang="ts">
-  /** The player's health. All content comes from the game; the view only displays it. */
-  export type PlayerHealthData = { current:number, max:number }
+  /** The player's health and the heart images (URLs). All content comes from the game; the view only displays it. */
+  export type PlayerHealthData = { current:number, max:number, icons:{ full:string, empty:string } }
 </script>
 
 <script lang="ts">
   /** Health as a row of hearts: full ones are left, empty ones are lost. */
-  let { current, max }:PlayerHealthData = $props()
+  let { current, max, icons }:PlayerHealthData = $props()
 </script>
 
 <ol class="hearts">
   {#each { length:max }, index}
-    <li class="heart" class:empty={index >= current}>
-      <svg viewBox="0 0 7 6" shape-rendering="crispEdges">
-        <path d="M1 0h2v1h1V0h2v1h1v2h-1v1h-1v1h-1v1h-1v-1h-1v-1h-1v-1H0V1h1z" />
-      </svg>
+    {@const isEmpty = index >= current}
+    <li class="heart" class:empty={isEmpty}>
+      <img src={isEmpty ? icons.empty : icons.full} alt="" />
     </li>
   {/each}
 </ol>
@@ -30,21 +29,20 @@
     list-style: none;
   }
 
-  .heart svg {
+  /* Pixel art: scaled up without blurring. */
+  .heart img {
     display: block;
     width: clamp(16px, 1.6vw, 22px);
-    fill: #ef4444;
+    image-rendering: pixelated;
   }
 
   /* A heart just lost pops and shakes; the animation runs when the class is added. */
-  .heart.empty svg {
-    fill: #57534e;
+  .heart.empty img {
     animation: lose-heart 0.4s;
   }
 
   @keyframes lose-heart {
     0% {
-      fill: #fca5a5;
       transform: scale(1.5);
     }
 

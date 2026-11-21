@@ -17,7 +17,7 @@ export default class GameOverScene implements Scene {
     this.#game = game
     this.#title = title
     this.#subtitle = subtitle
-    this.#menu = new OptionsMenu([
+    this.#menu = new OptionsMenu( game, [
       { ...retry, variant:`primary` },
       { label:`Menu główne`, action:() => game.scenes.switchTo( new MenuScene( game ) ) },
     ], () => this.#show() )
@@ -32,7 +32,7 @@ export default class GameOverScene implements Scene {
   }
 
   update() {
-    this.#menu.update( this.#game )
+    this.#menu.update()
   }
 
   #show() {
@@ -40,7 +40,7 @@ export default class GameOverScene implements Scene {
       title: this.#title,
       subtitle: this.#subtitle,
       rows: this.#getSummary(),
-      hint: this.#menu.getHint( this.#game ),
+      hint: this.#menu.getHint(),
     }) )
   }
 

@@ -1,4 +1,5 @@
 import type Game from "../../Game"
+import { Sprite } from "../../logic/engine"
 import Entity from "../Entity"
 import { ITEMS, type ToyKind } from "./items"
 
@@ -6,10 +7,14 @@ import { ITEMS, type ToyKind } from "./items"
 export default class ToyPickup extends Entity {
   kind: ToyKind
   isTaken = false
+  sprite: Sprite<`icon`>
+  /** Nothing hits a toy; its footprint is where the player picks it up. */
+  debugColor = `#facc15`
 
   constructor( game:Game, kind:ToyKind, x:number, y:number ) {
-    super( game, x, y, 3 )
+    super( game, x, y, { width:6, height:4 } )
     this.kind = kind
+    this.sprite = new Sprite({ icon:{ src:ITEMS[ kind ].icon } }, `icon` )
   }
 
   update() {
@@ -21,6 +26,6 @@ export default class ToyPickup extends Entity {
   }
 
   draw( ctx:CanvasRenderingContext2D ) {
-    this.drawBody( ctx, ITEMS[ this.kind ].color )
+    this.drawSprite( ctx, this.sprite )
   }
 }

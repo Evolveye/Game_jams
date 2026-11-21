@@ -1,29 +1,39 @@
 import type Game from "../Game"
+import heartEmptyIcon from "../assets/sprites/heart-empty.png"
+import heartFullIcon from "../assets/sprites/heart-full.png"
+import playerSheet from "../assets/sprites/player.png"
+import { Sprite } from "../logic/engine"
 import { WORLD, type Point, type Rect } from "../logic/world"
 import Entity from "./Entity"
 import Health from "./Health"
 import Inventory from "./items/Inventory"
-import type Item from "./items/Item"
 import type { SwingStats } from "./items/items"
+import Swing from "./items/Swing"
 
 /** Player tuning, in world units and seconds. */
 const STATS = {
   health: 5,
   runSpeed: 70,
   walkSpeed: 30,
-  swingDuration: 0.15,
   stunDuration: 0.35,
   invulnerableDuration: 0.8,
 }
 
+/** The player's sheet: 10×14 frames, 4 per row, one animation per row. */
+const SHEET = { src:playerSheet, framesPerRow:4, framesPerColumn:4 }
+
+const ANIMATIONS = {
+  idle: { ...SHEET, firstFrame:0, framesCount:2, fps:2 },
+  walk: { ...SHEET, firstFrame:4, framesCount:4, fps:10 },
+  stunned: { ...SHEET, firstFrame:8, framesCount:1 },
+  swing: { ...SHEET, firstFrame:12, framesCount:1 },
+}
+
+/** Heart images of the player's health in the HUD. */
+export const HEART_ICONS = { full:heartFullIcon, empty:heartEmptyIcon }
+
 /** While moving: largest angle between the walking direction and an aimed swing (to each side). */
 const MAX_AIM_ANGLE = Math.PI / 6
-
-/**
- * Largest angle between the swing direction and a kid that still gets hit (to each side).
- * Together with the aim angle, everything hittable stays in front of the walking direction.
- */
-const HIT_ANGLE = Math.PI / 4
 
 type AutoWalk = { target:Point, speed:number, resolve:() => void }
 
@@ -41,16 +51,21 @@ export default class Player extends Entity {
   inventory = new Inventory([ `fist` ])
   /** Filled up at the start of every day. */
   health = new Health( STATS.health )
+  sprite = new Sprite( ANIMATIONS, `idle` )
+  hurtboxSize = { width:8, height:14 }
+  debugColor = `#60a5fa`
 
   stunTime = 0
   invulnerableTime = 0
-  swingTime = 0
-  #swungItem: null | Item = null
-  #swingDirection: Point = { x:1, y:0 }
   #autoWalk: null | AutoWalk = null
 
   constructor( game:Game ) {
-    super( game, 0, 0, 4 )
+    super( game, 0, 0, { width:8, height:4 } )
+  }
+
+  /** Not while blinking after a hit, nor during a scripted walk. */
+  get isHittable() {
+    return !this.invulnerableTime && !this.#autoWalk
   }
 
   /** True while any kid is hostile. Calm means walking by default, a fight means running. */
@@ -65,9 +80,11 @@ export default class Player extends Entity {
   update( seconds:number ) {
     this.stunTime = Math.max( 0, this.stunTime - seconds )
     this.invulnerableTime = Math.max( 0, this.invulnerableTime - seconds )
-    this.swingTime = Math.max( 0, this.swingTime - seconds )
     this.inventory.update( seconds )
+    this.updateSwing( seconds, this.game.level?.kids ?? [] )
     this.health.update( seconds )
+    this.sprite.play( this.#getAnimation() )
+    this.sprite.update( seconds )
 
     this.applyVelocity( seconds )
 
@@ -95,7 +112,7 @@ export default class Player extends Entity {
   }
 
   /**
-   * Swings the selected item and hits every kid in reach in front of the swing.
+   * Swings the selected item; it hits the kids it touches while the swing lasts.
    * Without a target it swings straight ahead. An aimed swing (e.g. at the mouse) goes anywhere
    * while standing, but only within a small angle in front of the walking direction while moving.
    */
@@ -103,28 +120,16 @@ export default class Player extends Entity {
     if (this.#autoWalk || this.stunTime) return
 
     const item = this.inventory.selected
-    const swing = item?.swing()
-    if (!item || !swing) return
+    const stats = item?.swing()
+    if (!item || !stats) return
 
-    const swingDirection = target ? this.#aim( target ) : this.facing
-
-    this.swingTime = STATS.swingDuration
-    this.#swungItem = item
-    this.#swingDirection = swingDirection
-
-    for (const kid of this.game.level?.kids ?? []) {
-      if (this.measureGapTo( kid ) > swing.reach) continue
-
-      const direction = this.getDirectionTo( kid )
-      if (direction.x * swingDirection.x + direction.y * swingDirection.y < Math.cos( HIT_ANGLE )) continue
-
-      kid.takeHit( direction, swing )
-    }
+    this.swing = new Swing( this, item.sprite, stats, target ? this.#aim( target ) : this.facing )
+    this.game.events.emit( `toySwung`, { kind:item.kind } )
   }
 
   /** Hit by a kid's swing: hurt and knocked back as hard as its toy hits, stunned, then briefly invulnerable. */
   takeHit( direction:Point, swing:SwingStats ) {
-    if (this.invulnerableTime || this.#autoWalk) return
+    if (!this.isHittable) return
 
     this.health.damage( swing.damage )
     this.push( direction, swing.knockback )
@@ -136,9 +141,26 @@ export default class Player extends Entity {
   draw( ctx:CanvasRenderingContext2D ) {
     // Blink while invulnerable.
     const isBlinkHidden = this.invulnerableTime > 0 && Math.floor( this.invulnerableTime * 12 ) % 2 === 0
-    if (!isBlinkHidden) this.drawBody( ctx, this.stunTime ? `#93c5fd` : `#3b82f6` )
 
-    if (this.swingTime) this.#drawSwing( ctx )
+    this.sprite.flip.x = this.facing.x < 0
+
+    this.drawWithSwing( ctx, () => {
+      if (isBlinkHidden) return
+
+      this.drawSprite( ctx, this.sprite )
+
+      // The toy in hand; bare hands show nothing, and a swung toy is drawn by the swing.
+      const item = this.inventory.selected
+      if (item && item.kind !== `fist` && !this.swing) this.drawHeldIcon( ctx, item.sprite, this.sprite.flip.x )
+    } )
+  }
+
+  #getAnimation(): keyof typeof ANIMATIONS {
+    if (this.stunTime) return `stunned`
+    if (this.swing) return `swing`
+
+    const isWalking = this.#autoWalk || this.moveInput.x || this.moveInput.y
+    return isWalking ? `walk` : `idle`
   }
 
   #steer( seconds:number ) {
@@ -190,19 +212,4 @@ export default class Player extends Entity {
     return { x:Math.cos( facingAngle + limitedTurn ), y:Math.sin( facingAngle + limitedTurn ) }
   }
 
-  /** Placeholder swing: a line from the body in the swing direction. */
-  #drawSwing( ctx:CanvasRenderingContext2D ) {
-    const definition = this.#swungItem?.definition
-    if (!definition?.swing) return
-
-    const length = this.radius + definition.swing.reach
-    const direction = this.#swingDirection
-
-    ctx.strokeStyle = definition.color
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.moveTo( this.x, this.y )
-    ctx.lineTo( this.x + direction.x * length, this.y + direction.y * length )
-    ctx.stroke()
-  }
 }

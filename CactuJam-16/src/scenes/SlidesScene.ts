@@ -1,15 +1,20 @@
 import type Game from "../Game"
-import type { Scene } from "../logic/engine"
+import type { Scene, SoundHandle } from "../logic/engine"
 import type { Speaker } from "../logic/speakers"
 
-/** A line of a story. With a `speaker` it is said like in the game, without one it is narration. */
-export type StoryLine = { text:string, speaker?:Speaker }
+/**
+ * A line of a story. With a `speaker` it is said like in the game, without one it is narration.
+ * `sound` is played with it instead of the speaker's voice.
+ */
+export type StoryLine = { text:string, speaker?:Speaker, sound?:string }
 
 /** One picture of a story, with the lines told over it one by one. */
 export type Shot = {
   /** URL of the picture, e.g. an image imported from `assets`. */
   image?: string
   title?: string
+  /** Played when the shot appears, e.g. a jingle opening the story. */
+  sound?: string
   lines: StoryLine[]
 }
 
@@ -26,6 +31,8 @@ export default class SlidesScene implements Scene {
   #onFinish: () => void
   #index = 0
   #isFinished = false
+  /** The sound of the current line, cut off by the next one or when the story ends. */
+  #voice: null | SoundHandle = null
 
   constructor( game:Game, story:Shot[], onFinish:() => void ) {
     this.#game = game
@@ -40,6 +47,10 @@ export default class SlidesScene implements Scene {
     if (!this.#steps.length) return this.#finish()
 
     this.#show()
+  }
+
+  exit() {
+    this.#voice?.stop()
   }
 
   update() {
@@ -66,7 +77,13 @@ export default class SlidesScene implements Scene {
   #show() {
     const { controls } = this.#game
     const { shot, shotId, line } = this.#steps[ this.#index ]
-    const { text, speaker } = line
+    const { text, speaker, sound = speaker?.voice } = line
+    const isNewShot = this.#steps[ this.#index - 1 ]?.shotId !== shotId
+
+    if (isNewShot && shot.sound) this.#game.sounds.play( shot.sound )
+
+    this.#voice?.stop()
+    this.#voice = sound ? this.#game.sounds.play( sound, { rateVariation:0.08 } ) : null
 
     this.#game.view.setScreen({
       kind: `slide`,

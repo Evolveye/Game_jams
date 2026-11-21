@@ -1,18 +1,20 @@
 import { flushSync, mount } from "svelte"
+import playgroundImage from "./assets/sprites/playground.png"
 import GameView from "./components/Game.svelte"
-import type { ToyKind } from "./entities/items/items"
+import { ITEMS, type ItemKind, type ToyKind } from "./entities/items/items"
 import type Kid from "./entities/kids/Kid"
-import Player from "./entities/Player"
+import Player, { HEART_ICONS } from "./entities/Player"
 import LEVELS from "./levels"
 import type Level from "./logic/Level"
+import { SOUNDS } from "./logic/sounds"
 import type { Speaker } from "./logic/speakers"
-import { SANDBOX, WORLD } from "./logic/world"
+import { WORLD } from "./logic/world"
 import GameOverScene from "./scenes/GameOverScene"
 import GameplayScene from "./scenes/GameplayScene"
 import MenuScene from "./scenes/MenuScene"
 import SlidesScene from "./scenes/SlidesScene"
 import {
-  Controls, EventBus, Keys, Loop, Renderer, SceneManager, Timers,
+  Controls, EventBus, Keys, Loop, Renderer, SceneManager, Sounds, Sprite, Timers,
   type ActionHandlers, type ActionOf
 } from "./logic/engine"
 
@@ -25,7 +27,11 @@ export type GameEvents = {
   kidGone: { kid:Kid }
   allKidsGone: void
   playerHit: void
+  toySwung: { kind:ItemKind }
 }
+
+/** The playground behind everything, as big as the world. */
+const BACKGROUND = new Sprite({ playground:{ src:playgroundImage } }, `playground` )
 
 /** Counted during a run, shown in the summary at its end. */
 export type GameStats = {
@@ -54,6 +60,7 @@ export default class Game {
     prevToy: [ `KeyQ`, `WheelUp` ],
     pause: [ `Escape`, `KeyP` ],
     confirm: [ `Enter`, `Space` ],
+    toggleDebug: [ `F3` ],
   })
 
   #actionHandlers: ActionHandlers<ActionOf<typeof Game.controls>> = {
@@ -66,7 +73,13 @@ export default class Game {
     },
     nextToy: () => this.player.inventory.select( 1 ),
     prevToy: () => this.player.inventory.select( -1 ),
+    toggleDebug: () => {
+      this.isDebug = !this.isDebug
+    },
   }
+
+  /** Debug mode: hurtbox outlines, and level scripts logging their steps. On by default during development. */
+  isDebug = import.meta.env.DEV
 
   world = WORLD
   player = new Player( this )
@@ -76,6 +89,7 @@ export default class Game {
   root: HTMLElement
   events = new EventBus<GameEvents>()
   timers = new Timers()
+  sounds = new Sounds()
   scenes = new SceneManager()
   loop = new Loop()
   view: ReturnType<Game[`mountView`]>
@@ -91,6 +105,16 @@ export default class Game {
       if (kid.health.isEmpty) this.stats.kidsBeaten++
     } )
     this.events.on( `playerHit`, () => this.stats.hitsTaken++ )
+
+    // Sounds of game actions
+    this.events.on( `toySwung`, ({ kind }) => {
+      const sound = ITEMS[ kind ].swing?.sound
+      if (sound) this.sounds.play( sound, { rateVariation:0.1 } )
+    } )
+    this.events.on( `kidHit`, () => this.sounds.play( SOUNDS.kidHit, { rateVariation:0.1 } ) )
+    this.events.on( `kidFled`, () => this.sounds.play( SOUNDS.kidFled, { volume:0.6 } ) )
+    this.events.on( `playerHit`, () => this.sounds.play( SOUNDS.playerHit ) )
+    this.events.on( `toyReceived`, () => this.sounds.play( SOUNDS.pickup ) )
 
     this.start()
     this.scenes.switchTo( new MenuScene( this ) )
@@ -120,7 +144,7 @@ export default class Game {
       if (inventorySlots) this.view.setInventory( inventorySlots )
 
       const playerHealth = this.player.health.getChangedData()
-      if (playerHealth) this.view.setPlayerHealth( playerHealth )
+      if (playerHealth) this.view.setPlayerHealth({ ...playerHealth, icons:HEART_ICONS })
     } )
   }
 
@@ -164,20 +188,15 @@ export default class Game {
     const { ctx } = this.renderer
     this.renderer.beginFrame( `#000` )
 
-    // Grass
-    ctx.fillStyle = `#4d7c3a`
-    ctx.fillRect( WORLD.x, WORLD.y, WORLD.width, WORLD.height )
-
-    // Sandbox: wooden frame with sand inside
-    ctx.fillStyle = `#8b5a2b`
-    ctx.fillRect( SANDBOX.x - 3, SANDBOX.y - 3, SANDBOX.width + 6, SANDBOX.height + 6 )
-    ctx.fillStyle = `#e8c872`
-    ctx.fillRect( SANDBOX.x, SANDBOX.y, SANDBOX.width, SANDBOX.height )
+    // The playground picture covers the whole world, its top-left corner at the world's.
+    BACKGROUND.draw( ctx, WORLD.x, WORLD.y, { anchor:{ x:0, y:0 } } )
 
     // Entities lower on screen are drawn on top.
     const entities = [ ...this.level?.toys ?? [], ...this.level?.kids ?? [], this.player ]
 
     entities.sort( (a, b) => a.y - b.y )
     for (const entity of entities) entity.draw( ctx )
+
+    if (this.isDebug) for (const entity of entities) entity.drawDebug( ctx )
   }
 }

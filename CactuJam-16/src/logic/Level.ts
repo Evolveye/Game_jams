@@ -5,7 +5,8 @@ import type { ToyKind } from "../entities/items/items"
 import ToyPickup from "../entities/items/ToyPickup"
 import Kid from "../entities/kids/Kid"
 import type { Shot } from "../scenes/SlidesScene"
-import type { ActionOf, Listener } from "./engine"
+import type { ActionOf, Listener, PlayOptions, SoundHandle } from "./engine"
+import { SOUNDS } from "./sounds"
 import { MOM, PLAYER, type Speaker } from "./speakers"
 import { WORLD, type Point, type Rect } from "./world"
 
@@ -14,8 +15,12 @@ export type LevelScript = (level:Level) => Promise<void>
 /** Where a kid starts, and the toys it holds (dropped when it is beaten). */
 export type KidSpawn = Point & { toys?:ToyKind[] }
 
-/** `speaker` defaults to the player's kid, `seconds` is how long the subtitle stays. */
-export type SayOptions = { speaker?:Speaker, seconds?:number }
+/**
+ * - `speaker`: who says it, by default the player's kid
+ * - `seconds`: how long the subtitle stays
+ * - `sound`: played with the line instead of the speaker's voice, e.g. a shout
+ */
+export type SayOptions = { speaker?:Speaker, seconds?:number, sound?:string }
 
 type Condition = {
   isMet: () => boolean
@@ -29,13 +34,13 @@ const DEBUG_STYLES = {
 }
 
 export default class Level {
-  debug = true
-
   kids = new Set<Kid>()
   toys = new Set<ToyPickup>()
   #conditions = new Set<Condition>()
   #game: null | Game = null
   #abortCtrl = new AbortController()
+  /** The sound of the last line, cut off by the next one. */
+  #voice: null | SoundHandle = null
 
   constructor(
     readonly name: string,
@@ -68,7 +73,8 @@ export default class Level {
     game.view.setSpeech( null )
     game.view.addBriefEntry({ variant:`heading`, source:`day`, text:this.name })
 
-    await this.script( this.debug ? this.#createDebugProxy() : this )
+    // In debug mode the script's steps are logged (switching it on takes effect from the next day).
+    await this.script( game.isDebug ? this.#createDebugProxy() : this )
     if (abortCtrl.signal.aborted) return false
 
     abortCtrl.abort()
@@ -77,6 +83,7 @@ export default class Level {
 
   abort() {
     this.#abortCtrl.abort()
+    this.#voice?.stop()
   }
 
   update( seconds:number ) {
@@ -125,9 +132,12 @@ export default class Level {
   }
 
   /** Shows a line as a subtitle (and in the journal), then waits until it has been read. */
-  async say( text:string, { speaker = PLAYER, seconds = 2.5 }:SayOptions = {} ) {
+  async say( text:string, { speaker = PLAYER, seconds = 2.5, sound = speaker.voice }:SayOptions = {} ) {
     const game = this.#runningGame
     const speech = { text, label:speaker.name, color:speaker.color }
+
+    this.#voice?.stop()
+    this.#voice = sound ? game.sounds.play( sound, { rateVariation:0.08 } ) : null
 
     game.view.setSpeech( speech )
     game.view.addBriefEntry({ variant:`quote`, source:speaker.id, ...speech })
@@ -150,6 +160,11 @@ export default class Level {
   /** Keys bound to game actions, as a `note()` part shown as keyboard keys: `Space` `J`, or `WASD` `↑←↓→` for the moves. */
   getKeys( ...actions:ActionOf<typeof Game.controls>[] ) {
     return { keys:this.#runningGame.controls.getKeyLabels( ...actions ) }
+  }
+
+  /** Plays a sound, e.g. at the start of the day. */
+  playSound( source:string, options?:PlayOptions ) {
+    return this.#runningGame.sounds.play( source, options )
   }
 
   placePlayer( x:number, y:number ) {
@@ -201,7 +216,7 @@ export default class Level {
     for (const kid of this.kids) kid.flee()
 
     this.confinePlayer( null )
-    await this.say( `OBIAD!`, { speaker:MOM, seconds:3 } )
+    await this.say( `OBIAD!`, { speaker:MOM, seconds:3, sound:SOUNDS.momCall } )
     await this.waitUntil( () => this.player.isOutside( WORLD ) )
   }
 
