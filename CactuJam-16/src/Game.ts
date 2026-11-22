@@ -21,13 +21,16 @@ import {
 export type GameEvents = {
   say: { text:string, speaker:Speaker }
   toyReceived: { kind:ToyKind }
+  /** The player stands on a toy they have no room for (sent every frame they stand there). */
+  toyOutOfRoom: { kind:ToyKind }
   kidSpawned: { kid:Kid }
   kidHit: { kid:Kid }
   kidFled: { kid:Kid }
   kidGone: { kid:Kid }
   allKidsGone: void
   playerHit: void
-  toySwung: { kind:ItemKind }
+  toyUsed: { kind:ItemKind }
+  babyCried: void
 }
 
 /** The playground behind everything, as big as the world. */
@@ -40,6 +43,9 @@ export type GameStats = {
   hitsTaken: number
   daysCompleted: number
 }
+
+/** Development only: `?level=2` in the URL starts new runs from that level, e.g. to test it. */
+const FIRST_LEVEL_INDEX = import.meta.env.DEV ? Math.max( 0, (Number( new URLSearchParams( location.search ).get( `level` ) ) || 1) - 1 ) : 0
 
 const NEW_RUN_STATS:GameStats = {
   playSeconds: 0,
@@ -58,6 +64,7 @@ export default class Game {
     useToy: [ `Space`, `MouseLeft` ],
     nextToy: [ `KeyE`, `WheelDown` ],
     prevToy: [ `KeyQ`, `WheelUp` ],
+    swapToy: [ `KeyF` ],
     pause: [ `Escape`, `KeyP` ],
     confirm: [ `Enter`, `Space` ],
     toggleDebug: [ `F3` ],
@@ -73,10 +80,14 @@ export default class Game {
     },
     nextToy: () => this.player.inventory.select( 1 ),
     prevToy: () => this.player.inventory.select( -1 ),
+    swapToy: () => this.player.swapToy(),
     toggleDebug: () => {
       this.isDebug = !this.isDebug
     },
   }
+
+  /** The journal told how to swap toys in this run. */
+  #hasExplainedSwap = false
 
   /** Debug mode: hurtbox outlines, and level scripts logging their steps. On by default during development. */
   isDebug = import.meta.env.DEV
@@ -106,9 +117,22 @@ export default class Game {
     } )
     this.events.on( `playerHit`, () => this.stats.hitsTaken++ )
 
+    // Full pockets for the first time in a run: how to swap.
+    this.events.on( `toyOutOfRoom`, () => {
+      if (this.#hasExplainedSwap) return
+
+      this.#hasExplainedSwap = true
+      this.view.addBriefEntry({
+        variant: `note`,
+        source: `note`,
+        text: [ `Nie masz miejsca na tę zabawkę. `, { keys:this.controls.getKeyLabels( `swapToy` ) }, ` — zamień na nią tę w ręce.` ],
+      })
+    } )
+
     // Sounds of game actions
-    this.events.on( `toySwung`, ({ kind }) => {
-      const sound = ITEMS[ kind ].swing?.sound
+    this.events.on( `toyUsed`, ({ kind }) => {
+      const { swing, throwing, watering } = ITEMS[ kind ]
+      const sound = swing?.sound ?? throwing?.sound ?? watering?.sound
       if (sound) this.sounds.play( sound, { rateVariation:0.1 } )
     } )
     this.events.on( `kidHit`, () => this.sounds.play( SOUNDS.kidHit, { rateVariation:0.1 } ) )
@@ -152,9 +176,10 @@ export default class Game {
   startNewRun() {
     this.player = new Player( this )
     this.stats = { ...NEW_RUN_STATS }
+    this.#hasExplainedSwap = false
     this.view.clearBrief()
 
-    this.startDay( 0 )
+    this.startDay( FIRST_LEVEL_INDEX )
   }
 
   /** Tells the day's story (if any), then plays the day. After the last day: the summary. */
@@ -172,6 +197,9 @@ export default class Game {
   updateWorld( seconds:number ) {
     this.stats.playSeconds += seconds
     this.timers.update( seconds )
+
+    // A lost day (e.g. a crying baby): the world stands still while mom has her say.
+    if (this.level?.isFrozen) return this.level.update( seconds )
 
     this.player.moveInput = {
       x: Game.controls.getAxis( `moveLeft`, `moveRight` ),
@@ -191,8 +219,12 @@ export default class Game {
     // The playground picture covers the whole world, its top-left corner at the world's.
     BACKGROUND.draw( ctx, WORLD.x, WORLD.y, { anchor:{ x:0, y:0 } } )
 
+    // Puddles lie on the ground, under everyone.
+    for (const puddle of this.level?.puddles ?? []) puddle.draw( ctx )
+
     // Entities lower on screen are drawn on top.
-    const entities = [ ...this.level?.toys ?? [], ...this.level?.kids ?? [], this.player ]
+    const level = this.level
+    const entities = [ ...level?.toys ?? [], ...level?.babies ?? [], ...level?.kids ?? [], ...level?.projectiles ?? [], this.player ]
 
     entities.sort( (a, b) => a.y - b.y )
     for (const entity of entities) entity.draw( ctx )

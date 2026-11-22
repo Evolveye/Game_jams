@@ -1,3 +1,4 @@
+import babyCry from "../assets/sounds/baby-cry.wav"
 import kidFled from "../assets/sounds/kid-fled.wav"
 import kidHit from "../assets/sounds/kid-hit.wav"
 import menuConfirm from "../assets/sounds/menu-confirm.wav"
@@ -14,6 +15,7 @@ import voicePlayer from "../assets/sounds/voice-player.wav"
 
 /** Every sound of the game (URLs), so levels, items and speakers pick them by name. */
 export const SOUNDS = {
+  babyCry,
   kidFled,
   kidHit,
   menuConfirm,

@@ -1,7 +1,7 @@
 import { Sprite } from "../../logic/engine"
 import { ITEMS, STAT_LABELS, type ItemKind } from "./items"
 
-/** One held item with its own state: a swing puts it on cooldown until it is ready again. */
+/** One held item with its own state: using it puts it on cooldown until it is ready again. */
 export default class Item {
   kind: ItemKind
   cooldownTime = 0
@@ -21,9 +21,15 @@ export default class Item {
     return this.cooldownTime <= 0
   }
 
-  /** From 0 (just swung) to 1 (ready to swing again). */
+  /** Seconds between uses, from the item's mechanic; `null` when it cannot be used (e.g. a ride). */
+  get cooldown() {
+    const { swing, throwing, watering } = this.definition
+    return swing?.cooldown ?? throwing?.cooldown ?? watering?.cooldown ?? null
+  }
+
+  /** From 0 (just used) to 1 (ready to use again). */
   get readiness() {
-    const cooldown = this.definition.swing?.cooldown
+    const cooldown = this.cooldown
     if (!cooldown) return 1
 
     return 1 - this.cooldownTime / cooldown
@@ -33,23 +39,24 @@ export default class Item {
     this.cooldownTime = Math.max( 0, this.cooldownTime - seconds )
   }
 
-  /** Starts a swing. Returns its stats, or `null` when the item cannot be swung or is not ready yet. */
-  swing() {
-    const stats = this.definition.swing
-    if (!stats || !this.isReady) return null
+  /** Starts using the item and puts it on cooldown. Returns its definition, or `null` when it cannot be used or is not ready yet. */
+  use() {
+    const cooldown = this.cooldown
+    if (cooldown === null || !this.isReady) return null
 
-    this.cooldownTime = stats.cooldown
-    return stats
+    this.cooldownTime = cooldown
+    return this.definition
   }
 
-  /** Stats to show in the inventory. */
+  /** Stats to show in the inventory: damage, with the reach of a swing or the speed of a ride. */
   getStats() {
-    const stats = this.definition.swing
-    if (!stats) return []
+    const { swing, throwing, watering, ride } = this.definition
 
-    return [
-      { label:STAT_LABELS.damage, value:stats.damage },
-      { label:STAT_LABELS.reach, value:stats.reach },
-    ]
+    if (swing) return [ { label:STAT_LABELS.damage, value:swing.damage }, { label:STAT_LABELS.reach, value:swing.reach } ]
+    if (throwing) return [ { label:STAT_LABELS.damage, value:throwing.damage }, { label:STAT_LABELS.reach, value:throwing.range } ]
+    if (watering) return [ { label:STAT_LABELS.damage, value:watering.damage }, { label:STAT_LABELS.slowdown, value:`${Math.round( (1 - watering.puddle.slowdown) * 100 )}%` } ]
+    if (ride) return [ { label:STAT_LABELS.damage, value:ride.ram.damage }, { label:STAT_LABELS.speed, value:ride.speed } ]
+
+    return []
   }
 }

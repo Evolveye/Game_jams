@@ -1,38 +1,40 @@
 import playgroundImage from "../assets/slides/playground.png"
 import Level from "../logic/Level"
 import { SOUNDS } from "../logic/sounds"
-import { KID, PLAYER } from "../logic/speakers"
-import { SANDBOX, WORLD } from "../logic/world"
+import { KID } from "../logic/speakers"
+import { WORLD } from "../logic/world"
 import type { Shot } from "../scenes/SlidesScene"
 
-/** Story before the day. */
+/** Story before the level. */
 const STORY:Shot[] = [
   {
     image: playgroundImage,
-    title: `Poniedziałek`,
+    title: `Piaskownica`,
     sound: SOUNDS.storyIntro,
     lines: [
-      { text:`Pierwszy dzień wakacji. Słońce, ciepły piasek i jedna myśl: piaskownica.` },
-      { text:`To jest MOJA piaskownica. Od zawsze. Każdy na podwórku o tym wie.`, speaker:PLAYER },
-      { text:`Wczoraj zostawiłem w niej łopatkę. Dziś idę ją odebrać.`, speaker:PLAYER },
+      { text:`Pewnego dnia pewna mama, pewna swego zbyt pewnego siebie synka, udała się z nim na pewien plac zabaw.` },
+      { text:`Po dotarciu na miejsce chłopiec od razu zauroczył się zasypaną plażowym piaskiem piaskownicą.` },
     ],
   },
 ]
 
-
-export default new Level( `Poniedziałek`, async level => {
+/**
+ * Tutorial: seven of the easiest, slowest kids play in the sandbox, one of them with a spade.
+ * The first punch starts the fight: four kids run away, the rest fight back.
+ */
+export default new Level( `Piaskownica`, async level => {
   // Setup
 
   level.placePlayer( -10, 90 )
 
   const kids = level.spawnKids([
-    { x:110, y:60 },
-    { x:150, y:52 },
-    { x:200, y:62, toys:[ `spade` ] },
-    { x:118, y:100 },
-    { x:168, y:92 },
-    { x:216, y:112 },
-    { x:142, y:124 },
+    { x:110, y:60, traits:`slow` },
+    { x:150, y:52, traits:`slow` },
+    { x:200, y:62, traits:`slow`, toys:[ `spade` ] },
+    { x:118, y:100, traits:`slow` },
+    { x:168, y:92, traits:`slow` },
+    { x:216, y:112, traits:`slow` },
+    { x:142, y:124, traits:`slow` },
   ])
   const spadeKid = kids[ 2 ]
 
@@ -79,10 +81,8 @@ export default new Level( `Poniedziałek`, async level => {
     level.note( level.getKeys( `prevToy` ), `, `, level.getKeys( `nextToy` ), ` — zmiana przedmiotu` )
   } )
 
-  level.waitUntil( () => level.player.isInside( SANDBOX ) ).then( () => {
-    if (!level.kids.size) return
-
-    level.confinePlayer( SANDBOX )
+  // The level is played in the sandbox: once in, the player stays until the kids are gone.
+  level.confinePlayerOnEntry().then( () => {
     level.note( `Z piaskownicy nie wyjdziesz, dopóki są w niej inne dzieci.` )
   } )
 
@@ -92,10 +92,9 @@ export default new Level( `Poniedziałek`, async level => {
 
   // Coming from the left, stopping on the grass.
   await level.walkPlayerTo( 44, 90 )
-  await level.say( `Co?! Ktoś bawi się w MOJEJ piaskownicy?!` )
-  await level.say( `I jeszcze ma moją łopatkę!` )
+  await level.say( `Muszę wykurzyć stąd tych ciućków. Ta piaskownica będzie moja!`, { seconds:3.5 } )
 
-  level.note( `Jeden z dzieciaków ma łopatkę. Pokonaj go, a ją upuści.` )
+  level.note( `Wejdź do piaskownicy. Jeden z dzieciaków ma łopatkę. Pokonaj go, a ją upuści.` )
 
   await fight
   await allKidsGone

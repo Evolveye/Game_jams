@@ -2,19 +2,32 @@ import type { InventorySlot } from "../../components/Inventory.svelte"
 import Item from "./Item"
 import type { ItemKind } from "./items"
 
-/** Items held by an entity, one of them selected. Composed into entities, e.g. `inventory = new Inventory([ "fist" ])`. */
+/** Items held by an entity, one of them selected. Composed into entities, e.g. `inventory = new Inventory([ "fist" ], 2 )`. */
 export default class Inventory {
   items: Item[] = []
   selectedIndex = 0
+  /** How many toys fit, besides bare hands. */
+  toyLimit: number
   /** Something the view shows has changed since the last `getChangedSlots()`. */
   #hasChanges = true
 
-  constructor( kinds:ItemKind[] = [] ) {
+  constructor( kinds:ItemKind[] = [], toyLimit = Infinity ) {
+    this.toyLimit = toyLimit
     for (const kind of kinds) this.items.push( new Item( kind ) )
+  }
+
+  /** Held toys: everything but bare hands. */
+  get toyCount() {
+    return this.items.filter( item => item.kind !== `fist` ).length
   }
 
   get selected(): undefined | Item {
     return this.items[ this.selectedIndex ]
+  }
+
+  /** True when a toy like this can be taken: none held yet, and room left. */
+  canTake( kind:ItemKind ) {
+    return !this.has( kind ) && this.toyCount < this.toyLimit
   }
 
   has( kind:ItemKind ) {
@@ -30,6 +43,17 @@ export default class Inventory {
 
     this.#hasChanges = true
     return this.items[ this.selectedIndex ]
+  }
+
+  /** Puts a new item in the selected item's place, keeping it selected. Returns the replaced item. */
+  replaceSelected( kind:ItemKind ) {
+    const replacedItem = this.selected
+    if (!replacedItem) return null
+
+    this.items[ this.selectedIndex ] = new Item( kind )
+    this.#hasChanges = true
+
+    return replacedItem
   }
 
   /** Takes an item out, e.g. when it gets stolen. */

@@ -75,6 +75,7 @@
   .icon {
     width: 1.2em;
     height: 1.2em;
+    object-fit: contain;
     image-rendering: pixelated;
   }
 

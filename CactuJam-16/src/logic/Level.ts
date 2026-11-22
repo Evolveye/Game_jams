@@ -1,19 +1,23 @@
 import type { GameEvents } from "../Game"
 import type Game from "../Game"
+import Baby, { type BabyOptions } from "../entities/Baby"
 import type { BriefTextPart } from "../components/Brief.svelte"
 import type { ToyKind } from "../entities/items/items"
+import type { PuddleStats } from "../entities/items/items"
+import type Projectile from "../entities/items/Projectile"
+import Puddle from "../entities/Puddle"
 import ToyPickup from "../entities/items/ToyPickup"
-import Kid from "../entities/kids/Kid"
+import Kid, { type KidOptions } from "../entities/kids/Kid"
 import type { Shot } from "../scenes/SlidesScene"
 import type { ActionOf, Listener, PlayOptions, SoundHandle } from "./engine"
 import { SOUNDS } from "./sounds"
 import { MOM, PLAYER, type Speaker } from "./speakers"
-import { WORLD, type Point, type Rect } from "./world"
+import { findPointBeyondEdge, SANDBOX, WORLD, type Point, type Rect } from "./world"
 
 export type LevelScript = (level:Level) => Promise<void>
 
-/** Where a kid starts, and the toys it holds (dropped when it is beaten). */
-export type KidSpawn = Point & { toys?:ToyKind[] }
+/** Where a kid starts, the toys it holds (dropped when it is beaten), and how it plays and fights. */
+export type KidSpawn = Point & KidOptions & { toys?:ToyKind[] }
 
 /**
  * - `speaker`: who says it, by default the player's kid
@@ -21,6 +25,9 @@ export type KidSpawn = Point & { toys?:ToyKind[] }
  * - `sound`: played with the line instead of the speaker's voice, e.g. a shout
  */
 export type SayOptions = { speaker?:Speaker, seconds?:number, sound?:string }
+
+/** Why the day was lost, for the summary over the frozen world. */
+export type DayLoss = { title:string, subtitle:string }
 
 type Condition = {
   isMet: () => boolean
@@ -36,6 +43,18 @@ const DEBUG_STYLES = {
 export default class Level {
   kids = new Set<Kid>()
   toys = new Set<ToyPickup>()
+  /** Thrown things in flight. */
+  projectiles = new Set<Projectile>()
+  /** Water on the ground, slowing down everyone in it until it dries. */
+  puddles = new Set<Puddle>()
+  /** Babies the player must not hurt or bother (see `Baby`). */
+  babies = new Set<Baby>()
+  /** True once the day is lost: only the babies move, while mom has her say. */
+  isFrozen = false
+  /** Set when the day is lost; the gameplay then shows the summary. */
+  loss: null | DayLoss = null
+  /** Thieves waiting off-screen, each sent in for the next dropped toy. */
+  #lurkingThieves: KidOptions[] = []
   #conditions = new Set<Condition>()
   #game: null | Game = null
   #abortCtrl = new AbortController()
@@ -68,10 +87,19 @@ export default class Level {
     this.#abortCtrl = abortCtrl
     this.kids.clear()
     this.toys.clear()
+    this.projectiles.clear()
+    this.puddles.clear()
+    this.babies.clear()
+    this.isFrozen = false
+    this.loss = null
+    this.#lurkingThieves = []
     this.#conditions.clear()
     game.player.bounds = WORLD
     game.view.setSpeech( null )
     game.view.addBriefEntry({ variant:`heading`, source:`day`, text:this.name })
+
+    // A crying baby loses the day.
+    this.on( `babyCried`, () => this.#loseOverBaby() )
 
     // In debug mode the script's steps are logged (switching it on takes effect from the next day).
     await this.script( game.isDebug ? this.#createDebugProxy() : this )
@@ -87,6 +115,9 @@ export default class Level {
   }
 
   update( seconds:number ) {
+    for (const baby of this.babies) baby.update( seconds )
+    if (this.isFrozen) return
+
     for (const toy of this.toys) {
       toy.update()
       if (toy.isTaken) this.toys.delete( toy )
@@ -95,6 +126,16 @@ export default class Level {
     for (const kid of this.kids) {
       kid.update( seconds )
       if (kid.isGone) this.#removeKid( kid )
+    }
+
+    for (const projectile of this.projectiles) {
+      projectile.update( seconds )
+      if (projectile.isDone) this.projectiles.delete( projectile )
+    }
+
+    for (const puddle of this.puddles) {
+      puddle.update( seconds )
+      if (puddle.isDry) this.puddles.delete( puddle )
     }
 
     for (const condition of this.#conditions) {
@@ -180,6 +221,12 @@ export default class Level {
     this.#runningGame.player.bounds = area
   }
 
+  /** Waits until the player walks fully into the area (the sandbox by default), then keeps them inside it. */
+  async confinePlayerOnEntry( area:Rect = SANDBOX ) {
+    await this.waitUntil( () => this.player.isInside( area ) )
+    this.confinePlayer( area )
+  }
+
   giveToy( kind:ToyKind ) {
     const game = this.#runningGame
 
@@ -188,15 +235,41 @@ export default class Level {
   }
 
   placeToy( kind:ToyKind, x:number, y:number ) {
-    this.toys.add( new ToyPickup( this.#runningGame, kind, x, y ) )
+    const toy = new ToyPickup( this.#runningGame, kind, x, y )
+
+    this.toys.add( toy )
+    return toy
+  }
+
+  /** A toy falls out of a kid's hands. A thief waiting off-screen, if any, comes running for it. */
+  dropToy( kind:ToyKind, x:number, y:number ) {
+    const toy = this.placeToy( kind, x, y )
+    const thief = this.#lurkingThieves.shift()
+
+    if (thief) this.#sendThief( toy, thief )
+  }
+
+  /** Takes a toy off the ground, e.g. grabbed by a thief. */
+  takeToy( toy:ToyPickup ) {
+    toy.isTaken = true
+    this.toys.delete( toy )
+  }
+
+  /**
+   * Hides thieves off-screen: from now on each dropped toy sends one in to grab it (the nearest lying toy).
+   * A thief scares away with one hit; grabbing the toy, it turns into a regular enemy holding it.
+   * `options` are the kid it turns into.
+   */
+  addLurkingThieves( count:number, options:KidOptions = {} ) {
+    for (let i = 0; i < count; i++) this.#lurkingThieves.push( options )
   }
 
   /** Puts peacefully playing kids at the given spots, optionally holding toys. Returns them in the same order. */
   spawnKids( spots:KidSpawn[] ) {
     const game = this.#runningGame
 
-    return spots.map( ({ x, y, toys = [] }) => {
-      const kid = new Kid( game, x, y )
+    return spots.map( ({ x, y, toys = [], ...options }) => {
+      const kid = new Kid( game, x, y, options )
 
       for (const kind of toys) kid.inventory.add( kind )
 
@@ -207,6 +280,43 @@ export default class Level {
     } )
   }
 
+  /**
+   * Puts a baby on the playground, sitting in place or crawling around (`mode`). Hurting it, or standing next to it
+   * for too long, makes it cry, and the day is lost.
+   */
+  placeBaby( x:number, y:number, options?:BabyOptions ) {
+    const baby = new Baby( this.#runningGame, x, y, options )
+
+    this.babies.add( baby )
+    return baby
+  }
+
+  /** Everything the player's toys can hit: the kids, and the babies they must not hit. */
+  getPlayerTargets() {
+    return [ ...this.kids, ...this.babies ]
+  }
+
+  /** Puts a thrown thing in flight. */
+  launch( projectile:Projectile ) {
+    this.projectiles.add( projectile )
+  }
+
+  /** Leaves a puddle on the ground. */
+  pour( point:Point, stats:PuddleStats ) {
+    this.puddles.add( new Puddle( point, stats ) )
+  }
+
+  /** Speed multiplier at the point: the strongest slowdown of the puddles it stands in, or 1 on dry ground. */
+  getGroundSpeedFactor( point:Point ) {
+    let factor = 1
+
+    for (const puddle of this.puddles) {
+      if (puddle.contains( point )) factor = Math.min( factor, puddle.stats.slowdown )
+    }
+
+    return factor
+  }
+
   angerKids() {
     for (const kid of this.kids) kid.becomeHostile()
   }
@@ -214,10 +324,33 @@ export default class Level {
   /** Mom calls for dinner: kids run home, and the day ends once the player walks off the playground. */
   async callForDinner() {
     for (const kid of this.kids) kid.flee()
+    for (const baby of this.babies) baby.isContent = true
 
     this.confinePlayer( null )
     await this.say( `OBIAD!`, { speaker:MOM, seconds:3, sound:SOUNDS.momCall } )
     await this.waitUntil( () => this.player.isOutside( WORLD ) )
+  }
+
+  /** A thief comes onto the playground from the edge nearest to the toy. */
+  #sendThief( toy:ToyPickup, options:KidOptions ) {
+    const game = this.#runningGame
+    const { x, y } = findPointBeyondEdge( toy )
+    const thief = new Kid( game, x, y, options )
+
+    thief.state = `stealing`
+    this.kids.add( thief )
+    game.events.emit( `kidSpawned`, { kid:thief } )
+  }
+
+  /** The world freezes and mom has her say before the summary of the lost day. */
+  async #loseOverBaby() {
+    if (this.isFrozen) return
+
+    this.isFrozen = true
+    await this.say( `Coś ty zrobił temu dziecku?!`, { speaker:MOM, seconds:2.5 } )
+    await this.say( `Wracamy do domu!`, { speaker:MOM, seconds:2 } )
+
+    this.loss = { title:`Do domu!`, subtitle:`Rozpłakałeś bobasa. Mama nie była zachwycona.` }
   }
 
   #removeKid( kid:Kid ) {

@@ -7,16 +7,22 @@ import { WORLD, type Point, type Rect } from "../logic/world"
 import Entity from "./Entity"
 import Health from "./Health"
 import Inventory from "./items/Inventory"
-import type { SwingStats } from "./items/items"
+import type { HitStats, ThrowStats, WaterStats } from "./items/items"
+import Projectile from "./items/Projectile"
 import Swing from "./items/Swing"
+
+/** The player's health, also the regular kid's: a fair fight, hit for hit. */
+export const PLAYER_HEALTH = 5
 
 /** Player tuning, in world units and seconds. */
 const STATS = {
-  health: 5,
+  health: PLAYER_HEALTH,
   runSpeed: 70,
   walkSpeed: 30,
   stunDuration: 0.35,
   invulnerableDuration: 0.8,
+  /** How many toys the player carries, besides bare hands. */
+  toyLimit: 2,
 }
 
 /** The player's sheet: 10×14 frames, 4 per row, one animation per row. */
@@ -48,7 +54,7 @@ export default class Player extends Entity {
   bounds: null | Rect = WORLD
 
   /** Kept between days. The fist is always there, toys are added when picked up. */
-  inventory = new Inventory([ `fist` ])
+  inventory = new Inventory( [ `fist` ], STATS.toyLimit )
   /** Filled up at the start of every day. */
   health = new Health( STATS.health )
   sprite = new Sprite( ANIMATIONS, `idle` )
@@ -68,6 +74,12 @@ export default class Player extends Entity {
     return !this.invulnerableTime && !this.#autoWalk
   }
 
+  /** The selected item when it is ridden (e.g. the car). */
+  get #rideItem() {
+    const item = this.inventory.selected
+    return item?.definition.ride ? item : null
+  }
+
   /** True while any kid is hostile. Calm means walking by default, a fight means running. */
   get #isFighting() {
     for (const kid of this.game.level?.kids ?? []) {
@@ -81,7 +93,7 @@ export default class Player extends Entity {
     this.stunTime = Math.max( 0, this.stunTime - seconds )
     this.invulnerableTime = Math.max( 0, this.invulnerableTime - seconds )
     this.inventory.update( seconds )
-    this.updateSwing( seconds, this.game.level?.kids ?? [] )
+    this.updateSwing( seconds, this.game.level?.getPlayerTargets() ?? [] )
     this.health.update( seconds )
     this.sprite.play( this.#getAnimation() )
     this.sprite.update( seconds )
@@ -93,6 +105,11 @@ export default class Player extends Entity {
     if (!this.stunTime) this.#steer( seconds )
 
     if (this.bounds) this.keepInside( this.bounds )
+
+    // A moving ride rams the kids it runs into.
+    const ram = this.#rideItem?.definition.ride?.ram
+    const isMoving = !this.stunTime && (this.moveInput.x || this.moveInput.y)
+    if (ram && isMoving) this.hitOnContact( seconds, this.game.level?.getPlayerTargets() ?? [], ram )
   }
 
   /** Puts the player at a spot, resetting movement and any scripted walk. */
@@ -112,27 +129,50 @@ export default class Player extends Entity {
   }
 
   /**
-   * Swings the selected item; it hits the kids it touches while the swing lasts.
-   * Without a target it swings straight ahead. An aimed swing (e.g. at the mouse) goes anywhere
+   * Uses the selected item: swings it (it hits the kids it touches while the swing lasts) or throws from it.
+   * Without a target it goes straight ahead. An aimed use (e.g. at the mouse) goes anywhere
    * while standing, but only within a small angle in front of the walking direction while moving.
    */
   useToy( target?:Point ) {
     if (this.#autoWalk || this.stunTime) return
 
     const item = this.inventory.selected
-    const stats = item?.swing()
-    if (!item || !stats) return
+    const definition = item?.use()
+    if (!item || !definition) return
 
-    this.swing = new Swing( this, item.sprite, stats, target ? this.#aim( target ) : this.facing )
-    this.game.events.emit( `toySwung`, { kind:item.kind } )
+    const direction = target ? this.#aim( target ) : this.facing
+
+    if (definition.swing) this.swing = new Swing( this, item.sprite, definition.swing, direction )
+    if (definition.throwing) this.#throw( definition.throwing, direction, target )
+    if (definition.watering) this.#pour( definition.watering, direction, target )
+
+    this.game.events.emit( `toyUsed`, { kind:item.kind } )
   }
 
-  /** Hit by a kid's swing: hurt and knocked back as hard as its toy hits, stunned, then briefly invulnerable. */
-  takeHit( direction:Point, swing:SwingStats ) {
+  /**
+   * Swaps the toy in hand for a toy the player stands on (one they do not have yet): the new toy takes its place,
+   * and the old one is left on the ground. Bare hands are never swapped.
+   */
+  swapToy() {
+    const level = this.game.level
+    const item = this.inventory.selected
+    if (!level || !item || item.kind === `fist` || this.#autoWalk) return
+
+    const toy = [ ...level.toys ].find( toy => !toy.isTaken && !this.inventory.has( toy.kind ) && this.measureGapTo( toy ) <= 0 )
+    if (!toy) return
+
+    level.takeToy( toy )
+    this.inventory.replaceSelected( toy.kind )
+    level.placeToy( item.kind, this.x, this.y )
+    this.game.events.emit( `toyReceived`, { kind:toy.kind } )
+  }
+
+  /** Hit by a kid (its swing, or touching it): hurt and knocked back, stunned, then briefly invulnerable. */
+  takeHit( direction:Point, hit:HitStats ) {
     if (!this.isHittable) return
 
-    this.health.damage( swing.damage )
-    this.push( direction, swing.knockback )
+    this.health.damage( hit.damage )
+    this.push( direction, hit.knockback )
     this.stunTime = STATS.stunDuration
     this.invulnerableTime = STATS.invulnerableDuration
     this.game.events.emit( `playerHit` )
@@ -147,12 +187,45 @@ export default class Player extends Entity {
     this.drawWithSwing( ctx, () => {
       if (isBlinkHidden) return
 
+      const rideItem = this.#rideItem
+      const item = this.inventory.selected
+
+      if (rideItem) return this.drawRider( ctx, rideItem.sprite, this.sprite )
+
       this.drawSprite( ctx, this.sprite )
 
       // The toy in hand; bare hands show nothing, and a swung toy is drawn by the swing.
-      const item = this.inventory.selected
       if (item && item.kind !== `fist` && !this.swing) this.drawHeldIcon( ctx, item.sprite, this.sprite.flip.x )
     } )
+  }
+
+  /** Throws at the kids. */
+  #throw( stats:ThrowStats, direction:Point, target?:Point ) {
+    const level = this.game.level
+    if (!level) return
+
+    const landing = this.#findLanding( stats.range, direction, target )
+    level.launch( new Projectile( this.game, this, landing, stats.speed, { hit:stats, getTargets:() => level.getPlayerTargets() } ) )
+  }
+
+  /** Splashes water that leaves a puddle where it lands. */
+  #pour( stats:WaterStats, direction:Point, target?:Point ) {
+    const level = this.game.level
+    if (!level) return
+
+    const landing = this.#findLanding( stats.range, direction, target )
+    level.launch( new Projectile( this.game, this, landing, stats.speed, {
+      look: `water`,
+      hit: stats,
+      getTargets: () => level.getPlayerTargets(),
+      onLand: point => level.pour( point, stats.puddle ),
+    } ) )
+  }
+
+  /** Where something thrown lands: at the target when in range, otherwise as far as it goes in the direction. */
+  #findLanding( range:number, direction:Point, target?:Point ) {
+    const distance = target ? Math.min( range, Math.hypot( target.x - this.x, target.y - this.y ) ) : range
+    return { x:this.x + direction.x * distance, y:this.y + direction.y * distance }
   }
 
   #getAnimation(): keyof typeof ANIMATIONS {
@@ -168,9 +241,9 @@ export default class Player extends Entity {
     const length = Math.hypot( x, y )
     if (!length) return
 
-    // Switching pace flips the default: run when calm, walk during a fight.
+    // Switching pace flips the default: run when calm, walk during a fight. A ride has its own speed.
     const isRunning = this.#isFighting !== this.isPaceSwitched
-    const speed = isRunning ? STATS.runSpeed : STATS.walkSpeed
+    const speed = (this.#rideItem?.definition.ride?.speed ?? (isRunning ? STATS.runSpeed : STATS.walkSpeed)) * this.groundSpeedFactor
 
     this.facing = { x:x / length, y:y / length }
     this.x += this.facing.x * speed * seconds

@@ -7,6 +7,9 @@ import type { Scene } from "../logic/engine"
 import GameOverScene from "./GameOverScene"
 import PauseScene from "./PauseScene"
 
+/** The day lost by running out of hearts. */
+const HEARTS_LOST = { title:`Ała!`, subtitle:`Mama zabrała cię do domu.` }
+
 /** What the day started with, so it can be played again from the start. */
 type DayStart = { inventory:ItemKind[], stats:GameStats }
 
@@ -57,8 +60,9 @@ export default class GameplayScene implements Scene {
 
     game.updateWorld( seconds )
 
-    // Out of hearts: the day is lost, the world freezes below the summary.
-    if (game.player.health.isEmpty) game.scenes.openOverlay( new GameOverScene( game, `Ała!`, `Mama zabrała cię do domu.`, { label:`Zacznij dzień od nowa`, action:() => this.restartDay() } ) )
+    // Out of hearts, or lost by the level (e.g. a crying baby): the world freezes below the summary.
+    const loss = game.player.health.isEmpty ? HEARTS_LOST : game.level?.loss
+    if (loss) game.scenes.openOverlay( new GameOverScene( game, loss.title, loss.subtitle, { label:`Zacznij dzień od nowa`, action:() => this.restartDay() } ) )
   }
 
   draw() {
@@ -69,7 +73,7 @@ export default class GameplayScene implements Scene {
   restartDay() {
     const game = this.#game
 
-    game.player.inventory = new Inventory( this.#dayStart.inventory )
+    game.player.inventory = new Inventory( this.#dayStart.inventory, game.player.inventory.toyLimit )
     game.stats = { ...this.#dayStart.stats }
     game.startDay( this.#levelIndex, { withStory:false } )
   }

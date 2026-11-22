@@ -1,13 +1,8 @@
 import type { Sprite } from "../../logic/engine"
 import { isPointInside, type Point } from "../../logic/world"
 import type Entity from "../Entity"
+import type { HitTarget } from "../Entity"
 import type { SwingStats } from "./items"
-
-/** Something a swing can hit. */
-export type SwingTarget = Entity & { takeHit:(direction:Point, swing:SwingStats) => void }
-
-/** Where items are held, in world units: the hand is `height` above the feet, the handle `distance` from it. */
-const HAND = { height:7, distance:2 }
 
 /** Debug look of the pixels that hit. */
 const HIT_PIXEL = { size:0.5, color:`#fde047` }
@@ -46,7 +41,7 @@ export default class Swing {
   }
 
   /** Hits the targets the item's pixels touch now. Each target is hit once per swing. */
-  hit( targets:Iterable<SwingTarget> ) {
+  hit( targets:Iterable<HitTarget> ) {
     const pixels = this.getHitPixels()
 
     for (const target of targets) {
@@ -92,18 +87,30 @@ export default class Swing {
   #getPlacement() {
     const { arc, thrust, duration } = this.stats
     const progress = Math.min( 1, this.seconds / duration )
-    const hand = { x:this.holder.x, y:this.holder.feetY - HAND.height }
+    const { hand } = this.holder
+    const handPoint = { x:this.holder.x, y:this.holder.feetY - hand.height }
 
     // The arc runs over the top: clockwise when aiming right, the other way when aiming left.
     const sweep = this.direction.x < 0 ? -1 : 1
     const angle = Math.atan2( this.direction.y, this.direction.x ) + sweep * arc * (progress - 0.5)
     // Pushed out and pulled back once.
-    const distance = HAND.distance + thrust * Math.sin( Math.PI * progress )
+    const distance = hand.distance + thrust * Math.sin( Math.PI * progress )
 
     return {
-      handle: { x:hand.x + Math.cos( angle ) * distance, y:hand.y + Math.sin( angle ) * distance },
+      handle: { x:handPoint.x + Math.cos( angle ) * distance, y:handPoint.y + Math.sin( angle ) * distance },
       // Icons point down, so they are turned from there to the swing angle.
       rotation: angle - Math.PI / 2,
     }
+  }
+
+  /**
+   * How far from the holder's middle its swing reaches straight ahead: the hand, the thrust, and the item's length in pixels.
+   * Until the icon is loaded, the item's `reach` stands in for its length.
+   */
+  static measureReach( holder:Entity, icon:Sprite<string>, stats:SwingStats ) {
+    const { pixels } = icon.getOpaquePixels()
+    const length = pixels.length ? pixels.reduce( (longest, pixel) => Math.max( longest, pixel.y + 1 ), 0 ) : stats.reach
+
+    return holder.hand.distance + stats.thrust + length
   }
 }

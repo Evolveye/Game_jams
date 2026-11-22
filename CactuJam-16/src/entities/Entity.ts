@@ -1,10 +1,13 @@
 import type Game from "../Game"
 import healthPipsImage from "../assets/sprites/health-pips.png"
-import { Sprite } from "../logic/engine"
+import { Sprite, type DrawOptions } from "../logic/engine"
 import { WORLD, type Point, type Rect, type Size } from "../logic/world"
 import type Health from "./Health"
+import type { HitStats } from "./items/items"
 import type Swing from "./items/Swing"
-import type { SwingTarget } from "./items/Swing"
+
+/** Something hits can land on. */
+export type HitTarget = Entity & { takeHit:(direction:Point, hit:HitStats) => void }
 
 /** How fast knockback slows down (higher = shorter slide). */
 const KNOCKBACK_DAMPING = 10
@@ -17,6 +20,12 @@ const HEALTH_PIP_SPRITE = new Sprite({
 
 /** Health pips in world units: pips overlap by their 1-unit outline, and float `gap` above the hurtbox. */
 const HEALTH_PIPS = { size:4, step:3, gap:2 }
+
+/** How high a rider sits on a ridden toy, and how much of the legs it hides, in world units. */
+const RIDE_SEAT = { lift:4, hiddenLegs:4 }
+
+/** Contact hits: footprints this close count as touching; the same target is hurt again only after `repeatSeconds`. */
+const CONTACT = { gap:1, repeatSeconds:0.6 }
 
 /**
  * Debug look, in world units: the footprint is filled, the hurtbox outlined.
@@ -35,11 +44,15 @@ export default abstract class Entity {
   footprint: Size
   /** Size of the hurtbox standing on the footprint, usually the sprite's; `null` when nothing can hit it. */
   hurtboxSize: null | Size = null
+  /** Where items are held, in world units: the hand is `height` above the feet, and holds items `distance` from the middle. */
+  hand = { height:7, distance:2 }
   velocity: Point = { x:0, y:0 }
   /** The swing in progress, if any. */
   swing: null | Swing = null
   /** Color of the shapes drawn in debug mode. */
   debugColor = `#ffffff`
+  /** Targets hurt by touching recently, with seconds until they can be hurt that way again. */
+  #contactCooldowns = new Map<Entity, number>()
 
   constructor( game:Game, x:number, y:number, footprint:Size ) {
     this.game = game
@@ -58,6 +71,11 @@ export default abstract class Entity {
 
     const { width, height } = this.hurtboxSize
     return { x:this.x - width / 2, y:this.feetY - height, width, height }
+  }
+
+  /** Speed multiplier of the ground it stands on: below 1 in a puddle. */
+  get groundSpeedFactor() {
+    return this.game.level?.getGroundSpeedFactor( this ) ?? 1
   }
 
   /** True when hits land on it now (e.g. not while invulnerable). Shown by the hurtbox outline in debug mode. */
@@ -119,13 +137,29 @@ export default abstract class Entity {
   }
 
   /** Advances the swing in progress, hitting the targets its item touches. */
-  updateSwing( seconds:number, targets:Iterable<SwingTarget> ) {
+  updateSwing( seconds:number, targets:Iterable<HitTarget> ) {
     if (!this.swing) return
 
     this.swing.update( seconds )
     this.swing.hit( targets )
 
     if (this.swing.isFinished) this.swing = null
+  }
+
+  /** Hurts the targets whose footprint touches this one. Call every frame while touching hurts (e.g. while hostile). */
+  hitOnContact( seconds:number, targets:Iterable<HitTarget>, hit:HitStats ) {
+    for (const [ target, cooldown ] of this.#contactCooldowns) {
+      if (cooldown <= seconds) this.#contactCooldowns.delete( target )
+      else this.#contactCooldowns.set( target, cooldown - seconds )
+    }
+
+    for (const target of targets) {
+      if (!target.isHittable || this.#contactCooldowns.has( target )) continue
+      if (this.measureGapTo( target ) > CONTACT.gap) continue
+
+      this.#contactCooldowns.set( target, CONTACT.repeatSeconds )
+      target.takeHit( this.getDirectionTo( target ), hit )
+    }
   }
 
   /** Moves this entity out of another one along the shorter way, so footprints do not overlap. */
@@ -178,9 +212,17 @@ export default abstract class Entity {
     )
   }
 
-  /** Draws the sprite standing on the bottom of the footprint (its feet). */
-  drawSprite( ctx:CanvasRenderingContext2D, sprite:Sprite<string> ) {
-    sprite.draw( ctx, this.x, this.feetY )
+  /** Draws the sprite standing on the bottom of the footprint (its feet), or `lift` units above it (e.g. sitting on a ride). */
+  drawSprite( ctx:CanvasRenderingContext2D, sprite:Sprite<string>, { lift = 0, ...options }:DrawOptions & { lift?:number } = {} ) {
+    sprite.draw( ctx, this.x, this.feetY - lift, options )
+  }
+
+  /** A rider on a ridden toy: the toy first, facing the same way, then the rider sitting in it with the legs hidden. */
+  drawRider( ctx:CanvasRenderingContext2D, rideSprite:Sprite<string>, riderSprite:Sprite<string> ) {
+    rideSprite.flip.x = riderSprite.flip.x
+
+    this.drawSprite( ctx, rideSprite )
+    this.drawSprite( ctx, riderSprite, { lift:RIDE_SEAT.lift, clip:{ bottom:RIDE_SEAT.hiddenLegs } } )
   }
 
   /** An item's icon in the hand, on the side the entity looks at. */
