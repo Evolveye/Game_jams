@@ -25,7 +25,7 @@ const STATS = {
   toyLimit: 2,
 }
 
-/** The player's sheet: 10×14 frames, 4 per row, one animation per row. */
+/** The player's sheet: 12×14 frames, 4 per row, one animation per row. */
 const SHEET = { src:playerSheet, framesPerRow:4, framesPerColumn:4 }
 
 const ANIMATIONS = {

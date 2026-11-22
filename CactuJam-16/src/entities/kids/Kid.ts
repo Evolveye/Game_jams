@@ -2,6 +2,7 @@ import type Game from "../../Game"
 import fatKidSheet from "../../assets/sprites/fat-kid.png"
 import kidSheet from "../../assets/sprites/kid.png"
 import rainBootsImage from "../../assets/sprites/rain-boots.png"
+import thiefSheet from "../../assets/sprites/thief.png"
 import { Sprite } from "../../logic/engine"
 import { findPointBeyondEdge, SANDBOX, type Point, type Rect } from "../../logic/world"
 import Entity from "../Entity"
@@ -134,16 +135,21 @@ const FIST_ICON = new Sprite({ icon:{ src:ITEMS.fist.icon } }, `icon` )
 /** Health pips show for a while after a hit, then fade out. */
 const HEALTH_PIPS_TIME = { visible:2, fade:0.5 }
 
+/** The regular kid's body: 4 looks (calm T-shirt, hair, trousers). Sheet frames are 12×14, like the player's. */
+const REGULAR_BODY = { sheet:kidSheet, looks:4, footprint:{ width:8, height:4 }, hurtbox:{ width:8, height:14 }, hand:{ height:7, distance:2 }, speedFactor:1, healthFactor:1, damageBonus:0, isSteady:false }
+
 /**
- * How kids are built: the sprite sheet, footprint and hurtbox sizes, the hands (see `Entity.hand`),
+ * How kids are built: the sprite sheet and how many looks it has (each kid gets one at random), footprint and hurtbox sizes, the hands (see `Entity.hand`),
  * multipliers of speed and health, a damage bonus added to everything it hits with (every toy, and touching),
  * and whether it is steady: hits hurt it, but do not push it back or interrupt it.
- * Sheets have 4 frames per row, one animation per row (idle, walk, angry, windup, stunned).
+ * Sheets have 4 frames per row, one animation per row (idle, walk, angry, windup, stunned), the looks one under another.
  */
 const KID_BODIES = {
-  regular: { sheet:kidSheet, footprint:{ width:8, height:4 }, hurtbox:{ width:8, height:14 }, hand:{ height:7, distance:2 }, speedFactor:1, healthFactor:1, damageBonus:0, isSteady:false },
+  regular: REGULAR_BODY,
+  /** A regular kid in bluish clothes, so thieves stand out (see `Level.addLurkingThieves`). */
+  thief: { ...REGULAR_BODY, sheet:thiefSheet },
   /** Bigger, a bit slower, tougher, steady and stronger (+1 damage), with long arms: every toy reaches further. Sheet frames are 14×15. */
-  fat: { sheet:fatKidSheet, footprint:{ width:12, height:5 }, hurtbox:{ width:12, height:15 }, hand:{ height:7, distance:7 }, speedFactor:0.8, healthFactor:1.5, damageBonus:1, isSteady:true },
+  fat: { sheet:fatKidSheet, looks:1, footprint:{ width:12, height:5 }, hurtbox:{ width:12, height:15 }, hand:{ height:7, distance:7 }, speedFactor:0.8, healthFactor:1.5, damageBonus:1, isSteady:true },
 }
 
 /** A kid on the playground. Peaceful until something makes it hostile. */
@@ -195,7 +201,7 @@ export default class Kid extends Entity {
     this.bodySpeedFactor = build.speedFactor
     this.hasSteadyBody = build.isSteady
     this.damageBonus = build.damageBonus
-    this.sprite = new Sprite( createAnimations( build.sheet ), `idle` )
+    this.sprite = new Sprite( createAnimations( build.sheet, build.looks, Math.floor( Math.random() * build.looks ) ), `idle` )
     this.traits = KID_TRAITS[ traits ]
     this.health = new Health( Math.round( this.traits.health * build.healthFactor ) )
     this.approachAngle = approach ? APPROACH_ANGLES[ approach ] : null
@@ -792,16 +798,20 @@ function randomBetween( min:number, max:number ) {
   return min + Math.random() * (max - min)
 }
 
-/** A kid's animations from its sheet: 4 frames per row, one animation per row. */
-function createAnimations( sheet:string ) {
-  const frames = { src:sheet, framesPerRow:4, framesPerColumn:5 }
+/**
+ * A kid's animations from its sheet: 4 frames per row, one animation per row, `looks` blocks of them one under another.
+ * `look`: the block to use, from 0.
+ */
+function createAnimations( sheet:string, looks = 1, look = 0 ) {
+  const frames = { src:sheet, framesPerRow:4, framesPerColumn:5 * looks }
+  const firstFrame = look * 5 * 4
 
   return {
-    idle: { ...frames, firstFrame:0, framesCount:2, fps:2 },
-    walk: { ...frames, firstFrame:4, framesCount:4, fps:8 },
-    angry: { ...frames, firstFrame:8, framesCount:4, fps:8 },
-    windup: { ...frames, firstFrame:12, framesCount:1 },
-    stunned: { ...frames, firstFrame:16, framesCount:1 },
+    idle: { ...frames, firstFrame, framesCount:2, fps:2 },
+    walk: { ...frames, firstFrame:firstFrame + 4, framesCount:4, fps:8 },
+    angry: { ...frames, firstFrame:firstFrame + 8, framesCount:4, fps:8 },
+    windup: { ...frames, firstFrame:firstFrame + 12, framesCount:1 },
+    stunned: { ...frames, firstFrame:firstFrame + 16, framesCount:1 },
   }
 }
 

@@ -258,7 +258,7 @@ export default class Level {
   /**
    * Hides thieves off-screen: from now on each dropped toy sends one in to grab it (the nearest lying toy).
    * A thief scares away with one hit; grabbing the toy, it turns into a regular enemy holding it.
-   * `options` are the kid it turns into.
+   * `options` are the kid it turns into; thieves wear bluish clothes (the `thief` body) unless they get another `body`.
    */
   addLurkingThieves( count:number, options:KidOptions = {} ) {
     for (let i = 0; i < count; i++) this.#lurkingThieves.push( options )
@@ -335,7 +335,7 @@ export default class Level {
   #sendThief( toy:ToyPickup, options:KidOptions ) {
     const game = this.#runningGame
     const { x, y } = findPointBeyondEdge( toy )
-    const thief = new Kid( game, x, y, options )
+    const thief = new Kid( game, x, y, { body:`thief`, ...options } )
 
     thief.state = `stealing`
     this.kids.add( thief )

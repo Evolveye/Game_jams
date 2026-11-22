@@ -21,8 +21,8 @@ const HEALTH_PIP_SPRITE = new Sprite({
 /** Health pips in world units: pips overlap by their 1-unit outline, and float `gap` above the hurtbox. */
 const HEALTH_PIPS = { size:4, step:3, gap:2 }
 
-/** How high a rider sits on a ridden toy, and how much of the legs it hides, in world units. */
-const RIDE_SEAT = { lift:4, hiddenLegs:4 }
+/** How high a rider sits on a ridden toy (at its belt line), and how much of the rider it hides (legs and lower body), in world units. */
+const RIDE_SEAT = { lift:6, hiddenBottom:6 }
 
 /** Contact hits: footprints this close count as touching; the same target is hurt again only after `repeatSeconds`. */
 const CONTACT = { gap:1, repeatSeconds:0.6 }
@@ -222,7 +222,7 @@ export default abstract class Entity {
     rideSprite.flip.x = riderSprite.flip.x
 
     this.drawSprite( ctx, rideSprite )
-    this.drawSprite( ctx, riderSprite, { lift:RIDE_SEAT.lift, clip:{ bottom:RIDE_SEAT.hiddenLegs } } )
+    this.drawSprite( ctx, riderSprite, { lift:RIDE_SEAT.lift, clip:{ bottom:RIDE_SEAT.hiddenBottom } } )
   }
 
   /** An item's icon in the hand, on the side the entity looks at. */

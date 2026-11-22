@@ -72,7 +72,7 @@ export const ITEMS:Record<ItemKind, ItemDefinition> = {
   wateringCan: {
     name: `Konewka`,
     icon: wateringCanIcon,
-    watering: { damage:1, knockback:30, range:60, speed:90, cooldown:0.9, puddle:{ width:20, height:10, seconds:10, slowdown:0.4 }, sound:SOUNDS.swing },
+    watering: { damage:1, knockback:30, range:60, speed:90, cooldown:0.9, puddle:{ width:20, height:10, seconds:10, slowdown:0.3 }, sound:SOUNDS.swing },
   },
   car: { name:`Autko`, icon:carIcon, ride:{ speed:110, ram:{ damage:2, knockback:170 } } },
 }

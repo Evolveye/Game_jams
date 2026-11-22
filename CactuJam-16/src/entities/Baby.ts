@@ -26,7 +26,7 @@ const STATS = {
   restTime: { min:1.5, max:4 },
 }
 
-/** The baby's sheet: 8×9 frames in one row (calm, uneasy, sobbing, crying ×2). */
+/** The baby's sheet: 12×12 frames in one row (calm, uneasy, sobbing, crying ×2). */
 const SHEET = { src:babySheet, framesPerRow:5, framesPerColumn:1 }
 
 const ANIMATIONS = {
@@ -49,13 +49,13 @@ export default class Baby extends Entity {
   /** Content for good, e.g. once the day is won: it does not react anymore. */
   isContent = false
   sprite = new Sprite( ANIMATIONS, `calm` )
-  hurtboxSize = { width:6, height:8 }
+  hurtboxSize = { width:10, height:11 }
   debugColor = `#c4b5fd`
   #crawlTarget: null | Point = null
   #restTime = 0
 
   constructor( game:Game, x:number, y:number, { mode = `sitting`, bounds = SANDBOX }:BabyOptions = {} ) {
-    super( game, x, y, { width:6, height:3 } )
+    super( game, x, y, { width:8, height:3 } )
     this.mode = mode
     this.bounds = bounds
     this.#restTime = Math.random() * STATS.restTime.max
