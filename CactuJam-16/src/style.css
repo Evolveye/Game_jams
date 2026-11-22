@@ -1,7 +1,8 @@
 @font-face {
   font-family: "CactuFont";
   src: url("./assets/fonts/cactu.woff2") format("woff2");
-  font-display: swap;
+  /* Preloaded (see index.html): titles wait for it a moment instead of showing a fallback font that later swaps. */
+  font-display: block;
 }
 
 :root {
