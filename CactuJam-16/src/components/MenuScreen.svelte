@@ -2,7 +2,7 @@
   import type { ButtonVariant } from "./ui/Button.svelte"
 
   export type MenuRow = { label:string, value:string }
-  export type MenuScreenOption = { label:string, variant?:ButtonVariant }
+  export type MenuScreenOption = { label:string, variant?:ButtonVariant, isWide?:boolean }
 
   /** A menu: title, optional summary rows, and options. All content comes from the game. */
   export type MenuScreenData = {
@@ -11,6 +11,8 @@
     rows?: MenuRow[]
     options: MenuScreenOption[]
     selectedIndex: number
+    /** Options laid out in this many columns, row by row (1 by default); wide options take a whole row. */
+    columns?: number
     hint?: string
     onSelect: (index:number) => void
     onHover: (index:number) => void
@@ -40,7 +42,7 @@
     </dl>
   {/if}
 
-  <OptionButtons {options} onSelect={menu.onSelect} onHover={menu.onHover} />
+  <OptionButtons {options} columns={menu.columns} onSelect={menu.onSelect} onHover={menu.onHover} />
 </Dialog>
 
 <style>

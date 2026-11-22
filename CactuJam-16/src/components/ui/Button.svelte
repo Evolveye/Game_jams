@@ -1,5 +1,6 @@
 <script module lang="ts">
-  export type ButtonVariant = `primary` | `secondary`
+  /** `danger`: an action that can't be undone, e.g. deleting saved data. */
+  export type ButtonVariant = `primary` | `secondary` | `danger`
 </script>
 
 <script lang="ts">
@@ -68,6 +69,27 @@
 
     background: #3f3a2e;
     color: #f5f5f4;
+  }
+
+  .danger {
+    --edge-color: #44403c;
+
+    background: #1c1917;
+    color: #f87171;
+  }
+
+  .danger:hover {
+    --edge-color: #7f1d1d;
+
+    background: #2a1414;
+    color: #fca5a5;
+  }
+
+  .danger.selected {
+    --edge-color: #ef4444;
+
+    background: #3b1717;
+    color: #fecaca;
   }
 
   .primary {

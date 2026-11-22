@@ -2,7 +2,7 @@ import type Game from "../Game"
 import { bindKey, clearKey, getActionLabel, REBINDABLE_ACTIONS, resetBindings, SLOTS_PER_ACTION } from "../logic/bindings"
 import { Keys, type KeyCode, type Scene } from "../logic/engine"
 import { SOUNDS } from "../logic/sounds"
-import MenuScene, { MENU_ENTRIES } from "./MenuScene"
+import MenuScene from "./MenuScene"
 
 /** A key slot waiting for the player's next key or mouse button; aborting stops listening to the mouse. */
 type Waiting = { row:number, slot:number, abortCtrl:AbortController }
@@ -120,7 +120,7 @@ export default class ControlsScene implements Scene {
 
   #goBack() {
     this.#game.sounds.play( SOUNDS.menuConfirm )
-    this.#game.scenes.switchTo( new MenuScene( this.#game, MENU_ENTRIES.controls ) )
+    this.#game.scenes.switchTo( new MenuScene( this.#game, `controls` ) )
   }
 
   /** Selects a cell, wrapping around the grid's edges. */

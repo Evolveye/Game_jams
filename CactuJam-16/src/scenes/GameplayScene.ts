@@ -1,17 +1,13 @@
 import type Game from "../Game"
-import type { GameStats } from "../Game"
 import Inventory from "../entities/items/Inventory"
-import type { ItemKind } from "../entities/items/items"
 import LEVELS from "../levels"
 import type { Scene } from "../logic/engine"
+import type { DayStart } from "../logic/progress"
 import GameOverScene from "./GameOverScene"
 import PauseScene from "./PauseScene"
 
 /** The day lost by running out of hearts. */
 const HEARTS_LOST = { title:`Ała!`, subtitle:`Mama zabrała cię do domu.` }
-
-/** What the day started with, so it can be played again from the start. */
-type DayStart = { inventory:ItemKind[], stats:GameStats }
 
 /** One day being played: runs its level script, the world and the player. Pause opens the pause menu. */
 export default class GameplayScene implements Scene {
@@ -33,6 +29,7 @@ export default class GameplayScene implements Scene {
       inventory: game.player.inventory.items.map( item => item.kind ),
       stats: { ...game.stats },
     }
+    game.progress.saveDayStart( this.#levelIndex, this.#dayStart )
 
     // Every day starts with full health.
     game.player.health.fill()

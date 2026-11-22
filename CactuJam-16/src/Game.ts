@@ -1,12 +1,14 @@
 import { flushSync, mount } from "svelte"
 import playgroundImage from "./assets/sprites/playground.png"
 import GameView from "./components/Game.svelte"
+import Inventory from "./entities/items/Inventory"
 import { ITEMS, type ItemKind, type ToyKind } from "./entities/items/items"
 import type Kid from "./entities/kids/Kid"
 import Player, { HEART_ICONS } from "./entities/Player"
 import LEVELS from "./levels"
 import Achievements, { ACHIEVEMENTS, type AchievementId } from "./logic/achievements"
 import { loadSavedBindings } from "./logic/bindings"
+import Progress from "./logic/progress"
 import type Level from "./logic/Level"
 import { SOUNDS } from "./logic/sounds"
 import type { Speaker } from "./logic/speakers"
@@ -100,6 +102,8 @@ export default class Game {
   stats:GameStats = { ...NEW_RUN_STATS }
   /** Kept in the browser between runs. */
   achievements = new Achievements()
+  /** Kept in the browser between runs: the days reached, to continue or choose one. */
+  progress = new Progress( LEVELS.length )
 
   root: HTMLElement
   events = new EventBus<GameEvents>()
@@ -179,12 +183,20 @@ export default class Game {
 
   /** Starts a new run: a fresh player, journal and stats, then the first day. */
   startNewRun() {
-    this.player = new Player( this )
-    this.stats = { ...NEW_RUN_STATS }
-    this.#hasExplainedSwap = false
-    this.view.clearBrief()
+    this.#startRun( FIRST_LEVEL_INDEX, [ `fist` ], { ...NEW_RUN_STATS } )
+  }
 
-    this.startDay( FIRST_LEVEL_INDEX )
+  /** Goes back to the day started most recently, with the toys and stats it began with. */
+  continueRun() {
+    const lastDay = this.progress.lastDay
+    if (!lastDay) return this.startNewRun()
+
+    this.#startRun( lastDay.index, lastDay.inventory, lastDay.stats )
+  }
+
+  /** Starts a run from a reached day, with the toys that day last began with, and fresh stats. */
+  startRunAt( index:number ) {
+    this.#startRun( index, this.progress.getDayInventory( index ), { ...NEW_RUN_STATS } )
   }
 
   /** Tells the day's story (if any), then plays the day. After the last day: the summary. */
@@ -242,6 +254,23 @@ export default class Game {
     for (const entity of entities) entity.draw( ctx )
 
     if (this.isDebug) for (const entity of entities) entity.drawDebug( ctx )
+  }
+
+  /** Deletes the saved progress and achievements (the controls stay: they have their own reset). */
+  clearSavedData() {
+    this.progress.clear()
+    this.achievements.clear()
+  }
+
+  /** A fresh player holding the inventory, a clean journal, then the day. */
+  #startRun( index:number, inventory:ItemKind[], stats:GameStats ) {
+    this.player = new Player( this )
+    this.player.inventory = new Inventory( inventory, this.player.inventory.toyLimit )
+    this.stats = stats
+    this.#hasExplainedSwap = false
+    this.view.clearBrief()
+
+    this.startDay( index )
   }
 
   /** After the last day: the story's achievement (announced when new), and the summary of the run. */

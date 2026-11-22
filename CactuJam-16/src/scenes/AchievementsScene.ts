@@ -1,7 +1,7 @@
 import type Game from "../Game"
 import { Keys, type Scene } from "../logic/engine"
 import { SOUNDS } from "../logic/sounds"
-import MenuScene, { MENU_ENTRIES } from "./MenuScene"
+import MenuScene from "./MenuScene"
 
 /** The player's achievements, opened from the main menu. */
 export default class AchievementsScene implements Scene {
@@ -34,6 +34,6 @@ export default class AchievementsScene implements Scene {
 
   #goBack() {
     this.#game.sounds.play( SOUNDS.menuConfirm )
-    this.#game.scenes.switchTo( new MenuScene( this.#game, MENU_ENTRIES.achievements ) )
+    this.#game.scenes.switchTo( new MenuScene( this.#game, `achievements` ) )
   }
 }

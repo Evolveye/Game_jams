@@ -1,4 +1,4 @@
-import { loadFromStorage, saveToStorage } from "./storage"
+import { loadFromStorage, removeFromStorage, saveToStorage } from "./storage"
 
 /** What an achievement is called and what it asks for. Locked ones show the description too, as a goal. */
 export type AchievementDefinition = { name:string, description:string }
@@ -31,6 +31,12 @@ export default class Achievements {
     saveToStorage( STORAGE_KEY, this.#unlockTimes )
 
     return true
+  }
+
+  /** Locks every achievement again, also in the browser. */
+  clear() {
+    this.#unlockTimes = {}
+    removeFromStorage( STORAGE_KEY )
   }
 
   /** All achievements in order, each with its unlock time (`null` while locked). */

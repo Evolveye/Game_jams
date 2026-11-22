@@ -1,7 +1,8 @@
 <script module lang="ts">
   import type { ButtonVariant } from "./Button.svelte"
 
-  export type OptionButton = { label:string, variant?:ButtonVariant, isSelected?:boolean }
+  /** `isWide`: takes a whole row when there are several columns. */
+  export type OptionButton = { label:string, variant?:ButtonVariant, isSelected?:boolean, isWide?:boolean }
 </script>
 
 <script lang="ts">
@@ -18,7 +19,7 @@
 
 <ol class="options" style:--columns={columns}>
   {#each options as option, index (option.label)}
-    <li>
+    <li class:wide={option.isWide}>
       <Button
         variant={option.variant}
         isSelected={option.isSelected}
@@ -38,5 +39,9 @@
     margin: 24px 0 0;
     padding: 0;
     list-style: none;
+  }
+
+  .wide {
+    grid-column: 1 / -1;
   }
 </style>
