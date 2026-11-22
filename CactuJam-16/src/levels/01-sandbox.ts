@@ -117,4 +117,4 @@ export default new Level( `Piaskownica`, async level => {
 
   level.note( `Mama woła na obiad. Wyjdź z placu zabaw, żeby wrócić do domu.` )
   await level.callForDinner()
-}, { story:STORY, parSeconds:60 } )
+}, { story:STORY } )

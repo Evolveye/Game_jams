@@ -31,10 +31,9 @@ export type DayLoss = { title:string, subtitle:string }
 
 /**
  * - `story`: shown before the day starts
- * - `parSeconds`: the time to beat for the "Błyskawica" achievement, from the first attacking kid to Mom's call; none without it
  * - `isStuntDay`: the day of the "Kaskader" achievement (won without leaving the car)
  */
-export type LevelOptions = { story?:Shot[], parSeconds?:number, isStuntDay?:boolean }
+export type LevelOptions = { story?:Shot[], isStuntDay?:boolean }
 
 type Condition = {
   isMet: () => boolean
@@ -73,12 +72,10 @@ export default class Level {
   #voice: null | SoundHandle = null
 
   readonly story: Shot[]
-  readonly parSeconds: null | number
   readonly isStuntDay: boolean
 
-  constructor( readonly name:string, readonly script:LevelScript, { story = [], parSeconds, isStuntDay = false }:LevelOptions = {} ) {
+  constructor( readonly name:string, readonly script:LevelScript, { story = [], isStuntDay = false }:LevelOptions = {} ) {
     this.story = story
-    this.parSeconds = parSeconds ?? null
     this.isStuntDay = isStuntDay
   }
 

@@ -54,4 +54,4 @@ export default new Level( `Ciężka kategoria`, async level => {
   await level.say( `Ciężka kategoria, lekkie zwycięstwo.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:45 } )
+}, { story:STORY } )

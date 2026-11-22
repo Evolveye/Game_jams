@@ -3,7 +3,6 @@ import type { ToyKind } from "../entities/items/items"
 /**
  * Counted during a run. Some are shown in the summary at its end, the rest decide the whole-run achievements.
  * - `isFullRun`: the run started on the first day, so it counts for the whole-run achievements
- * - `retries`: days played again from their start (after a loss, a restart, or continuing a saved day)
  * - `babiesCried`: babies made to cry (each one also loses the day)
  * - `fistOnlyDays`: days won without using any toy
  * - `spadeDays`: days ended with a spade in the pocket
@@ -16,7 +15,6 @@ export type GameStats = {
   hitsTaken: number
   daysCompleted: number
   isFullRun: boolean
-  retries: number
   babiesCried: number
   fistOnlyDays: number
   spadeDays: number
@@ -30,7 +28,6 @@ export const NEW_RUN_STATS:GameStats = {
   hitsTaken: 0,
   daysCompleted: 0,
   isFullRun: true,
-  retries: 0,
   babiesCried: 0,
   fistOnlyDays: 0,
   spadeDays: 0,

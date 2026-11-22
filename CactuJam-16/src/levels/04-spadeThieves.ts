@@ -59,4 +59,4 @@ export default new Level( `Wynajęli spadochroniarzy!`, async level => {
   await level.say( `Wszystkie łopatki zostają w MOJEJ piaskownicy.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:60 } )
+}, { story:STORY } )

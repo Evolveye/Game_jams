@@ -51,4 +51,4 @@ export default new Level( `Błoto`, async level => {
   await level.say( `Wyszedłem z tego suchą stopą. Prawie.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:55 } )
+}, { story:STORY } )

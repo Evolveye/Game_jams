@@ -61,4 +61,4 @@ export default new Level( `Wszyscy na jednego`, async level => {
   await level.say( `I kto tu rządzi?` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:60 } )
+}, { story:STORY } )

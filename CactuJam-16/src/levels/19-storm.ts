@@ -51,4 +51,4 @@ export default new Level( `Burza`, async level => {
   await level.say( `Po burzy zawsze wychodzi słońce.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:70 } )
+}, { story:STORY } )

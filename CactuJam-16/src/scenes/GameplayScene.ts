@@ -15,22 +15,17 @@ const HEARTS_LOST = { title:`Ała!`, subtitle:`Mama zabrała cię do domu.` }
 export default class GameplayScene implements Scene {
   #game: Game
   #levelIndex: number
-  #isRetry: boolean
   #dayStart: DayStart
 
-  /** `isRetry`: the day is played again from its start, counted in the run's stats. */
-  constructor( game:Game, levelIndex:number, { isRetry = false } = {} ) {
+  constructor( game:Game, levelIndex:number ) {
     this.#game = game
     this.#levelIndex = levelIndex
-    this.#isRetry = isRetry
     this.#dayStart = { inventory:[], stats:copyStats( game.stats ) }
   }
 
   enter() {
     const game = this.#game
     const level = LEVELS[ this.#levelIndex ]
-
-    if (this.#isRetry) game.stats.retries++
 
     this.#dayStart = {
       inventory: game.player.inventory.items.map( item => item.kind ),
@@ -89,6 +84,6 @@ export default class GameplayScene implements Scene {
 
     game.player.inventory = new Inventory( this.#dayStart.inventory, game.player.inventory.toyLimit )
     game.stats = copyStats( this.#dayStart.stats )
-    game.startDay( this.#levelIndex, { withStory:false, isRetry:true } )
+    game.startDay( this.#levelIndex, { withStory:false } )
   }
 }

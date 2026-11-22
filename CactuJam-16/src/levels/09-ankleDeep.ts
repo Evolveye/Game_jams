@@ -60,4 +60,4 @@ export default new Level( `Kałuża po kostki`, async level => {
   await level.say( `Kto się nie wysuszył, ten przegrał.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:55 } )
+}, { story:STORY } )

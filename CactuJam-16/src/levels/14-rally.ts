@@ -51,4 +51,4 @@ export default new Level( `Rajd po piaskownicy`, async level => {
   await level.say( `Meta! I mamy zwycięzcę.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:55 } )
+}, { story:STORY } )

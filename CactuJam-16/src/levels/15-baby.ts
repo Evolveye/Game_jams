@@ -48,4 +48,4 @@ export default new Level( `Ostrożnie, bobas!`, async level => {
   await level.say( `Bobas cały, piaskownica moja.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:45 } )
+}, { story:STORY } )

@@ -53,4 +53,4 @@ export default new Level( `Szybcy i wściekli`, async level => {
   await level.say( `Za wolno, za wolno.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:45 } )
+}, { story:STORY } )

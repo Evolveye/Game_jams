@@ -78,4 +78,4 @@ export default new Level( `Fale`, async level => {
   await level.say( `Ilu was jeszcze jest? Nikogo? Tak myślałem.`, { seconds:3 } )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:130 } )
+}, { story:STORY } )

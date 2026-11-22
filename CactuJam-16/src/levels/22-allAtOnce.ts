@@ -51,4 +51,4 @@ export default new Level( `Wszystko naraz`, async level => {
   await level.say( `Czołg rozbity. Ale coś mi mówi, że to jeszcze nie koniec.`, { seconds:3 } )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:90 } )
+}, { story:STORY } )

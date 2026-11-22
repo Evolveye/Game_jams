@@ -49,4 +49,4 @@ export default new Level( `Ogień zaporowy`, async level => {
   await level.say( `Koniec piaskowej burzy.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:50 } )
+}, { story:STORY } )

@@ -52,4 +52,4 @@ export default new Level( `Raczkujący`, async level => {
   await level.say( `Bobas cały, rzucający nie.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:50 } )
+}, { story:STORY } )

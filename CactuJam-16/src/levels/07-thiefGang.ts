@@ -57,4 +57,4 @@ export default new Level( `Złodziejska szajka`, async level => {
   await level.say( `Szajka rozbita.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:65 } )
+}, { story:STORY } )

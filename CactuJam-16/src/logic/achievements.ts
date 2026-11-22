@@ -20,12 +20,10 @@ export const ACHIEVEMENTS = {
   returnToSender: { name:`Odbite piłeczki`, description:`Pokonaj dzieciaka tą samą zabawką, którą sam walczy.` },
   nanny: { name:`Niania`, description:`Wygraj dzień z bobasem, nie niepokojąc go ani razu.` },
   stuntman: { name:`Kaskader`, description:`Pokonaj czołg (dzień 18), ani na chwilę nie wysiadając z autka w trakcie bójki.` },
-  lightning: { name:`Błyskawica`, description:`Wygraj bójkę szybciej niż limit czasu dnia (podany w dzienniku).` },
 
   fistSchool: { name:`Szkoła pięści`, description:`Przejdź całą grę od 1. dnia, walcząc tylko pięściami.` },
   spadeLoyal: { name:`Wierny łopatce`, description:`Przejdź całą grę od 1. dnia, kończąc każdy dzień z łopatką w kieszeni.` },
   collector: { name:`Kolekcjoner`, description:`W jednej grze użyj łopatki, wiaderka, konewki i autka.` },
-  firstTry: { name:`Za pierwszym razem`, description:`Przejdź całą grę od 1. dnia, nie powtarzając żadnego dnia.` },
   goodBoy: { name:`Grzeczny chłopiec`, description:`Przejdź całą grę od 1. dnia, nie doprowadzając żadnego bobasa do płaczu.` },
   spotless: { name:`Ani draśnięcia`, description:`Przejdź cały akt, ani razu nie obrywając.` },
 } satisfies Record<string, AchievementDefinition>

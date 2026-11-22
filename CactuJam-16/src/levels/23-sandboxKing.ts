@@ -60,4 +60,4 @@ export default new Level( `Król piaskownicy`, async level => {
   await level.say( `Piaskownica jest MOJA. Na zawsze.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:110 } )
+}, { story:STORY } )

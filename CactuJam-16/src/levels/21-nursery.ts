@@ -57,4 +57,4 @@ export default new Level( `Żłobek`, async level => {
   await level.say( `Żłobek zamknięty. Bez jednej łzy.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:70 } )
+}, { story:STORY } )

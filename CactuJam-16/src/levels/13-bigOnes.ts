@@ -52,4 +52,4 @@ export default new Level( `Grubo`, async level => {
   await level.say( `Duzi czy mali, uciekają tak samo.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:60 } )
+}, { story:STORY } )

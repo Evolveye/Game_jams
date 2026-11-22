@@ -58,4 +58,4 @@ export default new Level( `Do piachu z wami`, async level => {
   await level.say( `Piasek zostaje w piaskownicy.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:50 } )
+}, { story:STORY } )

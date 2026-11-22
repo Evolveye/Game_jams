@@ -49,4 +49,4 @@ export default new Level( `Ciężki sprzęt`, async level => {
   await level.say( `Im większy, tym głośniej spada.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:45, isStuntDay:true } )
+}, { story:STORY, isStuntDay:true } )

@@ -53,4 +53,4 @@ export default new Level( `Wymoczki`, async level => {
   await level.say( `Kalosze kaloszami, a piaskownica moja.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:55 } )
+}, { story:STORY } )

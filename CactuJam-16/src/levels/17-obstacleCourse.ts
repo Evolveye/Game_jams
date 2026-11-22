@@ -50,4 +50,4 @@ export default new Level( `Tor przeszkód`, async level => {
   await level.say( `Ani jednej łzy.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:40 } )
+}, { story:STORY } )

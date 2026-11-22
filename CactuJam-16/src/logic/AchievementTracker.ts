@@ -28,8 +28,6 @@ export default class AchievementTracker {
   #steppedInPuddle = false
   #upsetBaby = false
   #leftCar = false
-  /** Game time when the first kid attacked. */
-  #fightStart: null | number = null
 
   /** Call right after the level starts running, so its listeners stop with this day. */
   constructor( game:Game, level:Level, dayIndex:number ) {
@@ -51,7 +49,6 @@ export default class AchievementTracker {
     level.waitUntil( () => level.puddles.size > 0 ).then( () => this.#hadPuddles = true )
     level.waitUntil( () => game.player.groundSpeedFactor < 1 ).then( () => this.#steppedInPuddle = true )
     level.waitUntil( () => [ ...level.babies ].some( baby => baby.isUneasy ) ).then( () => this.#upsetBaby = true )
-    level.waitUntil( () => level.isFighting ).then( () => this.#startFight() )
 
     if (level.isStuntDay) level.waitUntil( () => level.isFighting && !game.player.isRiding ).then( () => this.#leftCar = true )
 
@@ -70,20 +67,11 @@ export default class AchievementTracker {
     if (USABLE_TOYS.every( toy => usedKinds.includes( toy ) )) this.#game.announceAchievement( `collector` )
   }
 
-  /** Starts the clock for "Błyskawica", with a reminder of the time to beat while it is still locked. */
-  #startFight() {
-    const { parSeconds } = this.#level
-
-    this.#fightStart = this.#game.stats.playSeconds
-    if (parSeconds && !this.#game.achievements.isUnlocked( `lightning` )) this.#level.note( `Błyskawica: wygraj bójkę w ${parSeconds} s.` )
-  }
-
   /** The day is won: its achievements, and the counters of the run. */
   #finishDay() {
     const game = this.#game
     const level = this.#level
     const { stats } = game
-    const fightSeconds = this.#fightStart === null ? null : stats.playSeconds - this.#fightStart
 
     if (this.#hadToys && !this.#hasUsedToy) game.announceAchievement( `bareFists` )
     if (!this.#wasHit) game.announceAchievement( `untouchable` )
@@ -91,7 +79,6 @@ export default class AchievementTracker {
     if (this.#hadPuddles && !this.#steppedInPuddle) game.announceAchievement( `dryFeet` )
     if (level.babies.size && !this.#upsetBaby) game.announceAchievement( `nanny` )
     if (level.isStuntDay && this.#hasRidden && !this.#leftCar) game.announceAchievement( `stuntman` )
-    if (level.parSeconds && fightSeconds !== null && fightSeconds <= level.parSeconds) game.announceAchievement( `lightning` )
 
     if (!this.#hasUsedToy) stats.fistOnlyDays++
     if (game.player.inventory.has( `spade` )) stats.spadeDays++

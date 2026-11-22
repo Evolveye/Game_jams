@@ -59,4 +59,4 @@ export default new Level( `Mokra robota`, async level => {
   await level.say( `Mokro, ale moje.` )
 
   await level.callForDinner()
-}, { story:STORY, parSeconds:60 } )
+}, { story:STORY } )

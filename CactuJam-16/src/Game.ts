@@ -194,12 +194,12 @@ export default class Game {
     this.#startRun( FIRST_LEVEL_INDEX, [ `fist` ], createRunStats( FIRST_LEVEL_INDEX ) )
   }
 
-  /** Goes back to the day started most recently, with the toys and stats it began with. Playing it again counts as a retry. */
+  /** Goes back to the day started most recently, with the toys and stats it began with. */
   continueRun() {
     const lastDay = this.progress.lastDay
     if (!lastDay) return this.startNewRun()
 
-    this.#startRun( lastDay.index, lastDay.inventory, lastDay.stats, { isRetry:true } )
+    this.#startRun( lastDay.index, lastDay.inventory, lastDay.stats )
   }
 
   /** Starts a run from a reached day, with the toys that day last began with, and fresh stats. */
@@ -207,15 +207,12 @@ export default class Game {
     this.#startRun( index, this.progress.getDayInventory( index ), createRunStats( index ) )
   }
 
-  /**
-   * Tells the day's story (if any), then plays the day. After the last day: the summary.
-   * `isRetry`: the day is played again from its start (counted for the whole-run achievements).
-   */
-  startDay( index:number, { withStory = true, isRetry = false } = {} ) {
+  /** Tells the day's story (if any), then plays the day. After the last day: the summary. */
+  startDay( index:number, { withStory = true } = {} ) {
     const level = LEVELS[ index ]
     if (!level) return this.#endStory()
 
-    const playDay = () => this.scenes.switchTo( new GameplayScene( this, index, { isRetry } ) )
+    const playDay = () => this.scenes.switchTo( new GameplayScene( this, index ) )
 
     if (withStory && level.story.length) this.scenes.switchTo( new SlidesScene( this, level.story, playDay ) )
     else playDay()
@@ -283,14 +280,14 @@ export default class Game {
   }
 
   /** A fresh player holding the inventory, a clean journal, then the day. */
-  #startRun( index:number, inventory:ItemKind[], stats:GameStats, { isRetry = false } = {} ) {
+  #startRun( index:number, inventory:ItemKind[], stats:GameStats ) {
     this.player = new Player( this )
     this.player.inventory = new Inventory( inventory, this.player.inventory.toyLimit )
     this.stats = stats
     this.#hasExplainedSwap = false
     this.view.clearBrief()
 
-    this.startDay( index, { isRetry } )
+    this.startDay( index )
   }
 
   /** After the last day: the story's achievement and those of the whole run (announced when new), and the summary of the run. */
@@ -311,7 +308,6 @@ export default class Game {
 
     if (stats.fistOnlyDays >= LEVELS.length) ids.push( `fistSchool` )
     if (stats.spadeDays >= LEVELS.length) ids.push( `spadeLoyal` )
-    if (!stats.retries) ids.push( `firstTry` )
     if (!stats.babiesCried) ids.push( `goodBoy` )
 
     return ids
