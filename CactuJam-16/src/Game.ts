@@ -12,7 +12,7 @@ import Progress from "./logic/progress"
 import { createRunStats, type GameStats } from "./logic/stats"
 import { loadFromStorage, saveToStorage } from "./logic/storage"
 import type Level from "./logic/Level"
-import { SOUNDS } from "./logic/sounds"
+import { MUSIC, SOUNDS } from "./logic/sounds"
 import type { Speaker } from "./logic/speakers"
 import { WORLD } from "./logic/world"
 import GameOverScene from "./scenes/GameOverScene"
@@ -297,6 +297,7 @@ export default class Game {
       ? `Piaskownica jest twoja. Nowe osiągnięcia: ${newAchievements.join( `, ` )}!`
       : `Piaskownica jest twoja.`
 
+    this.sounds.playMusic( MUSIC.calm )
     this.scenes.openOverlay( new GameOverScene( this, `Koniec!`, subtitle, { label:`Zagraj jeszcze raz`, action:() => this.startNewRun() } ) )
   }
 

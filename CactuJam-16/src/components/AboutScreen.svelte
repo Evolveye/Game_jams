@@ -21,19 +21,14 @@
       <h2>Autorzy</h2>
       <dl class="credits">
         <dt>Programowanie</dt>
-        <dd>…</dd>
+        <dd>~Evolveye ze wsparciem Claude Code</dd>
 
         <dt>Grafika</dt>
-        <dd>…</dd>
+        <dd>~Evolveye ze wsparciem Claude Code</dd>
 
         <dt>Dźwięk i muzyka</dt>
-        <dd>…</dd>
+        <dd>~Evolveye ze wsparciem Claude Code</dd>
       </dl>
-    </section>
-
-    <section>
-      <h2>Podziękowania</h2>
-      <p>…</p>
     </section>
   </div>
 

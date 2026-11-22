@@ -1,6 +1,6 @@
 import storyImage from "../assets/slides/18-tank.png"
 import Level from "../logic/Level"
-import { SOUNDS } from "../logic/sounds"
+import { MUSIC, SOUNDS } from "../logic/sounds"
 import { PLAYER } from "../logic/speakers"
 import type { Shot } from "../scenes/SlidesScene"
 
@@ -49,4 +49,4 @@ export default new Level( `Ciężki sprzęt`, async level => {
   await level.say( `Im większy, tym głośniej spada.` )
 
   await level.callForDinner()
-}, { story:STORY, isStuntDay:true } )
+}, { story:STORY, music:MUSIC.tank, isStuntDay:true } )

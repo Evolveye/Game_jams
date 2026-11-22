@@ -1,6 +1,6 @@
 import storyImage from "../assets/slides/15-baby.png"
 import Level from "../logic/Level"
-import { SOUNDS } from "../logic/sounds"
+import { MUSIC, SOUNDS } from "../logic/sounds"
 import { PLAYER } from "../logic/speakers"
 import type { Shot } from "../scenes/SlidesScene"
 
@@ -48,4 +48,4 @@ export default new Level( `Ostrożnie, bobas!`, async level => {
   await level.say( `Bobas cały, piaskownica moja.` )
 
   await level.callForDinner()
-}, { story:STORY } )
+}, { story:STORY, music:MUSIC.tiptoe } )

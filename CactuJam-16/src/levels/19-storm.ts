@@ -1,6 +1,6 @@
 import storyImage from "../assets/slides/19-storm.png"
 import Level from "../logic/Level"
-import { SOUNDS } from "../logic/sounds"
+import { MUSIC, SOUNDS } from "../logic/sounds"
 import { PLAYER } from "../logic/speakers"
 import type { Shot } from "../scenes/SlidesScene"
 
@@ -51,4 +51,4 @@ export default new Level( `Burza`, async level => {
   await level.say( `Po burzy zawsze wychodzi słońce.` )
 
   await level.callForDinner()
-}, { story:STORY } )
+}, { story:STORY, music:MUSIC.tank } )

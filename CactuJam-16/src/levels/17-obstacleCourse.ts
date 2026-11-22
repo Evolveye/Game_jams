@@ -1,6 +1,6 @@
 import storyImage from "../assets/slides/17-obstacles.png"
 import Level from "../logic/Level"
-import { SOUNDS } from "../logic/sounds"
+import { MUSIC, SOUNDS } from "../logic/sounds"
 import { PLAYER } from "../logic/speakers"
 import type { Shot } from "../scenes/SlidesScene"
 
@@ -50,4 +50,4 @@ export default new Level( `Tor przeszkód`, async level => {
   await level.say( `Ani jednej łzy.` )
 
   await level.callForDinner()
-}, { story:STORY } )
+}, { story:STORY, music:MUSIC.tiptoe } )

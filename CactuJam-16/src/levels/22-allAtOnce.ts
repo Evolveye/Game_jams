@@ -1,6 +1,6 @@
 import storyImage from "../assets/slides/22-all.png"
 import Level from "../logic/Level"
-import { SOUNDS } from "../logic/sounds"
+import { MUSIC, SOUNDS } from "../logic/sounds"
 import { PLAYER } from "../logic/speakers"
 import type { Shot } from "../scenes/SlidesScene"
 
@@ -51,4 +51,4 @@ export default new Level( `Wszystko naraz`, async level => {
   await level.say( `Czołg rozbity. Ale coś mi mówi, że to jeszcze nie koniec.`, { seconds:3 } )
 
   await level.callForDinner()
-}, { story:STORY } )
+}, { story:STORY, music:MUSIC.tank } )

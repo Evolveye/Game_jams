@@ -4,6 +4,7 @@ import LEVELS from "../levels"
 import AchievementTracker from "../logic/AchievementTracker"
 import type { Scene } from "../logic/engine"
 import type { DayStart } from "../logic/progress"
+import { SOUNDS } from "../logic/sounds"
 import { copyStats } from "../logic/stats"
 import GameOverScene from "./GameOverScene"
 import PauseScene from "./PauseScene"
@@ -39,6 +40,10 @@ export default class GameplayScene implements Scene {
     game.view.setScreen( null )
     game.level = level
 
+    // A jingle to start, then the day's song.
+    game.sounds.play( SOUNDS.dayStart )
+    game.sounds.playMusic( level.music )
+
     level.run( game ).then( isCompleted => {
       if (!isCompleted) return
 
@@ -71,7 +76,11 @@ export default class GameplayScene implements Scene {
 
     // Out of hearts, or lost by the level (e.g. a crying baby): the world freezes below the summary.
     const loss = game.player.health.isEmpty ? HEARTS_LOST : game.level?.loss
-    if (loss) game.scenes.openOverlay( new GameOverScene( game, loss.title, loss.subtitle, { label:`Zacznij dzień od nowa`, action:() => this.restartDay() } ) )
+    if (!loss) return
+
+    game.sounds.stopMusic( 0.3 )
+    game.sounds.play( SOUNDS.dayLost )
+    game.scenes.openOverlay( new GameOverScene( game, loss.title, loss.subtitle, { label:`Zacznij dzień od nowa`, action:() => this.restartDay() } ) )
   }
 
   draw() {

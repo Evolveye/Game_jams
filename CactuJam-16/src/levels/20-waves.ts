@@ -1,6 +1,6 @@
 import storyImage from "../assets/slides/20-waves.png"
 import Level from "../logic/Level"
-import { SOUNDS } from "../logic/sounds"
+import { MUSIC, SOUNDS } from "../logic/sounds"
 import { KID, PLAYER } from "../logic/speakers"
 import type { Shot } from "../scenes/SlidesScene"
 
@@ -78,4 +78,4 @@ export default new Level( `Fale`, async level => {
   await level.say( `Ilu was jeszcze jest? Nikogo? Tak myślałem.`, { seconds:3 } )
 
   await level.callForDinner()
-}, { story:STORY } )
+}, { story:STORY, music:MUSIC.tank } )

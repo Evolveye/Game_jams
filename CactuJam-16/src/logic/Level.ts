@@ -10,7 +10,7 @@ import ToyPickup from "../entities/items/ToyPickup"
 import Kid, { type KidOptions } from "../entities/kids/Kid"
 import type { Shot } from "../scenes/SlidesScene"
 import type { ActionOf, Listener, PlayOptions, SoundHandle } from "./engine"
-import { SOUNDS } from "./sounds"
+import { MUSIC, SOUNDS } from "./sounds"
 import { MOM, PLAYER, type Speaker } from "./speakers"
 import { findPointBeyondEdge, SANDBOX, WORLD, type Point, type Rect } from "./world"
 
@@ -31,9 +31,10 @@ export type DayLoss = { title:string, subtitle:string }
 
 /**
  * - `story`: shown before the day starts
+ * - `music`: the song played during the day (`MUSIC.playground` by default)
  * - `isStuntDay`: the day of the "Kaskader" achievement (won without leaving the car)
  */
-export type LevelOptions = { story?:Shot[], isStuntDay?:boolean }
+export type LevelOptions = { story?:Shot[], music?:string, isStuntDay?:boolean }
 
 type Condition = {
   isMet: () => boolean
@@ -72,10 +73,16 @@ export default class Level {
   #voice: null | SoundHandle = null
 
   readonly story: Shot[]
+  readonly music: string
   readonly isStuntDay: boolean
 
-  constructor( readonly name:string, readonly script:LevelScript, { story = [], isStuntDay = false }:LevelOptions = {} ) {
+  constructor(
+    readonly name:string,
+    readonly script:LevelScript,
+    { story = [], music = MUSIC.playground, isStuntDay = false }:LevelOptions = {},
+  ) {
     this.story = story
+    this.music = music
     this.isStuntDay = isStuntDay
   }
 
@@ -360,12 +367,20 @@ export default class Level {
 
   /** Mom calls for dinner: kids run home, and the day ends once the player walks off the playground. */
   async callForDinner() {
-    this.#runningGame.events.emit( `dinnerCalled` )
+    const game = this.#runningGame
+
+    game.events.emit( `dinnerCalled` )
 
     for (const kid of this.kids) kid.flee()
     for (const baby of this.babies) baby.isContent = true
 
     this.confinePlayer( null )
+
+    // The day is won: the music gives way to a fanfare, then Mom calls.
+    game.sounds.stopMusic( 1 )
+    game.sounds.play( SOUNDS.dayWon )
+    await this.wait( 1.3 )
+
     await this.say( `Sergiusz, obiad!`, { speaker:MOM, seconds:3, sound:SOUNDS.momCall } )
     await this.waitUntil( () => this.player.isOutside( WORLD ) )
   }

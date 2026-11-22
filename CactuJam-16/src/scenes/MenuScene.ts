@@ -1,5 +1,6 @@
 import type Game from "../Game"
 import type { Scene } from "../logic/engine"
+import { MUSIC } from "../logic/sounds"
 import AboutScene from "./AboutScene"
 import AchievementsScene from "./AchievementsScene"
 import ConfirmScene from "./ConfirmScene"
@@ -33,6 +34,8 @@ export default class MenuScene implements Scene {
   }
 
   enter() {
+    // The screens opened from the menu keep its song going.
+    this.#game.sounds.playMusic( MUSIC.calm )
     this.#show()
   }
 

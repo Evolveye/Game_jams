@@ -1,5 +1,6 @@
 import type Game from "../Game"
 import type { Scene, SoundHandle } from "../logic/engine"
+import { MUSIC, SOUNDS } from "../logic/sounds"
 import type { Speaker } from "../logic/speakers"
 
 /**
@@ -46,6 +47,7 @@ export default class SlidesScene implements Scene {
   enter() {
     if (!this.#steps.length) return this.#finish()
 
+    this.#game.sounds.playMusic( MUSIC.calm )
     this.#show()
   }
 
@@ -81,6 +83,9 @@ export default class SlidesScene implements Scene {
     const isNewShot = this.#steps[ this.#index - 1 ]?.shotId !== shotId
 
     if (isNewShot && shot.sound) this.#game.sounds.play( shot.sound )
+
+    // Turning to the next picture swishes.
+    if (isNewShot && this.#index > 0) this.#game.sounds.play( SOUNDS.whoosh, { volume:0.7 } )
 
     this.#voice?.stop()
     this.#voice = sound ? this.#game.sounds.play( sound, { rateVariation:0.08 } ) : null
