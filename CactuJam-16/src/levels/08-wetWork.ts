@@ -1,4 +1,4 @@
-import playgroundImage from "../assets/slides/playground.png"
+import storyImage from "../assets/slides/08-wet.png"
 import Level from "../logic/Level"
 import { SOUNDS } from "../logic/sounds"
 import { PLAYER } from "../logic/speakers"
@@ -7,11 +7,11 @@ import type { Shot } from "../scenes/SlidesScene"
 /** Story before the level. */
 const STORY:Shot[] = [
   {
-    image: playgroundImage,
+    image: storyImage,
     title: `Mokra robota`,
     sound: SOUNDS.storyIntro,
     lines: [
-      { text:`Piątego dnia ktoś przyniósł konewkę. I wcale nie po to, żeby podlewać kwiatki.` },
+      { text:`Ósmego dnia ktoś przyniósł konewkę. I wcale nie po to, żeby podlewać kwiatki.` },
       { text:`Błoto? Mnie nic nie zatrzyma.`, speaker:PLAYER },
     ],
   },
@@ -37,10 +37,6 @@ export default new Level( `Mokra robota`, async level => {
 
   const allKidsGone = level.waitFor( `allKidsGone` )
 
-  level.waitFor( `kidSpawned`, ({ kid }) => kid.state === `stealing` ).then( () => {
-    level.note( `Ktoś biegnie po upuszczoną zabawkę! Jeden cios go przepłoszy, ale jeśli ją złapie, dołączy do bójki.` )
-  } )
-
   level.waitFor( `toyReceived`, ({ kind }) => kind === `wateringCan` ).then( () => {
     level.say( `Teraz wy pochlapiecie się w błocie!` )
     level.note( `Konewka robi kałużę tam, gdzie celujesz: `, level.getKeys( `useToy` ), `. W kałuży wszyscy zwalniają.` )
@@ -53,7 +49,6 @@ export default new Level( `Mokra robota`, async level => {
   await level.walkPlayerTo( 44, 90 )
   await level.say( `Konewka? Co on kombinuje?` )
 
-  level.note( `Wejdź do piaskownicy. Nie wyjdziesz z niej, dopóki są w niej inne dzieci.` )
   await level.confinePlayerOnEntry()
 
   level.angerKids()
@@ -63,6 +58,5 @@ export default new Level( `Mokra robota`, async level => {
   await allKidsGone
   await level.say( `Mokro, ale moje.` )
 
-  level.note( `Mama woła na obiad. Wyjdź z placu zabaw, żeby wrócić do domu.` )
   await level.callForDinner()
-}, STORY )
+}, { story:STORY, parSeconds:60 } )

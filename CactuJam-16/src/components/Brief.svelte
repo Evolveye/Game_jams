@@ -1,6 +1,6 @@
 <script module lang="ts">
-  /** How an entry looks: a section heading, an instruction, or a quoted line. */
-  export type BriefEntryVariant = `heading` | `note` | `quote`
+  /** How an entry looks: a section heading, an instruction, a quoted line, or a newly unlocked achievement. */
+  export type BriefEntryVariant = `heading` | `note` | `quote` | `achievement`
 
   /** Part of an entry's text: plain text, or alternative keys shown as keyboard keys (`W` / `↑`). */
   export type BriefTextPart = string | { keys:string[] }
@@ -14,6 +14,8 @@
     source: string
     /** Shown before the text, e.g. who says a line. */
     label?: string
+    /** Shown below the text, smaller, e.g. what an achievement asks for. */
+    detail?: string
     color?: string
   }
 </script>
@@ -71,7 +73,10 @@
         {#if entry.label}
           <span class="label">{entry.label}</span>
         {/if}
-        {#if entry.variant === `quote`}„{@render entryText( entry.text )}”{:else}{@render entryText( entry.text )}{/if}
+        {#if entry.variant === `quote`}„{@render entryText( entry.text )}”{:else if entry.variant === `achievement`}<strong class="achievement-name">{@render entryText( entry.text )}</strong>{:else}{@render entryText( entry.text )}{/if}
+        {#if entry.detail}
+          <span class="detail">{entry.detail}</span>
+        {/if}
       </li>
     {/each}
   </ol>
@@ -162,6 +167,53 @@
     color: #a8a29e;
     font-size: 14px;
     font-style: italic;
+  }
+
+  /* A newly unlocked achievement: a golden card that glows once when it appears. */
+  .entry-achievement {
+    padding: 8px 10px;
+    border: 2px solid #e8c872;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(232, 200, 114, 0.22), rgba(139, 90, 43, 0.25));
+    box-shadow: 0 0 0 1px #8b5a2b inset;
+    animation: achievement-glow 1.6s ease-out;
+  }
+
+  .entry-achievement .label {
+    color: #e8c872;
+  }
+
+  .achievement-name {
+    display: block;
+    color: #fde68a;
+    font-family: var(--font-title);
+    font-size: 19px;
+    font-weight: normal;
+    letter-spacing: 0.03em;
+  }
+
+  .detail {
+    display: block;
+    color: #d6d3d1;
+    font-size: 13px;
+  }
+
+  @keyframes achievement-glow {
+    from {
+      box-shadow: 0 0 18px 4px rgba(253, 230, 138, 0.8), 0 0 0 1px #8b5a2b inset;
+      transform: scale(1.04);
+    }
+
+    to {
+      box-shadow: 0 0 0 0 rgba(253, 230, 138, 0), 0 0 0 1px #8b5a2b inset;
+      transform: scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .entry-achievement {
+      animation: none;
+    }
   }
 
   .label {

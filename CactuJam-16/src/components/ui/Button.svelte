@@ -1,6 +1,6 @@
 <script module lang="ts">
-  /** `danger`: an action that can't be undone, e.g. deleting saved data. */
-  export type ButtonVariant = `primary` | `secondary` | `danger`
+  /** `danger`: an action that can't be undone, e.g. deleting saved data. `debug`: available only in debug mode. */
+  export type ButtonVariant = `primary` | `secondary` | `danger` | `debug`
 </script>
 
 <script lang="ts">
@@ -90,6 +90,29 @@
 
     background: #3b1717;
     color: #fecaca;
+  }
+
+  /* Only in debug mode: dashed, in the blue of the debug outlines. */
+  .debug {
+    --edge-color: #1e3a5f;
+
+    border-style: dashed;
+    background: #161b24;
+    color: #93c5fd;
+  }
+
+  .debug:hover {
+    --edge-color: #3b6ea5;
+
+    background: #1b2433;
+    color: #bfdbfe;
+  }
+
+  .debug.selected {
+    --edge-color: #60a5fa;
+
+    background: #1e2b40;
+    color: #dbeafe;
   }
 
   .primary {

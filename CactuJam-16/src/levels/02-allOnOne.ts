@@ -1,18 +1,24 @@
-import playgroundImage from "../assets/slides/playground.png"
+import committeeImage from "../assets/slides/02-committee.png"
+import despotImage from "../assets/slides/02-despot.png"
 import Level from "../logic/Level"
 import { SOUNDS } from "../logic/sounds"
-import { PLAYER } from "../logic/speakers"
 import type { Shot } from "../scenes/SlidesScene"
 
-/** Story before the level. */
+/** Story before the level: yesterday's kids come back, organised and armed. */
 const STORY:Shot[] = [
   {
-    image: playgroundImage,
+    image: despotImage,
     title: `Wszyscy na jednego`,
     sound: SOUNDS.storyIntro,
     lines: [
-      { text:`Następnego dnia przegonione dzieciaki wróciły. I to nie same.` },
-      { text:`Wszyscy na jednego? Phi. Piaskownica i tak jest moja.`, speaker:PLAYER },
+      { text:`Sergiusz był nieco despotycznym dzieckiem, o czym mogły się przekonać wczoraj inne dzieci na placu zabaw.` },
+    ],
+  },
+  {
+    image: committeeImage,
+    lines: [
+      { text:`Przegonione dzieciaki nie chciały dać za wygraną.` },
+      { text:`Zaopatrzyły się w łopatki i zawiązały Komitet Obrony Piaskownicy.` },
     ],
   },
 ]
@@ -43,9 +49,8 @@ export default new Level( `Wszyscy na jednego`, async level => {
   // Gameplay
 
   await level.walkPlayerTo( 44, 90 )
-  await level.say( `Wszyscy na jednego? No to zapraszam!` )
+  await level.say( `Chyba im mało po wczorajszym. Nie ma sprawy, poprawię im.`, { seconds:3 } )
 
-  level.note( `Wejdź do piaskownicy. Nie wyjdziesz z niej, dopóki są w niej inne dzieci.` )
   await level.confinePlayerOnEntry()
 
   level.angerKids()
@@ -55,6 +60,5 @@ export default new Level( `Wszyscy na jednego`, async level => {
   await allKidsGone
   await level.say( `I kto tu rządzi?` )
 
-  level.note( `Mama woła na obiad. Wyjdź z placu zabaw, żeby wrócić do domu.` )
   await level.callForDinner()
-}, STORY )
+}, { story:STORY, parSeconds:60 } )

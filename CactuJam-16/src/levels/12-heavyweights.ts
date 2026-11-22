@@ -1,4 +1,4 @@
-import playgroundImage from "../assets/slides/playground.png"
+import storyImage from "../assets/slides/12-heavy.png"
 import Level from "../logic/Level"
 import { SOUNDS } from "../logic/sounds"
 import { PLAYER } from "../logic/speakers"
@@ -7,17 +7,20 @@ import type { Shot } from "../scenes/SlidesScene"
 /** Story before the level. */
 const STORY:Shot[] = [
   {
-    image: playgroundImage,
+    image: storyImage,
     title: `Ciężka kategoria`,
     sound: SOUNDS.storyIntro,
     lines: [
-      { text:`Siódmego dnia przyszedł ktoś większy. A jego kolega przyjechał autkiem.` },
+      { text:`Dwunastego dnia przyszedł ktoś większy. A jego kolega przyjechał autkiem.` },
       { text:`Im większy, tym głośniej spada.`, speaker:PLAYER },
     ],
   },
 ]
 
-/** Test level: a fat kid (slower, with longer reach) and a kid driving the car, ramming the player. */
+/**
+ * Both steady enemies, one at a time in a quiet sandbox: a fat kid (slower, with longer reach, not pushed back)
+ * and a kid driving the car, ramming the player. A beaten driver drops the car: riding it takes a slot.
+ */
 export default new Level( `Ciężka kategoria`, async level => {
   // Setup
 
@@ -30,6 +33,11 @@ export default new Level( `Ciężka kategoria`, async level => {
 
   const allKidsGone = level.waitFor( `allKidsGone` )
 
+  level.waitFor( `toyReceived`, ({ kind }) => kind === `car` ).then( () => {
+    level.say( `Brum brum!` )
+    level.note( `Autko! Wybierz je (`, level.getKeys( `prevToy`, `nextToy` ), `), a pojedziesz nim i będziesz taranować. Zajmuje miejsce na zabawkę.` )
+  } )
+
 
 
   // Gameplay
@@ -37,7 +45,6 @@ export default new Level( `Ciężka kategoria`, async level => {
   await level.walkPlayerTo( 44, 90 )
   await level.say( `Ten duży ma długie łapy. A ten drugi... jeździ?!` )
 
-  level.note( `Wejdź do piaskownicy. Nie wyjdziesz z niej, dopóki są w niej inne dzieci.` )
   await level.confinePlayerOnEntry()
 
   level.angerKids()
@@ -46,6 +53,5 @@ export default new Level( `Ciężka kategoria`, async level => {
   await allKidsGone
   await level.say( `Ciężka kategoria, lekkie zwycięstwo.` )
 
-  level.note( `Mama woła na obiad. Wyjdź z placu zabaw, żeby wrócić do domu.` )
   await level.callForDinner()
-}, STORY )
+}, { story:STORY, parSeconds:45 } )

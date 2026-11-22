@@ -5,10 +5,13 @@ import { SOUNDS } from "../logic/sounds"
 import { SANDBOX, type Point, type Rect } from "../logic/world"
 import Entity from "./Entity"
 
-/** `sitting` stays in place, `crawling` slowly wanders around its area. */
-export type BabyMode = `sitting` | `crawling`
+/**
+ * `sitting` stays in place, `crawling` slowly wanders around its area, `following` crawls after the player
+ * once the fight starts, and stops just out of the way (not close enough to be bothered).
+ */
+export type BabyMode = `sitting` | `crawling` | `following`
 
-/** - `mode`: sitting (default) or crawling; `bounds`: the area it crawls in (the sandbox by default) */
+/** - `mode`: sitting (default), crawling or following; `bounds`: the area it crawls in (the sandbox by default) */
 export type BabyOptions = { mode?:BabyMode, bounds?:Rect }
 
 /** Baby tuning, in world units and seconds. */
@@ -23,6 +26,8 @@ const STATS = {
   sobbingFrom: 0.65,
   crawlSpeed: 5,
   crawlRange: 25,
+  /** A following baby stops this close to the player (gap between footprints): just beyond `annoyGap`. */
+  followGap: 9,
   restTime: { min:1.5, max:4 },
 }
 
@@ -65,6 +70,11 @@ export default class Baby extends Entity {
     return !this.isCrying && !this.isContent
   }
 
+  /** True once it looks uneasy (or worse): the player is bothering it. */
+  get isUneasy() {
+    return this.upset >= STATS.uneasyFrom
+  }
+
   /** Any hit by the player makes it cry at once. */
   takeHit() {
     this.cry()
@@ -84,6 +94,7 @@ export default class Baby extends Entity {
     if (this.isHittable) {
       this.#feelThePlayer( seconds )
       if (this.mode === `crawling`) this.#crawl( seconds )
+      if (this.mode === `following`) this.#follow( seconds )
     }
 
     // Nobody walks through the baby.
@@ -108,6 +119,17 @@ export default class Baby extends Entity {
     else this.upset = Math.max( 0, this.upset - seconds / STATS.secondsToCalm )
 
     if (this.upset >= 1) this.cry()
+  }
+
+  /**
+   * Crawls after the player (within its area) while kids attack them, stopping just out of the way:
+   * it gets underfoot, but never upsets itself. Before the fight it stays where it is.
+   */
+  #follow( seconds:number ) {
+    const player = this.game.player
+    if (!this.game.level?.isFighting || this.measureGapTo( player ) <= STATS.followGap) return
+
+    this.moveTowards( this.clampInside( player, this.bounds ), STATS.crawlSpeed * this.groundSpeedFactor, seconds )
   }
 
   /** Crawls slowly between random spots nearby, resting at each one. */

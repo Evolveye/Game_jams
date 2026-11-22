@@ -17,12 +17,17 @@ export type MenuEntry = `newGame` | `continue` | `chooseLevel` | `achievements` 
 export default class MenuScene implements Scene {
   #game: Game
   #menu: OptionsMenu
+  #entries: (MenuOption & { id:MenuEntry })[]
+  /** Debug mode when the menu was built: it shows more options (see `#createEntries`). */
+  #isDebug: boolean
 
   /** `selectedEntry`: the entry selected at first (the first one when this menu has no such entry). */
   constructor( game:Game, selectedEntry?:MenuEntry ) {
     const entries = this.#createEntries( game )
 
     this.#game = game
+    this.#entries = entries
+    this.#isDebug = game.isDebug
     this.#menu = new OptionsMenu( game, entries, () => this.#show(), { columns:2 } )
     this.#menu.selectedIndex = Math.max( 0, entries.findIndex( entry => entry.id === selectedEntry ) )
   }
@@ -32,19 +37,24 @@ export default class MenuScene implements Scene {
   }
 
   update() {
+    const game = this.#game
+
+    // Debug mode switched from the console: rebuilt with the same entry selected.
+    if (game.isDebug !== this.#isDebug) return game.scenes.switchTo( new MenuScene( game, this.#entries[ this.#menu.selectedIndex ]?.id ) )
+
     this.#menu.update()
   }
 
   #createEntries( game:Game ): (MenuOption & { id:MenuEntry })[] {
     const { hasPlayed } = game.progress
-    const startEntries: (MenuOption & { id:MenuEntry })[] = hasPlayed
-      ? [
-        { id:`continue`, label:`Kontynuuj`, variant:`primary`, action:() => game.continueRun() },
-        { id:`chooseLevel`, label:`Wybierz poziom`, action:() => game.scenes.switchTo( new LevelSelectScene( game ) ) },
-      ]
-      : [
-        { id:`newGame`, label:`Nowa gra`, variant:`primary`, isWide:true, action:() => game.startNewRun() },
-      ]
+    const continueRun:MenuOption & { id:MenuEntry } = { id:`continue`, label:`Kontynuuj`, variant:`primary`, action:() => game.continueRun() }
+    const chooseLevel:MenuOption & { id:MenuEntry } = { id:`chooseLevel`, label:`Wybierz poziom`, action:() => game.scenes.switchTo( new LevelSelectScene( game ) ) }
+    const newGame:MenuOption & { id:MenuEntry } = { id:`newGame`, label:`Nowa gra`, variant:`primary`, action:() => game.startNewRun() }
+
+    // A new player starts a new game; in debug mode any day can be chosen too, also before playing.
+    let startEntries = [ { ...newGame, isWide:true } ]
+    if (hasPlayed) startEntries = [ continueRun, chooseLevel ]
+    else if (game.isDebug) startEntries = [ newGame, chooseLevel ]
 
     const entries: (MenuOption & { id:MenuEntry })[] = [
       ...startEntries,

@@ -1,5 +1,5 @@
-import type { GameStats } from "../Game"
 import { ITEMS, type ItemKind } from "../entities/items/items"
+import { completeStats, copyStats, type GameStats } from "./stats"
 import { loadFromStorage, removeFromStorage, saveToStorage } from "./storage"
 
 /** What a day started with: enough to play it again from its start. */
@@ -34,7 +34,7 @@ export default class Progress {
 
   get lastDay() {
     const lastDay = this.#saved.lastDay
-    return lastDay && { ...lastDay, inventory:[ ...lastDay.inventory ], stats:{ ...lastDay.stats } }
+    return lastDay && { ...lastDay, inventory:[ ...lastDay.inventory ], stats:completeStats( lastDay.stats ) }
   }
 
   /** Indexes of the reached days, in order. */
@@ -49,7 +49,7 @@ export default class Progress {
 
   /** Remembers a day being started, so it can be continued or chosen later. */
   saveDayStart( index:number, { inventory, stats }:DayStart ) {
-    this.#saved.lastDay = { index, inventory:[ ...inventory ], stats:{ ...stats } }
+    this.#saved.lastDay = { index, inventory:[ ...inventory ], stats:copyStats( stats ) }
     this.#saved.reachedDays[ index ] = [ ...inventory ]
 
     saveToStorage( STORAGE_KEY, this.#saved )

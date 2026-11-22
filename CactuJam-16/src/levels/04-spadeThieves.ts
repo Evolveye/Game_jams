@@ -1,4 +1,4 @@
-import playgroundImage from "../assets/slides/playground.png"
+import storyImage from "../assets/slides/04-thieves.png"
 import Level from "../logic/Level"
 import { SOUNDS } from "../logic/sounds"
 import { PLAYER } from "../logic/speakers"
@@ -7,7 +7,7 @@ import type { Shot } from "../scenes/SlidesScene"
 /** Story before the level. */
 const STORY:Shot[] = [
   {
-    image: playgroundImage,
+    image: storyImage,
     title: `Wynajęli spadochroniarzy!`,
     sound: SOUNDS.storyIntro,
     lines: [
@@ -50,7 +50,6 @@ export default new Level( `Wynajęli spadochroniarzy!`, async level => {
   await level.walkPlayerTo( 44, 90 )
   await level.say( `Same łopatki? To będzie ciekawe.` )
 
-  level.note( `Wejdź do piaskownicy. Nie wyjdziesz z niej, dopóki są w niej inne dzieci.` )
   await level.confinePlayerOnEntry()
 
   level.angerKids()
@@ -59,6 +58,5 @@ export default new Level( `Wynajęli spadochroniarzy!`, async level => {
   await allKidsGone
   await level.say( `Wszystkie łopatki zostają w MOJEJ piaskownicy.` )
 
-  level.note( `Mama woła na obiad. Wyjdź z placu zabaw, żeby wrócić do domu.` )
   await level.callForDinner()
-}, STORY )
+}, { story:STORY, parSeconds:60 } )

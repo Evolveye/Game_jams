@@ -1,18 +1,24 @@
-import playgroundImage from "../assets/slides/playground.png"
+import arrivalImage from "../assets/slides/01-arrival.png"
+import sandboxImage from "../assets/slides/01-sandbox.png"
 import Level from "../logic/Level"
 import { SOUNDS } from "../logic/sounds"
 import { KID } from "../logic/speakers"
 import { WORLD } from "../logic/world"
 import type { Shot } from "../scenes/SlidesScene"
 
-/** Story before the level. */
+/** Story before the level: Mom walks her son to the playground, where he spots the sandbox. */
 const STORY:Shot[] = [
   {
-    image: playgroundImage,
+    image: arrivalImage,
     title: `Piaskownica`,
     sound: SOUNDS.storyIntro,
     lines: [
       { text:`Pewnego dnia pewna mama, pewna swego zbyt pewnego siebie synka, udała się z nim na pewien plac zabaw.` },
+    ],
+  },
+  {
+    image: sandboxImage,
+    lines: [
       { text:`Po dotarciu na miejsce chłopiec od razu zauroczył się zasypaną plażowym piaskiem piaskownicą.` },
     ],
   },
@@ -92,7 +98,7 @@ export default new Level( `Piaskownica`, async level => {
 
   // Coming from the left, stopping on the grass.
   await level.walkPlayerTo( 44, 90 )
-  await level.say( `Muszę wykurzyć stąd tych ciućków. Ta piaskownica będzie moja!`, { seconds:3.5 } )
+  await level.say( `Teraz ja się chcę bawić w piasku, wynocha!`, { seconds:3 } )
 
   level.note( `Wejdź do piaskownicy. Jeden z dzieciaków ma łopatkę. Pokonaj go, a ją upuści.` )
 
@@ -111,4 +117,4 @@ export default new Level( `Piaskownica`, async level => {
 
   level.note( `Mama woła na obiad. Wyjdź z placu zabaw, żeby wrócić do domu.` )
   await level.callForDinner()
-}, STORY )
+}, { story:STORY, parSeconds:60 } )

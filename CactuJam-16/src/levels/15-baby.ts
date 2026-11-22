@@ -1,4 +1,4 @@
-import playgroundImage from "../assets/slides/playground.png"
+import storyImage from "../assets/slides/15-baby.png"
 import Level from "../logic/Level"
 import { SOUNDS } from "../logic/sounds"
 import { PLAYER } from "../logic/speakers"
@@ -7,11 +7,11 @@ import type { Shot } from "../scenes/SlidesScene"
 /** Story before the level. */
 const STORY:Shot[] = [
   {
-    image: playgroundImage,
+    image: storyImage,
     title: `Ostrożnie, bobas!`,
     sound: SOUNDS.storyIntro,
     lines: [
-      { text:`Ósmego dnia w piaskownicy siedział bobas. A obok niego dwóch największych łobuzów z podwórka.` },
+      { text:`Piętnastego dnia w piaskownicy siedział bobas. A obok niego dwóch największych łobuzów z podwórka.` },
       { text:`Tylko spokojnie. Bobasa nie ruszam.`, speaker:PLAYER },
     ],
   },
@@ -38,7 +38,6 @@ export default new Level( `Ostrożnie, bobas!`, async level => {
   await level.walkPlayerTo( 44, 90 )
   await level.say( `Bobas w piaskownicy? Muszę uważać.` )
 
-  level.note( `Wejdź do piaskownicy. Nie wyjdziesz z niej, dopóki są w niej inne dzieci.` )
   await level.confinePlayerOnEntry()
 
   level.angerKids()
@@ -48,6 +47,5 @@ export default new Level( `Ostrożnie, bobas!`, async level => {
   await allKidsGone
   await level.say( `Bobas cały, piaskownica moja.` )
 
-  level.note( `Mama woła na obiad. Wyjdź z placu zabaw, żeby wrócić do domu.` )
   await level.callForDinner()
-}, STORY )
+}, { story:STORY, parSeconds:45 } )

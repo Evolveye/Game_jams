@@ -9,6 +9,8 @@ import LEVELS from "./levels"
 import Achievements, { ACHIEVEMENTS, type AchievementId } from "./logic/achievements"
 import { loadSavedBindings } from "./logic/bindings"
 import Progress from "./logic/progress"
+import { createRunStats, type GameStats } from "./logic/stats"
+import { loadFromStorage, saveToStorage } from "./logic/storage"
 import type Level from "./logic/Level"
 import { SOUNDS } from "./logic/sounds"
 import type { Speaker } from "./logic/speakers"
@@ -28,35 +30,28 @@ export type GameEvents = {
   /** The player stands on a toy they have no room for (sent every frame they stand there). */
   toyOutOfRoom: { kind:ToyKind }
   kidSpawned: { kid:Kid }
-  kidHit: { kid:Kid }
+  /** `kind`: the player's item that hit (none for other hits); sent after the damage, so the kid may be beaten already. */
+  kidHit: { kid:Kid, kind?:ItemKind }
+  /** A thief grabbed a toy lying on the ground. */
+  toyStolen: { kid:Kid, kind:ToyKind }
   kidFled: { kid:Kid }
   kidGone: { kid:Kid }
   allKidsGone: void
   playerHit: void
   toyUsed: { kind:ItemKind }
   babyCried: void
+  /** Mom calls for dinner: the day is won, only the walk home is left. */
+  dinnerCalled: void
 }
+
+/** Where debug mode is remembered in the browser. */
+const DEBUG_STORAGE_KEY = `debug`
 
 /** The playground behind everything, as big as the world. */
 const BACKGROUND = new Sprite({ playground:{ src:playgroundImage } }, `playground` )
 
-/** Counted during a run, shown in the summary at its end. */
-export type GameStats = {
-  playSeconds: number
-  kidsBeaten: number
-  hitsTaken: number
-  daysCompleted: number
-}
-
 /** Development only: `?level=2` in the URL starts new runs from that level, e.g. to test it. */
 const FIRST_LEVEL_INDEX = import.meta.env.DEV ? Math.max( 0, (Number( new URLSearchParams( location.search ).get( `level` ) ) || 1) - 1 ) : 0
-
-const NEW_RUN_STATS:GameStats = {
-  playSeconds: 0,
-  kidsBeaten: 0,
-  hitsTaken: 0,
-  daysCompleted: 0,
-}
 
 export default class Game {
   static controls = new Controls({
@@ -71,7 +66,6 @@ export default class Game {
     swapToy: [ `KeyF` ],
     pause: [ `Escape`, `KeyP` ],
     confirm: [ `Enter`, `Space` ],
-    toggleDebug: [ `F3` ],
   })
 
   #actionHandlers: ActionHandlers<ActionOf<typeof Game.controls>> = {
@@ -85,21 +79,21 @@ export default class Game {
     nextToy: () => this.player.inventory.select( 1 ),
     prevToy: () => this.player.inventory.select( -1 ),
     swapToy: () => this.player.swapToy(),
-    toggleDebug: () => {
-      this.isDebug = !this.isDebug
-    },
   }
 
   /** The journal told how to swap toys in this run. */
   #hasExplainedSwap = false
 
-  /** Debug mode: hurtbox outlines, and level scripts logging their steps. On by default during development. */
-  isDebug = import.meta.env.DEV
+  /**
+   * Debug mode: hurtbox outlines, level scripts logging their steps, and every day to choose from.
+   * Switched only from the devtools console with `setDebug( true )` (see `setDebug`); on by default during development.
+   */
+  isDebug = loadFromStorage<boolean>( DEBUG_STORAGE_KEY, import.meta.env.DEV )
 
   world = WORLD
   player = new Player( this )
   level: null | Level = null
-  stats:GameStats = { ...NEW_RUN_STATS }
+  stats:GameStats = createRunStats( 0 )
   /** Kept in the browser between runs. */
   achievements = new Achievements()
   /** Kept in the browser between runs: the days reached, to continue or choose one. */
@@ -149,8 +143,22 @@ export default class Game {
     this.events.on( `playerHit`, () => this.sounds.play( SOUNDS.playerHit ) )
     this.events.on( `toyReceived`, () => this.sounds.play( SOUNDS.pickup ) )
 
+    // For the devtools console only: `setDebug( true )`, `setDebug( false )`, or `setDebug()` to switch it.
+    Object.assign( window, { setDebug:(isOn = !this.isDebug) => this.setDebug( isOn ) } )
+
     this.start()
     this.scenes.switchTo( new MenuScene( this ) )
+  }
+
+  /**
+   * Switches debug mode, remembered in the browser. Menus showing it refresh at once; level scripts log their steps
+   * from the next day. Returns a line for the console.
+   */
+  setDebug( isOn:boolean ) {
+    this.isDebug = isOn
+    saveToStorage( DEBUG_STORAGE_KEY, isOn )
+
+    return `Debug mode ${isOn ? `on` : `off`}`
   }
 
   /** Shared controls, also reachable from code that only has the game instance (e.g. level scripts). */
@@ -183,28 +191,31 @@ export default class Game {
 
   /** Starts a new run: a fresh player, journal and stats, then the first day. */
   startNewRun() {
-    this.#startRun( FIRST_LEVEL_INDEX, [ `fist` ], { ...NEW_RUN_STATS } )
+    this.#startRun( FIRST_LEVEL_INDEX, [ `fist` ], createRunStats( FIRST_LEVEL_INDEX ) )
   }
 
-  /** Goes back to the day started most recently, with the toys and stats it began with. */
+  /** Goes back to the day started most recently, with the toys and stats it began with. Playing it again counts as a retry. */
   continueRun() {
     const lastDay = this.progress.lastDay
     if (!lastDay) return this.startNewRun()
 
-    this.#startRun( lastDay.index, lastDay.inventory, lastDay.stats )
+    this.#startRun( lastDay.index, lastDay.inventory, lastDay.stats, { isRetry:true } )
   }
 
   /** Starts a run from a reached day, with the toys that day last began with, and fresh stats. */
   startRunAt( index:number ) {
-    this.#startRun( index, this.progress.getDayInventory( index ), { ...NEW_RUN_STATS } )
+    this.#startRun( index, this.progress.getDayInventory( index ), createRunStats( index ) )
   }
 
-  /** Tells the day's story (if any), then plays the day. After the last day: the summary. */
-  startDay( index:number, { withStory = true } = {} ) {
+  /**
+   * Tells the day's story (if any), then plays the day. After the last day: the summary.
+   * `isRetry`: the day is played again from its start (counted for the whole-run achievements).
+   */
+  startDay( index:number, { withStory = true, isRetry = false } = {} ) {
     const level = LEVELS[ index ]
     if (!level) return this.#endStory()
 
-    const playDay = () => this.scenes.switchTo( new GameplayScene( this, index ) )
+    const playDay = () => this.scenes.switchTo( new GameplayScene( this, index, { isRetry } ) )
 
     if (withStory && level.story.length) this.scenes.switchTo( new SlidesScene( this, level.story, playDay ) )
     else playDay()
@@ -215,6 +226,15 @@ export default class Game {
    */
   unlockAchievement( id:AchievementId ) {
     return this.achievements.unlock( id ) ? ACHIEVEMENTS[ id ].name : null
+  }
+
+  /** Unlocks an achievement during a day, announced in the journal the first time. */
+  announceAchievement( id:AchievementId ) {
+    const name = this.unlockAchievement( id )
+    if (!name) return
+
+    this.sounds.play( SOUNDS.pickup )
+    this.view.addBriefEntry({ variant:`achievement`, source:`achievement`, label:`★ Nowe osiągnięcie`, text:name, detail:ACHIEVEMENTS[ id ].description })
   }
 
   /** One frame of the playing world: level timers, player input and movement, kids and toys. */
@@ -263,21 +283,37 @@ export default class Game {
   }
 
   /** A fresh player holding the inventory, a clean journal, then the day. */
-  #startRun( index:number, inventory:ItemKind[], stats:GameStats ) {
+  #startRun( index:number, inventory:ItemKind[], stats:GameStats, { isRetry = false } = {} ) {
     this.player = new Player( this )
     this.player.inventory = new Inventory( inventory, this.player.inventory.toyLimit )
     this.stats = stats
     this.#hasExplainedSwap = false
     this.view.clearBrief()
 
-    this.startDay( index )
+    this.startDay( index, { isRetry } )
   }
 
-  /** After the last day: the story's achievement (announced when new), and the summary of the run. */
+  /** After the last day: the story's achievement and those of the whole run (announced when new), and the summary of the run. */
   #endStory() {
-    const newAchievement = this.unlockAchievement( `storyEnd` )
-    const subtitle = newAchievement ? `Piaskownica jest twoja. Nowe osiągnięcie: ${newAchievement}!` : `Piaskownica jest twoja.`
+    const newAchievements = this.#getRunAchievements().map( id => this.unlockAchievement( id ) ).filter( name => name !== null )
+    const subtitle = newAchievements.length
+      ? `Piaskownica jest twoja. Nowe osiągnięcia: ${newAchievements.join( `, ` )}!`
+      : `Piaskownica jest twoja.`
 
     this.scenes.openOverlay( new GameOverScene( this, `Koniec!`, subtitle, { label:`Zagraj jeszcze raz`, action:() => this.startNewRun() } ) )
+  }
+
+  /** Achievements earned by finishing the story; those for the whole run only when it started on the first day. */
+  #getRunAchievements() {
+    const { stats } = this
+    const ids:AchievementId[] = [ `storyEnd` ]
+    if (!stats.isFullRun) return ids
+
+    if (stats.fistOnlyDays >= LEVELS.length) ids.push( `fistSchool` )
+    if (stats.spadeDays >= LEVELS.length) ids.push( `spadeLoyal` )
+    if (!stats.retries) ids.push( `firstTry` )
+    if (!stats.babiesCried) ids.push( `goodBoy` )
+
+    return ids
   }
 }

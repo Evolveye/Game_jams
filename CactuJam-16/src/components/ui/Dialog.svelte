@@ -42,9 +42,11 @@
     letter-spacing: 0.04em;
   }
 
+  /* Line breaks in the text start new lines. */
   .subtitle {
     margin: 8px 0 0;
     color: #a8a29e;
+    white-space: pre-line;
   }
 
   .hint {

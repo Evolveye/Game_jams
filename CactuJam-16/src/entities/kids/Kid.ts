@@ -17,10 +17,11 @@ import { PLAYER_HEALTH } from "../Player"
 /**
  * - `playing`: wanders around its spot, harmless
  * - `stealing`: runs in from off-screen for a toy lying on the ground; grabbing it, it turns hostile. One hit scares it away.
+ * - `entering`: runs in from off-screen to its spot (e.g. the next wave), then turns hostile; hits hurt it already
  * - `hostile`: chases the player and attacks them
  * - `fleeing`: runs off the playground and is gone once off-screen
  */
-export type KidState = `playing` | `stealing` | `hostile` | `fleeing`
+export type KidState = `playing` | `stealing` | `entering` | `hostile` | `fleeing`
 
 /**
  * How a kid fights, in world units and seconds:
@@ -28,8 +29,9 @@ export type KidState = `playing` | `stealing` | `hostile` | `fleeing`
  * - `chaseSpeed`: how fast it chases the player (or keeps its distance when throwing or watering)
  * - `attackWindup`: how long it winds up before attacking, the player's time to react
  * - `attackCooldown`: shortest pause between attacks; a slower toy makes it longer
+ * - `knockbackFactor`: multiplies how far its hits push the player (below 1: weaker pushes, the player stays in reach)
  */
-export type KidTraits = { health:number, chaseSpeed:number, attackWindup:number, attackCooldown:number }
+export type KidTraits = { health:number, chaseSpeed:number, attackWindup:number, attackCooldown:number, knockbackFactor:number }
 
 /** Names of a kid's animations. */
 type KidAnimation = keyof ReturnType<typeof createAnimations>
@@ -53,13 +55,14 @@ export type KidOptions = {
 }
 
 /** The regular kid, as healthy as the player. */
-const REGULAR_TRAITS:KidTraits = { health:PLAYER_HEALTH, chaseSpeed:42, attackWindup:0.35, attackCooldown:1.1 }
+const REGULAR_TRAITS:KidTraits = { health:PLAYER_HEALTH, chaseSpeed:42, attackWindup:0.35, attackCooldown:1.1, knockbackFactor:1 }
 
 /** Kid types, from the easiest. */
 export const KID_TRAITS = {
   slow: { ...REGULAR_TRAITS, chaseSpeed:26, attackWindup:0.55, attackCooldown:1.6 },
   regular: REGULAR_TRAITS,
-  quick: { ...REGULAR_TRAITS, chaseSpeed:56, attackWindup:0.3, attackCooldown:0.8 },
+  /** Rapid, weak jabs: attacks often, but pushes the player only half as far, so the next jab lands too. */
+  quick: { ...REGULAR_TRAITS, chaseSpeed:56, attackWindup:0.3, attackCooldown:0.5, knockbackFactor:0.5 },
 } satisfies Record<string, KidTraits>
 
 /** Angles from the way the player faces; positive turns clockwise (to the player's right). */
@@ -217,9 +220,12 @@ export default class Kid extends Entity {
     return this.hasRainBoots ? 1 : super.groundSpeedFactor
   }
 
-  /** A fleeing kid is out of the game. */
+  /**
+   * A fleeing kid is out of the game. Nobody can be hit before the player walks into the sandbox,
+   * so the fight cannot be won from outside (e.g. throwing sand from the entrance).
+   */
   get isHittable() {
-    return this.state !== `fleeing`
+    return this.state !== `fleeing` && Boolean( this.game.level?.hasPlayerEntered )
   }
 
   /** Steady kids (a steady body, or riding) are not pushed back or interrupted by hits, so they cannot be stun-locked. */
@@ -256,9 +262,10 @@ export default class Kid extends Entity {
       this.swing = null
     }
 
-    this.game.events.emit( `kidHit`, { kid:this } )
+    if (this.state === `hostile` || this.state === `entering`) this.health.damage( hit.damage )
 
-    if (this.state === `hostile`) this.health.damage( hit.damage )
+    // Sent after the damage, so listeners see whether the hit beat the kid (before it drops its toys).
+    this.game.events.emit( `kidHit`, { kid:this, kind:hit.kind } )
 
     // A kid holding toys defends them instead of running away.
     if (this.state === `playing` && this.inventory.items.length) this.becomeHostile()
@@ -278,6 +285,13 @@ export default class Kid extends Entity {
       this.inventory.remove( item.kind )
       level.dropToy( item.kind, this.x, this.y )
     }
+  }
+
+  /** Puts the kid off-screen (e.g. at `findPointBeyondEdge`), to run in to its spot and attack from there. */
+  enterFrom( point:Point ) {
+    this.x = point.x
+    this.y = point.y
+    this.state = `entering`
   }
 
   /** Runs to the nearest edge of the playground and leaves. */
@@ -339,6 +353,7 @@ export default class Kid extends Entity {
 
     if (this.state === `fleeing`) return this.#runAway( seconds )
     if (this.state === `stealing`) return this.#steal( seconds )
+    if (this.state === `entering`) return this.#enter( seconds )
 
     if (!this.stunTime && this.state === `playing`) this.#play( seconds )
     if (!this.stunTime && this.state === `hostile`) this.#fight( seconds )
@@ -683,6 +698,18 @@ export default class Kid extends Entity {
     this.inventory.add( toy.kind )
     this.state = `playing`
     this.becomeHostile()
+    this.game.events.emit( `toyStolen`, { kid:this, kind:toy.kind } )
+  }
+
+  /** Runs in to its spot from off-screen (out of its bounds meanwhile), then attacks. */
+  #enter( seconds:number ) {
+    if (this.stunTime) return
+
+    const isThere = this.moveTowards( this.#home, STATS.stealSpeed * this.groundSpeedFactor, seconds )
+    if (!isThere) return
+
+    this.state = `playing`
+    this.becomeHostile()
   }
 
   /** The nearest toy still lying on the ground. */
@@ -734,9 +761,12 @@ export default class Kid extends Entity {
     return centersDistance - (this.footprint.width + player.footprint.width) / 2 - STATS.approachMargin
   }
 
-  /** The hit with the body's damage bonus added. */
+  /** The hit with the body's damage bonus added, and its knockback scaled by the kid's traits. */
   #strengthen<Hit extends HitStats>( hit:Hit ): Hit {
-    return this.damageBonus ? { ...hit, damage:hit.damage + this.damageBonus } : hit
+    const { knockbackFactor } = this.traits
+    if (!this.damageBonus && knockbackFactor === 1) return hit
+
+    return { ...hit, damage:hit.damage + this.damageBonus, knockback:hit.knockback * knockbackFactor }
   }
 
   /**
@@ -782,7 +812,7 @@ export default class Kid extends Entity {
   #getAnimation( isWalking:boolean ): KidAnimation {
     if (this.windupTime > 0) return `windup`
     if (this.stunTime) return `stunned`
-    if (this.state === `hostile`) return `angry`
+    if (this.state === `hostile` || this.state === `entering`) return `angry`
 
     return isWalking ? `walk` : `idle`
   }

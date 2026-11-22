@@ -1,8 +1,10 @@
 import type Game from "../Game"
 import Inventory from "../entities/items/Inventory"
 import LEVELS from "../levels"
+import AchievementTracker from "../logic/AchievementTracker"
 import type { Scene } from "../logic/engine"
 import type { DayStart } from "../logic/progress"
+import { copyStats } from "../logic/stats"
 import GameOverScene from "./GameOverScene"
 import PauseScene from "./PauseScene"
 
@@ -13,21 +15,26 @@ const HEARTS_LOST = { title:`Ała!`, subtitle:`Mama zabrała cię do domu.` }
 export default class GameplayScene implements Scene {
   #game: Game
   #levelIndex: number
+  #isRetry: boolean
   #dayStart: DayStart
 
-  constructor( game:Game, levelIndex:number ) {
+  /** `isRetry`: the day is played again from its start, counted in the run's stats. */
+  constructor( game:Game, levelIndex:number, { isRetry = false } = {} ) {
     this.#game = game
     this.#levelIndex = levelIndex
-    this.#dayStart = { inventory:[], stats:{ ...game.stats } }
+    this.#isRetry = isRetry
+    this.#dayStart = { inventory:[], stats:copyStats( game.stats ) }
   }
 
   enter() {
     const game = this.#game
     const level = LEVELS[ this.#levelIndex ]
 
+    if (this.#isRetry) game.stats.retries++
+
     this.#dayStart = {
       inventory: game.player.inventory.items.map( item => item.kind ),
-      stats: { ...game.stats },
+      stats: copyStats( game.stats ),
     }
     game.progress.saveDayStart( this.#levelIndex, this.#dayStart )
 
@@ -42,6 +49,16 @@ export default class GameplayScene implements Scene {
 
       game.stats.daysCompleted++
       game.startDay( this.#levelIndex + 1 )
+    } )
+
+    // Started after the level, so everything it listens to stops with this day.
+    new AchievementTracker( game, level, this.#levelIndex )
+
+    // A crying baby counts for the whole run: kept even when the day is played again from its start.
+    level.on( `babyCried`, () => {
+      game.stats.babiesCried++
+      this.#dayStart.stats.babiesCried++
+      game.progress.saveDayStart( this.#levelIndex, this.#dayStart )
     } )
   }
 
@@ -71,7 +88,7 @@ export default class GameplayScene implements Scene {
     const game = this.#game
 
     game.player.inventory = new Inventory( this.#dayStart.inventory, game.player.inventory.toyLimit )
-    game.stats = { ...this.#dayStart.stats }
-    game.startDay( this.#levelIndex, { withStory:false } )
+    game.stats = copyStats( this.#dayStart.stats )
+    game.startDay( this.#levelIndex, { withStory:false, isRetry:true } )
   }
 }

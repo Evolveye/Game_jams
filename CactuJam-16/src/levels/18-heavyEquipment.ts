@@ -1,4 +1,4 @@
-import playgroundImage from "../assets/slides/playground.png"
+import storyImage from "../assets/slides/18-tank.png"
 import Level from "../logic/Level"
 import { SOUNDS } from "../logic/sounds"
 import { PLAYER } from "../logic/speakers"
@@ -7,11 +7,11 @@ import type { Shot } from "../scenes/SlidesScene"
 /** Story before the level. */
 const STORY:Shot[] = [
   {
-    image: playgroundImage,
+    image: storyImage,
     title: `Ciężki sprzęt`,
     sound: SOUNDS.storyIntro,
     lines: [
-      { text:`Dziewiątego dnia przyjechał ktoś naprawdę duży. W autku. Z wiaderkiem piasku.` },
+      { text:`Osiemnastego dnia przyjechał ktoś naprawdę duży. W autku. Z wiaderkiem piasku.` },
       { text:`To nie dzieciak. To czołg.`, speaker:PLAYER },
     ],
   },
@@ -39,7 +39,6 @@ export default new Level( `Ciężki sprzęt`, async level => {
   await level.walkPlayerTo( 44, 90 )
   await level.say( `To nie dzieciak. To czołg.` )
 
-  level.note( `Wejdź do piaskownicy. Nie wyjdziesz z niej, dopóki są w niej inne dzieci.` )
   await level.confinePlayerOnEntry()
 
   level.angerKids()
@@ -49,6 +48,5 @@ export default new Level( `Ciężki sprzęt`, async level => {
   await allKidsGone
   await level.say( `Im większy, tym głośniej spada.` )
 
-  level.note( `Mama woła na obiad. Wyjdź z placu zabaw, żeby wrócić do domu.` )
   await level.callForDinner()
-}, STORY )
+}, { story:STORY, parSeconds:45, isStuntDay:true } )

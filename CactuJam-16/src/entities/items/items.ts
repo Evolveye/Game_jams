@@ -11,8 +11,8 @@ export type ToyKind = `spade` | `bucket` | `moulds` | `wateringCan` | `car`
 /** Everything that can be held: toys, and the bare fist every kid starts with. */
 export type ItemKind = `fist` | ToyKind
 
-/** What a hit does to whoever it lands on: health taken, and how hard it pushes. */
-export type HitStats = { damage:number, knockback:number }
+/** What a hit does to whoever it lands on: health taken, and how hard it pushes. `kind`: the player's item it comes from, if any. */
+export type HitStats = { damage:number, knockback:number, kind?:ItemKind }
 
 /**
  * How a swing works. Hits come from the item's pixels, moved in the hand by `arc` and `thrust`;

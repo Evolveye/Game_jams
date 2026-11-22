@@ -74,6 +74,11 @@ export default class Player extends Entity {
     return !this.invulnerableTime && !this.#autoWalk
   }
 
+  /** True while the selected item is ridden (e.g. the car). */
+  get isRiding() {
+    return Boolean( this.#rideItem )
+  }
+
   /** The selected item when it is ridden (e.g. the car). */
   get #rideItem() {
     const item = this.inventory.selected
@@ -107,9 +112,10 @@ export default class Player extends Entity {
     if (this.bounds) this.keepInside( this.bounds )
 
     // A moving ride rams the kids it runs into.
-    const ram = this.#rideItem?.definition.ride?.ram
+    const rideItem = this.#rideItem
+    const ram = rideItem?.definition.ride?.ram
     const isMoving = !this.stunTime && (this.moveInput.x || this.moveInput.y)
-    if (ram && isMoving) this.hitOnContact( seconds, this.game.level?.getPlayerTargets() ?? [], ram )
+    if (rideItem && ram && isMoving) this.hitOnContact( seconds, this.game.level?.getPlayerTargets() ?? [], { ...ram, kind:rideItem.kind } )
   }
 
   /** Puts the player at a spot, resetting movement and any scripted walk. */
@@ -142,9 +148,12 @@ export default class Player extends Entity {
 
     const direction = target ? this.#aim( target ) : this.facing
 
-    if (definition.swing) this.swing = new Swing( this, item.sprite, definition.swing, direction )
-    if (definition.throwing) this.#throw( definition.throwing, direction, target )
-    if (definition.watering) this.#pour( definition.watering, direction, target )
+    // Hits remember the item, e.g. for achievements.
+    const { kind } = item
+
+    if (definition.swing) this.swing = new Swing( this, item.sprite, { ...definition.swing, kind }, direction )
+    if (definition.throwing) this.#throw( { ...definition.throwing, kind }, direction, target )
+    if (definition.watering) this.#pour( { ...definition.watering, kind }, direction, target )
 
     this.game.events.emit( `toyUsed`, { kind:item.kind } )
   }

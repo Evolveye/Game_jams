@@ -29,6 +29,13 @@ export type SayOptions = { speaker?:Speaker, seconds?:number, sound?:string }
 /** Why the day was lost, for the summary over the frozen world. */
 export type DayLoss = { title:string, subtitle:string }
 
+/**
+ * - `story`: shown before the day starts
+ * - `parSeconds`: the time to beat for the "Błyskawica" achievement, from the first attacking kid to Mom's call; none without it
+ * - `isStuntDay`: the day of the "Kaskader" achievement (won without leaving the car)
+ */
+export type LevelOptions = { story?:Shot[], parSeconds?:number, isStuntDay?:boolean }
+
 type Condition = {
   isMet: () => boolean
   resolve: () => void
@@ -55,18 +62,25 @@ export default class Level {
   loss: null | DayLoss = null
   /** Thieves waiting off-screen, each sent in for the next dropped toy. */
   #lurkingThieves: KidOptions[] = []
+  /** Thieves added this day, sent in or not. */
+  #thievesCount = 0
+  /** The player has walked fully into the sandbox this day; until then nobody can be hit. */
+  #hasPlayerEntered = false
   #conditions = new Set<Condition>()
   #game: null | Game = null
   #abortCtrl = new AbortController()
   /** The sound of the last line, cut off by the next one. */
   #voice: null | SoundHandle = null
 
-  constructor(
-    readonly name: string,
-    readonly script: LevelScript,
-    /** Story shown before the day starts. */
-    readonly story: Shot[] = [],
-  ) {}
+  readonly story: Shot[]
+  readonly parSeconds: null | number
+  readonly isStuntDay: boolean
+
+  constructor( readonly name:string, readonly script:LevelScript, { story = [], parSeconds, isStuntDay = false }:LevelOptions = {} ) {
+    this.story = story
+    this.parSeconds = parSeconds ?? null
+    this.isStuntDay = isStuntDay
+  }
 
   get #runningGame() {
     if (!this.#game) throw new Error( `Level "${this.name}" is not running` )
@@ -76,6 +90,25 @@ export default class Level {
   /** The player, for conditions in the script, e.g. `level.player.isInside( SANDBOX )`. */
   get player() {
     return this.#runningGame.player
+  }
+
+  /** True once the player has walked fully into the sandbox this day. Kids cannot be hit before (see `Kid.isHittable`). */
+  get hasPlayerEntered() {
+    return this.#hasPlayerEntered
+  }
+
+  /** True when thieves were added this day (see `addLurkingThieves`). */
+  get hasThieves() {
+    return this.#thievesCount > 0
+  }
+
+  /** True while any kid attacks the player. */
+  get isFighting() {
+    for (const kid of this.kids) {
+      if (kid.state === `hostile`) return true
+    }
+
+    return false
   }
 
   async run( game:Game ) {
@@ -93,6 +126,8 @@ export default class Level {
     this.isFrozen = false
     this.loss = null
     this.#lurkingThieves = []
+    this.#thievesCount = 0
+    this.#hasPlayerEntered = false
     this.#conditions.clear()
     game.player.bounds = WORLD
     game.view.setSpeech( null )
@@ -117,6 +152,8 @@ export default class Level {
   update( seconds:number ) {
     for (const baby of this.babies) baby.update( seconds )
     if (this.isFrozen) return
+
+    if (!this.#hasPlayerEntered && this.player.isInside( SANDBOX )) this.#hasPlayerEntered = true
 
     for (const toy of this.toys) {
       toy.update()
@@ -262,21 +299,24 @@ export default class Level {
    */
   addLurkingThieves( count:number, options:KidOptions = {} ) {
     for (let i = 0; i < count; i++) this.#lurkingThieves.push( options )
+    this.#thievesCount += count
   }
 
   /** Puts peacefully playing kids at the given spots, optionally holding toys. Returns them in the same order. */
   spawnKids( spots:KidSpawn[] ) {
-    const game = this.#runningGame
+    return spots.map( spot => this.#addKid( this.#createKid( spot ) ) )
+  }
 
-    return spots.map( ({ x, y, toys = [], ...options }) => {
-      const kid = new Kid( game, x, y, options )
+  /**
+   * Like `spawnKids`, but the kids come running in from the nearest edge of the playground, and attack once at their spots,
+   * e.g. the next wave. Returns them in the same order.
+   */
+  spawnKidsFromEdge( spots:KidSpawn[] ) {
+    return spots.map( spot => {
+      const kid = this.#createKid( spot )
 
-      for (const kind of toys) kid.inventory.add( kind )
-
-      this.kids.add( kid )
-      game.events.emit( `kidSpawned`, { kid } )
-
-      return kid
+      kid.enterFrom( findPointBeyondEdge( spot ) )
+      return this.#addKid( kid )
     } )
   }
 
@@ -323,12 +363,29 @@ export default class Level {
 
   /** Mom calls for dinner: kids run home, and the day ends once the player walks off the playground. */
   async callForDinner() {
+    this.#runningGame.events.emit( `dinnerCalled` )
+
     for (const kid of this.kids) kid.flee()
     for (const baby of this.babies) baby.isContent = true
 
     this.confinePlayer( null )
-    await this.say( `OBIAD!`, { speaker:MOM, seconds:3, sound:SOUNDS.momCall } )
+    await this.say( `Sergiusz, obiad!`, { speaker:MOM, seconds:3, sound:SOUNDS.momCall } )
     await this.waitUntil( () => this.player.isOutside( WORLD ) )
+  }
+
+  /** A kid at its spot, holding its toys; not on the playground yet. */
+  #createKid( { x, y, toys = [], ...options }:KidSpawn ) {
+    const kid = new Kid( this.#runningGame, x, y, options )
+
+    for (const kind of toys) kid.inventory.add( kind )
+    return kid
+  }
+
+  #addKid( kid:Kid ) {
+    this.kids.add( kid )
+    this.#runningGame.events.emit( `kidSpawned`, { kid } )
+
+    return kid
   }
 
   /** A thief comes onto the playground from the edge nearest to the toy. */
