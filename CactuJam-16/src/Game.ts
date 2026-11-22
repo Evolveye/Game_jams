@@ -5,6 +5,8 @@ import { ITEMS, type ItemKind, type ToyKind } from "./entities/items/items"
 import type Kid from "./entities/kids/Kid"
 import Player, { HEART_ICONS } from "./entities/Player"
 import LEVELS from "./levels"
+import Achievements, { ACHIEVEMENTS, type AchievementId } from "./logic/achievements"
+import { loadSavedBindings } from "./logic/bindings"
 import type Level from "./logic/Level"
 import { SOUNDS } from "./logic/sounds"
 import type { Speaker } from "./logic/speakers"
@@ -96,6 +98,8 @@ export default class Game {
   player = new Player( this )
   level: null | Level = null
   stats:GameStats = { ...NEW_RUN_STATS }
+  /** Kept in the browser between runs. */
+  achievements = new Achievements()
 
   root: HTMLElement
   events = new EventBus<GameEvents>()
@@ -110,6 +114,7 @@ export default class Game {
     this.root = root
     this.view = this.mountView()
     this.renderer = new Renderer( this.view.getCanvas(), this.world )
+    loadSavedBindings( this.controls )
     Keys.listenToPointer( this.view.getCanvas() )
 
     this.events.on( `kidFled`, ({ kid }) => {
@@ -185,12 +190,19 @@ export default class Game {
   /** Tells the day's story (if any), then plays the day. After the last day: the summary. */
   startDay( index:number, { withStory = true } = {} ) {
     const level = LEVELS[ index ]
-    if (!level) return this.scenes.openOverlay( new GameOverScene( this, `Koniec!`, `Piaskownica jest twoja.`, { label:`Zagraj jeszcze raz`, action:() => this.startNewRun() } ) )
+    if (!level) return this.#endStory()
 
     const playDay = () => this.scenes.switchTo( new GameplayScene( this, index ) )
 
     if (withStory && level.story.length) this.scenes.switchTo( new SlidesScene( this, level.story, playDay ) )
     else playDay()
+  }
+
+  /**
+   * Unlocks an achievement for good. Returns its name the first time (to announce it), `null` when it was unlocked before.
+   */
+  unlockAchievement( id:AchievementId ) {
+    return this.achievements.unlock( id ) ? ACHIEVEMENTS[ id ].name : null
   }
 
   /** One frame of the playing world: level timers, player input and movement, kids and toys. */
@@ -230,5 +242,13 @@ export default class Game {
     for (const entity of entities) entity.draw( ctx )
 
     if (this.isDebug) for (const entity of entities) entity.drawDebug( ctx )
+  }
+
+  /** After the last day: the story's achievement (announced when new), and the summary of the run. */
+  #endStory() {
+    const newAchievement = this.unlockAchievement( `storyEnd` )
+    const subtitle = newAchievement ? `Piaskownica jest twoja. Nowe osiągnięcie: ${newAchievement}!` : `Piaskownica jest twoja.`
+
+    this.scenes.openOverlay( new GameOverScene( this, `Koniec!`, subtitle, { label:`Zagraj jeszcze raz`, action:() => this.startNewRun() } ) )
   }
 }

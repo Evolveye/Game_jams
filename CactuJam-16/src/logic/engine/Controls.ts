@@ -8,8 +8,10 @@ export type ActionOf<TControls> = TControls extends Controls<infer Action> ? Act
 
 export default class Controls<Action extends string> {
   #bindings: Bindings<Action>
+  #defaults: Bindings<Action>
 
   constructor( bindings:Bindings<Action> ) {
+    this.#defaults = structuredClone( bindings )
     this.#bindings = structuredClone( bindings )
 
     // Game keys must not trigger browser actions (scrolling, Ctrl+S, …).
@@ -57,5 +59,27 @@ export default class Controls<Action extends string> {
   rebind( action:Action, codes:KeyCode[] ) {
     this.#bindings[ action ] = [ ...codes ]
     Keys.blockDefault( codes )
+  }
+
+  /** A copy of every binding, e.g. to save it. */
+  getAllBindings() {
+    return structuredClone( this.#bindings )
+  }
+
+  /** The bindings the controls were created with. */
+  getDefaultBindings( action:Action ) {
+    return [ ...this.#defaults[ action ] ]
+  }
+
+  /** Rebinds the known actions found in `bindings` (e.g. loaded from storage); unknown actions are ignored. */
+  rebindAll( bindings:Partial<Record<string, KeyCode[]>> ) {
+    for (const action in this.#bindings) {
+      const codes = bindings[ action ]
+      if (Array.isArray( codes )) this.rebind( action, codes )
+    }
+  }
+
+  resetBindings() {
+    this.#bindings = structuredClone( this.#defaults )
   }
 }

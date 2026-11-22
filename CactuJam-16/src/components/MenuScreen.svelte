@@ -18,80 +18,32 @@
 </script>
 
 <script lang="ts">
-  import Button from "./ui/Button.svelte"
-  import Panel from "./ui/Panel.svelte"
+  import Dialog from "./ui/Dialog.svelte"
+  import OptionButtons from "./ui/OptionButtons.svelte"
 
   /** An overlay lets the game show through (e.g. pause), otherwise the menu covers everything. */
   let { menu, isOverlay = false }:{
     menu: MenuScreenData
     isOverlay?: boolean
   } = $props()
+
+  let options = $derived( menu.options.map( (option, index) => ({ ...option, isSelected:index === menu.selectedIndex }) ) )
 </script>
 
-<div class="menu-screen" class:overlay={isOverlay}>
-  <Panel isTranslucent={isOverlay}>
-    <h1 class="title">{menu.title}</h1>
-
-    {#if menu.subtitle}
-      <p class="subtitle">{menu.subtitle}</p>
-    {/if}
-
-    {#if menu.rows?.length}
-      <dl class="rows">
-        {#each menu.rows as row (row.label)}
-          <dt>{row.label}</dt>
-          <dd>{row.value}</dd>
-        {/each}
-      </dl>
-    {/if}
-
-    <ol class="options">
-      {#each menu.options as option, index (option.label)}
-        <li>
-          <Button
-            variant={option.variant}
-            isSelected={index === menu.selectedIndex}
-            onclick={() => menu.onSelect( index )}
-            onhover={() => menu.onHover( index )}
-          >{option.label}</Button>
-        </li>
+<Dialog title={menu.title} subtitle={menu.subtitle} hint={menu.hint} {isOverlay}>
+  {#if menu.rows?.length}
+    <dl class="rows">
+      {#each menu.rows as row (row.label)}
+        <dt>{row.label}</dt>
+        <dd>{row.value}</dd>
       {/each}
-    </ol>
+    </dl>
+  {/if}
 
-    {#if menu.hint}
-      <p class="hint">{menu.hint}</p>
-    {/if}
-  </Panel>
-</div>
+  <OptionButtons {options} onSelect={menu.onSelect} onHover={menu.onHover} />
+</Dialog>
 
 <style>
-  .menu-screen {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    background: #1c1917;
-  }
-
-  .menu-screen.overlay {
-    background: rgba(12, 10, 9, 0.6);
-    backdrop-filter: blur(2px);
-  }
-
-  .title {
-    margin: 0;
-    color: #e8c872;
-    font-family: var(--font-title);
-    font-size: clamp(26px, 4vw, 44px);
-    font-weight: normal;
-    letter-spacing: 0.04em;
-  }
-
-  .subtitle {
-    margin: 8px 0 0;
-    color: #a8a29e;
-  }
-
   .rows {
     display: grid;
     grid-template-columns: auto auto;
@@ -108,20 +60,5 @@
   .rows dd {
     margin: 0;
     font-weight: bold;
-  }
-
-  /* The gap leaves room for the buttons' bottom edge, which is drawn below them. */
-  .options {
-    display: grid;
-    gap: 12px;
-    margin: 24px 0 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .hint {
-    margin: 18px 0 0;
-    color: #78716c;
-    font-size: 13px;
   }
 </style>

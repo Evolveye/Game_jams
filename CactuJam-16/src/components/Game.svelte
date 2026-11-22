@@ -1,13 +1,24 @@
 <script module lang="ts">
+  import type { AboutScreenData } from "./AboutScreen.svelte"
+  import type { AchievementsScreenData } from "./AchievementsScreen.svelte"
+  import type { ControlsScreenData } from "./ControlsScreen.svelte"
   import type { MenuScreenData } from "./MenuScreen.svelte"
   import type { SlideScreenData } from "./SlideScreen.svelte"
 
   /** A screen covering the whole game (gameplay shows when there is none). */
-  export type Screen = ({ kind:`menu` } & MenuScreenData) | ({ kind:`slide` } & SlideScreenData)
+  export type Screen =
+    | ({ kind:`menu` } & MenuScreenData)
+    | ({ kind:`slide` } & SlideScreenData)
+    | ({ kind:`achievements` } & AchievementsScreenData)
+    | ({ kind:`about` } & AboutScreenData)
+    | ({ kind:`controls` } & ControlsScreenData)
 </script>
 
 <script lang="ts">
+  import AboutScreen from "./AboutScreen.svelte"
+  import AchievementsScreen from "./AchievementsScreen.svelte"
   import Brief, { type BriefEntry } from "./Brief.svelte"
+  import ControlsScreen from "./ControlsScreen.svelte"
   import Inventory, { type InventorySlot } from "./Inventory.svelte"
   import MenuScreen from "./MenuScreen.svelte"
   import PlayerHealth, { type PlayerHealthData } from "./PlayerHealth.svelte"
@@ -106,6 +117,12 @@
   <MenuScreen menu={screen} />
 {:else if screen?.kind === `slide`}
   <SlideScreen slide={screen} />
+{:else if screen?.kind === `achievements`}
+  <AchievementsScreen data={screen} />
+{:else if screen?.kind === `about`}
+  <AboutScreen data={screen} />
+{:else if screen?.kind === `controls`}
+  <ControlsScreen data={screen} />
 {/if}
 
 {#if overlay}

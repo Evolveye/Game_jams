@@ -99,6 +99,11 @@ export default class Keys {
     return codes.some( code => this.#held.has( code ) )
   }
 
+  /** Every input that went down in this frame, e.g. to bind a key to an action. */
+  static getPressedCodes() {
+    return [ ...this.#pressedThisFrame ] as KeyCode[]
+  }
+
   /** True only in the frame in which any of the keys went down. */
   static isPressed( codes:readonly KeyCode[] ) {
     return codes.some( code => this.#pressedThisFrame.has( code ) )
@@ -137,6 +142,39 @@ export default class Keys {
 
     // The right button is free to be bound to an action.
     element.addEventListener( `contextmenu`, event => event.preventDefault() )
+  }
+
+  /**
+   * Waits for the next mouse button or wheel step anywhere on the page, not only over the element passed to
+   * `listenToPointer()`, e.g. to bind it to an action. That click does not reach the page (it presses no button).
+   * Stops listening once `signal` aborts.
+   */
+  static waitForPointerInput( signal:AbortSignal ) {
+    return new Promise<KeyCode>( resolve => {
+      const listening = new AbortController()
+      const options = { capture:true, signal:AbortSignal.any([ signal, listening.signal ]) }
+
+      const finish = (event:Event, code:KeyCode) => {
+        event.preventDefault()
+        event.stopPropagation()
+        listening.abort()
+
+        // The click that follows this press must not press whatever is under the cursor, nor open the context menu.
+        if (code === `MouseLeft`) window.addEventListener( `click`, event => event.stopPropagation(), { capture:true, once:true } )
+        if (code === `MouseRight`) window.addEventListener( `contextmenu`, event => event.preventDefault(), { capture:true, once:true } )
+
+        resolve( code )
+      }
+
+      window.addEventListener( `mousedown`, event => {
+        const code = MOUSE_BUTTONS[ event.button ]
+        if (code) finish( event, code )
+      }, options )
+
+      window.addEventListener( `wheel`, event => {
+        if (event.deltaY) finish( event, event.deltaY < 0 ? `WheelUp` : `WheelDown` )
+      }, { ...options, passive:false } )
+    } )
   }
 
   /** Short label of a key for players, e.g. `KeyW` → `W`, `ShiftLeft` → `Shift`, `ArrowUp` → `↑`. */
